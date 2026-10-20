@@ -16,3 +16,6 @@ __pycache__/
 dist/
 *.tar.gz
 *.zip
+
+# Automated acceptance results
+acceptance-results/
