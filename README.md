@@ -24,6 +24,18 @@ bash packaging/build.sh
 
 The generated archive and SHA-256 manifest live in `dist/` (ignored by Git). The package can be extracted to another path; the launcher finds files relative to its own directory. The HTML report works offline.
 
+## Automated Phase 1 acceptance
+
+Run the full offline acceptance suite on Bodhi or another Linux host:
+
+```bash
+bash tests/acceptance-phase1.sh
+# Or place reports outside the installation (e.g. read-only toolkit media):
+bash tests/acceptance-phase1.sh --output "$HOME/lbt-acceptance"
+```
+
+It generates standalone `acceptance.html`, `acceptance.md`, `acceptance.json`, and `acceptance.csv`. Every check must PASS for overall PASS; SKIP produces INCOMPLETE, never a false success. See [acceptance test documentation](docs/PHASE1_ACCEPTANCE.md). GitHub Actions uploads test reports as `phase1-acceptance-report`.
+
 ## Dependencies and limitations
 
 Phase 1 uses host Bash and Python 3. Dialog is required only for TUI mode. `lscpu` and `lsblk` are optional discovery tools; the system identifies missing utilities. **No automatic package installation.** The Phase 1 archive does not yet bundle third-party executables, and it is not the final fully self-contained release.
