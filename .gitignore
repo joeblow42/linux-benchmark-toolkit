@@ -1,0 +1,18 @@
+# Machine-local results and sensitive diagnostics
+results/
+*.pyc
+__pycache__/
+.cache/
+.tmp/
+*.log
+# Keep fixture metadata in git, but not arbitrary disc images/media
+*.iso
+*.img
+*.mkv
+*.mp4
+*.avi
+*.wmv
+# Archive/release products
+dist/
+*.tar.gz
+*.zip
