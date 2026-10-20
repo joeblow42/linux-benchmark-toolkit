@@ -29,7 +29,7 @@ The runner is offline and unprivileged. It creates temporary isolated sessions a
 8. Offline HTML creation, report-only byte-for-byte regeneration.
 9. Corrupted session metadata rejection.
 10. Archive contents and SHA-256 verification.
-11. Relocated execution from a private directory.
+11. Relocated execution from a private directory and independently executing a newly extracted archive.
 12. Execution from a read-only source tree, using an external results directory.
 13. Pseudo-terminal Dialog Escape cancellation, if Dialog is installed.
 
