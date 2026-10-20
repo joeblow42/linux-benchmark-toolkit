@@ -218,13 +218,19 @@ def relocation(root, work):
 @check('Read-only source with external results')
 def readonly(root, work):
     dest = copy_toolkit(root, work)
-    for item in dest.rglob('*'):
-        if item.is_file() or item.is_dir():
-            item.chmod(item.stat().st_mode & ~0o222)
-    dest.chmod(dest.stat().st_mode & ~0o222)
-    session = discover(dest, work / 'outside-results')
-    require((session / 'report.html').is_file(), 'read-only execution failed')
-    require(not (dest / 'results').exists(), 'wrote results inside read-only source')
+    folders = [dest] + [p for p in dest.rglob('*') if p.is_dir()]
+    try:
+        for item in dest.rglob('*'):
+            if item.is_file() or item.is_dir():
+                item.chmod(item.stat().st_mode & ~0o222)
+        dest.chmod(dest.stat().st_mode & ~0o222)
+        session = discover(dest, work / 'outside-results')
+        require((session / 'report.html').is_file(), 'read-only execution failed')
+        require(not (dest / 'results').exists(), 'wrote results inside read-only source')
+    finally:
+        # Restore write access for unprivileged tempfile cleanup.
+        for folder in folders:
+            folder.chmod(folder.stat().st_mode | 0o700)
 
 
 @check('Dialog pseudo-terminal Escape cancellation')
