@@ -284,11 +284,14 @@ def dialog_cancel(root, work):
                 if not chunk:
                     break
                 stream += chunk
-                if b'Discovery' in stream or b'Standard' in stream:
+                # Dialog draws menu labels through cursor-positioning sequences,
+                # so label text may not be contiguous in the PTY byte stream.
+                # The action buttons are rendered as contiguous terminal text.
+                if b'Cancel' in stream and b'OK' in stream:
                     break
         require(proc.poll() is None, 'Dialog exited prematurely')
-        require(b'Discovery' in stream or b'Standard' in stream,
-                'Dialog menu not observed; terminal output tail: ' +
+        require(b'Cancel' in stream and b'OK' in stream,
+                'Dialog action buttons not observed; terminal output tail: ' +
                 repr(stream[-500:]))
         os.write(master, b'\x1b')
         try:
