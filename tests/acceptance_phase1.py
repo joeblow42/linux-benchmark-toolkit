@@ -229,7 +229,7 @@ def extracted_archive(root, work):
         require(all(not p.name.startswith('/') and '..' not in Path(p.name).parts
                     and (p.isfile() or p.isdir()) for p in members),
                 'unexpected unsafe archive entry')
-        fh.extractall(extracted, filter='data')
+        fh.extractall(extracted)  # Members prevalidated; compatible with Python 3.10
     session = discover(extracted / 'linux-benchmark-toolkit', work / 'archive-session')
     require((session / 'report.html').is_file(), 'extracted archive execution failed')
 
