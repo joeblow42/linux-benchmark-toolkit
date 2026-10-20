@@ -7,11 +7,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install Dialog for pseudo-terminal test
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dialog
       - name: Shell syntax
-        run: bash -n benchmark lib/*.sh tui/*.sh packaging/*.sh
-      - name: Python syntax and tests
+        run: bash -n benchmark lib/*.sh tui/*.sh packaging/*.sh tests/*.sh
+      - name: Python syntax and unit tests
         run: |
           python3 -m compileall -q reporting tests
           python3 -m unittest discover -s tests -v
-      - name: Offline archive
+      - name: Phase 1 acceptance suite
+        run: bash tests/acceptance-phase1.sh --output acceptance-results/ci
+      - name: Offline package
         run: bash packaging/build.sh
+      - name: Upload acceptance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase1-acceptance-report
+          path: acceptance-results/ci/
+          if-no-files-found: warn
