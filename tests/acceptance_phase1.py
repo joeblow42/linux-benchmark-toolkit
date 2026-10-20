@@ -215,6 +215,25 @@ def relocation(root, work):
     require(not (dest / 'results').exists(), 'unexpected in-tree results')
 
 
+@check('Extracted archive executes independently')
+def extracted_archive(root, work):
+    dist = work / 'archive-output'
+    p = run(['bash', str(root / 'packaging/build.sh'), str(dist)], timeout=45)
+    require(p.returncode == 0, 'archive build failed: ' + p.stderr)
+    archives = list(dist.glob('*.tar.gz'))
+    require(len(archives) == 1, 'archive not generated')
+    extracted = work / 'extracted'
+    extracted.mkdir()
+    with tarfile.open(archives[0], 'r:gz') as fh:
+        members = fh.getmembers()
+        require(all(not p.name.startswith('/') and '..' not in Path(p.name).parts
+                    and (p.isfile() or p.isdir()) for p in members),
+                'unexpected unsafe archive entry')
+        fh.extractall(extracted, filter='data')
+    session = discover(extracted / 'linux-benchmark-toolkit', work / 'archive-session')
+    require((session / 'report.html').is_file(), 'extracted archive execution failed')
+
+
 @check('Read-only source with external results')
 def readonly(root, work):
     dest = copy_toolkit(root, work)
