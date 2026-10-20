@@ -262,9 +262,14 @@ def dialog_cancel(root, work):
         import fcntl
         fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack('HHHH', 28, 110, 0, 0))
         env = dict(os.environ, TERM='xterm', LBT_RESULTS_DIR=str(work / 'never-created'))
+        # setsid alone does not grant a controlling terminal. Dialog may use
+        # /dev/tty and therefore requires TIOCSCTTY on the PTY slave.
+        def acquire_terminal():
+            fcntl.ioctl(0, termios.TIOCSCTTY, 0)
+
         proc = subprocess.Popen(['bash', str(root / 'benchmark')],
                                 stdin=slave, stdout=slave, stderr=slave, env=env,
-                                start_new_session=True)
+                                start_new_session=True, preexec_fn=acquire_terminal)
         os.close(slave)
         slave = -1
         stream = b''
@@ -282,7 +287,9 @@ def dialog_cancel(root, work):
                 if b'Discovery' in stream or b'Standard' in stream:
                     break
         require(proc.poll() is None, 'Dialog exited prematurely')
-        require(b'Discovery' in stream or b'Standard' in stream, 'Dialog menu not observed')
+        require(b'Discovery' in stream or b'Standard' in stream,
+                'Dialog menu not observed; terminal output tail: ' +
+                repr(stream[-500:]))
         os.write(master, b'\x1b')
         try:
             rc = proc.wait(timeout=6)
