@@ -1,0 +1,17 @@
+name: Phase 1 checks
+on:
+  push:
+  pull_request:
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell syntax
+        run: bash -n benchmark lib/*.sh tui/*.sh packaging/*.sh
+      - name: Python syntax and tests
+        run: |
+          python3 -m compileall -q reporting tests
+          python3 -m unittest discover -s tests -v
+      - name: Offline archive
+        run: bash packaging/build.sh
