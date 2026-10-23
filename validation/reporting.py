@@ -268,7 +268,7 @@ def _atomic_text(path: Path, contents: str) -> None:
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="") as stream:
             stream.write(contents)
-        os.fchmod(stream.fileno(), 0o600)
+            os.fchmod(stream.fileno(), 0o600)
         os.replace(temporary, path)
     finally:
         if os.path.exists(temporary):
