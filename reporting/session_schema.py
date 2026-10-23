@@ -225,8 +225,10 @@ def _check_discovery(inv):
                  "full discovery must select all collectors")
     _require(isinstance(inv["collectors"], dict) and
              set(inv["collectors"]).issubset(set(order)), "invalid collector mapping")
-    sequence = [cid for cid in order if cid in inv["collectors"]]
-    _require(list(inv["collectors"]) == sequence, "collector records out of sequence")
+    # JSON objects are unordered mappings; deterministic key sorting changes
+    # insertion order. Execution order is conveyed ONLY by execution_order.
+    _require(set(inv["collectors"]).issubset(set(order)),
+             "collector records not selected")
     for cid, entry in inv["collectors"].items():
         _sanitize_collector(cid, entry)
     timings = inv["timings"]
@@ -267,15 +269,17 @@ def _check_discovery(inv):
                  "invalid orchestration error")
     if summary["outcome"] == "INTERRUPTED":
         _require(summary["attempted"] == summary["executed"] + 1 and
-                 list(timings) == order[:summary["attempted"]] and
-                 list(inv["collectors"]) == order[:summary["executed"]],
+                 set(timings) == set(order[:summary["attempted"]]) and
+                 set(inv["collectors"]) == set(order[:summary["executed"]]),
                  "interrupted session has invalid prefix")
         _require(any(e["kind"] == "INTERRUPTED" for e in inv["errors"]),
                  "interruption marker missing")
     else:
         _require(summary["attempted"] == len(order) and
                  summary["executed"] == len(order) and
-                 list(timings) == order, "normal session lacks collector results")
+                 set(timings) == set(order) and
+                 set(inv["collectors"]) == set(order),
+                 "normal session lacks collector results")
         _require(not any(e["kind"] == "INTERRUPTED" for e in inv["errors"]),
                  "unexpected interruption marker")
     baseline = any(inv["collectors"].get(cid, {}).get("status") == "COMPLETE"
