@@ -8,9 +8,13 @@ usage() {
 Linux Benchmark Toolkit — Phase 1
 Usage: ./benchmark [--mode discovery|standard|extended] [--no-tui]
                    [--list-tests] [--check-deps] [--results-dir DIR]
-                   [--report-only SESSION_DIR] [--help]\n       ./benchmark --validate [--validation-profile quick|standard|full]\n                   [--results-dir DIR]\n       ./benchmark --validation-report-only SESSION_DIR
+                   [--report-only SESSION_DIR] [--help]
+       ./benchmark --validate [--validation-profile quick|standard|full]
+                   [--results-dir DIR]
+       ./benchmark --validation-report-only SESSION_DIR
 Without arguments launches Dialog when interactive.
-Benchmark modes implement Discovery only; other benchmark modes are planned.\nSoftware validation is separate from benchmark workload modes.
+Benchmark modes implement Discovery only; other benchmark modes are planned.
+Software validation is separate from benchmark workload modes.
 HELP
 }
 MODE=""; NO_TUI=0; LIST=0; CHECK=0; REPORT_ONLY=""; VALIDATE=0; VALIDATION_PROFILE="standard"; VALIDATION_PROFILE_SET=0; VALIDATION_REPORT_ONLY=""; RESULTS_DIR="${LBT_RESULTS_DIR:-$ROOT/results}"
@@ -57,7 +61,8 @@ if ((VALIDATE)); then
  run_validation_cli "$VALIDATION_PROFILE"
  exit $?
 fi
-if ((LIST)); then printf '%s\n' 'discovery available' 'standard planned' 'extended planned'; exit 0; fi
+if ((LIST)); then printf '%s
+' 'discovery available' 'standard planned' 'extended planned'; exit 0; fi
 if ((CHECK)); then check_dependencies; exit 0; fi
 if [[ -n "$REPORT_ONLY" ]]; then
  require_command python3
@@ -68,7 +73,12 @@ fi
 if [[ -z "$MODE" ]] && ((NO_TUI == 0)) && [[ -t 0 && -t 1 ]]; then
  if command -v dialog >/dev/null 2>&1; then
   source "$ROOT/tui/menu.sh"
-  MODE=$(choose_mode) || exit 0\n  if [[ "$MODE" == diagnostics ]]; then\n   profile=$(choose_validation_profile) || exit 0\n   run_validation_cli "$profile"\n   exit $?\n  fi
+  MODE=$(choose_mode) || exit 0
+  if [[ "$MODE" == diagnostics ]]; then
+   profile=$(choose_validation_profile) || exit 0
+   run_validation_cli "$profile"
+   exit $?
+  fi
  else
   echo 'Dialog unavailable; use --mode discovery or install/bundle dialog.' >&2
   usage
