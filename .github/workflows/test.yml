@@ -17,13 +17,15 @@ jobs:
           python3 -m compileall -q reporting validation tests
       - name: Unified Full validation (unit and acceptance once)
         run: python3 -m validation.suites full --output validation-results/ci
-      - name: Diagnose failing unit suite (failure only)
-        if: failure()
-        run: python3 -m unittest discover -s tests -v
       - name: Upload unified validation report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: toolkit-validation-report
-          path: validation-results/ci/
+          path: |
+            validation-results/ci/validation.json
+            validation-results/ci/validation.csv
+            validation-results/ci/validation.md
+            validation-results/ci/validation.html
+            validation-results/ci/validation.manifest.json
           if-no-files-found: warn
