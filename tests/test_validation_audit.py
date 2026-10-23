@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from validation.evidence import private_diagnostic
 from validation.quick import quick_registry
@@ -53,6 +54,18 @@ class RequirementAuditTests(unittest.TestCase):
         self.assertTrue(any(reg_case.requirement_ids for reg_case in reg.all_cases()))
         self.assertTrue(all(set(reg_case.requirement_ids) <= APPROVED_IDS
                             for reg_case in reg.all_cases()))
+
+
+class InterruptionAndCiTests(unittest.TestCase):
+    def test_interrupted_validation_returns_130(self):
+        from validation.suites import main
+        with patch("validation.suites.run_validation", side_effect=KeyboardInterrupt):
+            self.assertEqual(main(["quick"]), 130)
+
+    def test_ci_never_uploads_local_private_logs(self):
+        workflow = (ROOT / ".github/workflows/test.yml").read_text()
+        self.assertIn("validation.manifest.json", workflow)
+        self.assertNotIn("path: validation-results/ci/\\n", workflow)
 
 
 class PrivacyAndIntegrityTests(unittest.TestCase):
