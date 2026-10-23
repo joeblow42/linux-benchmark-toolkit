@@ -20,7 +20,8 @@ from .registry import ValidationRegistry
 from .runner import ValidationRun
 from .results import ValidationStatus
 
-SCHEMA_VERSION = "1.0.0"
+SCHEMA_VERSION = "1.1.0"
+LEGACY_SCHEMA_VERSION = "1.0.0"
 FORMATS = ("validation.json", "validation.csv", "validation.md", "validation.html")
 MANIFEST = "validation.manifest.json"
 _ID = re.compile(r"^VAL-[A-Z0-9]+(?:-[A-Z0-9]+)*$")
@@ -333,11 +334,33 @@ def _reject_duplicate_json_keys(items: list[tuple[str, object]]) -> dict:
     return result
 
 
+def _normalize_legacy_record(source: dict) -> dict:
+    """Migrate pre-coverage canonical metadata in memory only."""
+    if not isinstance(source, dict):
+        raise ValueError("invalid canonical record")
+    if source.get("schema_version") == SCHEMA_VERSION:
+        validate_record(source)
+        return source
+    if source.get("schema_version") != LEGACY_SCHEMA_VERSION:
+        raise ValueError("unsupported schema")
+    fields = {"schema_version", "session_id", "generated_utc", "toolkit_revision",
+              "profile", "overall", "counts", "registered", "selected",
+              "out_of_scope", "results"}
+    if set(source) != fields:
+        raise ValueError("invalid legacy canonical record")
+    updated = dict(source)
+    updated["schema_version"] = SCHEMA_VERSION
+    updated["requirements_coverage"] = coverage(source["results"])
+    validate_record(updated)
+    return updated
+
+
 def regenerate_reports(destination: Path) -> tuple[Path, ...]:
     """Read canonical JSON, validate it, regenerate derived formats only."""
     path = Path(destination) / "validation.json"
-    record = json.loads(path.read_text(encoding="utf-8"),
-                        object_pairs_hook=_reject_duplicate_json_keys)
+    original = json.loads(path.read_text(encoding="utf-8"),
+                          object_pairs_hook=_reject_duplicate_json_keys)
+    record = _normalize_legacy_record(original)
     manifest_path = Path(destination) / MANIFEST
     if manifest_path.is_file():
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"),
