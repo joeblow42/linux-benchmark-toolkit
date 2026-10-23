@@ -5,6 +5,7 @@ This module does not implement session persistence, benchmarking or reporting.
 """
 
 from datetime import datetime, timezone
+import json
 import platform
 import time
 from typing import Callable
@@ -57,7 +58,7 @@ def _select_ids(collector_ids: list[str] | None) -> tuple[list[str], list[str], 
 
 def _valid_result(result: object, collector_id: str) -> bool:
     """Guard aggregation from malformed collector payloads without rewriting evidence."""
-    return (
+    valid = (
         isinstance(result, CollectorResult)
         and result.collector_id == collector_id
         and isinstance(result.status, CollectionStatus)
@@ -65,6 +66,13 @@ def _valid_result(result: object, collector_id: str) -> bool:
         and isinstance(result.sources, list)
         and isinstance(result.reason, str)
     )
+    if not valid:
+        return False
+    try:
+        json.dumps(result.to_dict(), allow_nan=False)
+    except (TypeError, ValueError, OverflowError):
+        return False
+    return True
 
 
 def _minimum_inventory_met(scope: str, results: dict) -> bool:
@@ -149,7 +157,8 @@ def _collect_inventory(
             elapsed_ms = max(0.0, (monotonic() - start) * 1000)
             timings[collector_id] = {"elapsed_ms": round(elapsed_ms, 3)}
 
-    minimum_met = _minimum_inventory_met(scope, results)
+    # No non-Linux session may claim a successful Linux inventory.
+    minimum_met = platform_supported and _minimum_inventory_met(scope, results)
     if interrupted:
         outcome = "INTERRUPTED"
     elif not minimum_met:
