@@ -183,7 +183,9 @@ class IC04StatusContractTests(unittest.TestCase):
         self.assertEqual(later["execution_status"], "COMPLETE")
         self.assertNotEqual(first["parameters"], later["parameters"])
         self.assertFalse(first["metrics"])
-        for key in ("checkpoint", "resume_cursor", "resumed_from", "recovery_state"):
+        for key in ("checkpoint", "checkpoint_location", "resume_cursor",
+                    "resume_token", "resume_point", "resumed_from",
+                    "recovery_state", "restore_from"):
             with self.subTest(key=key), self.assertRaises(BenchmarkContractError):
                 normalize_benchmark_result(
                     "JF-02", BenchmarkExecutionStatus.INTERRUPTED,
@@ -239,6 +241,7 @@ class IC04StatusContractTests(unittest.TestCase):
             {"value": 2.0, "unit": ""},
             {"value": True, "unit": "s"},
             {"value": "2.0", "unit": "x"},
+            {"value": 10 ** 500, "unit": "x"},
         ):
             with self.subTest(invalid=invalid), self.assertRaises(BenchmarkContractError):
                 normalize_benchmark_result(
