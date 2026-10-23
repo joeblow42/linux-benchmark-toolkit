@@ -126,6 +126,26 @@ class SessionStoreTests(unittest.TestCase):
                          (self.session / "system.json").stat().st_size)
         self.assertFalse((self.session / "session.manifest.json").exists())
 
+    def test_manifest_reader_validates_checksums_and_complete_state(self):
+        write_system_document(self.session, self.document)
+        for name in ("benchmarks.json", "assessments.json", "discovery.csv", "report.html"):
+            (self.session / name).write_text("{}")
+        manifest = build_session_manifest(self.session, state="COMPLETE")
+        path = self.session / "session.manifest.json"
+        path.write_text(json.dumps(manifest))
+        self.assertEqual(read_session_manifest(self.session), manifest)
+        (self.session / "report.html").write_text("changed")
+        with self.assertRaises(SessionPersistenceError):
+            read_session_manifest(self.session)
+
+    def test_manifest_reader_rejects_fabricated_complete_state(self):
+        write_system_document(self.session, self.document)
+        model = build_session_manifest(self.session)
+        model["state"] = "COMPLETE"
+        (self.session / "session.manifest.json").write_text(json.dumps(model))
+        with self.assertRaises(SessionPersistenceError):
+            read_session_manifest(self.session)
+
     def test_manifest_incomplete_only_hashes_existing_artifacts(self):
         write_system_document(self.session, self.document)
         record = build_session_manifest(self.session, state="INTERRUPTED")
