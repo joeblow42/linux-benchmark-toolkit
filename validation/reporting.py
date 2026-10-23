@@ -129,6 +129,13 @@ def validate_record(record: dict) -> None:
     """Reject inconsistent, incomplete, or unsupported canonical data."""
     if not isinstance(record, dict) or record.get("schema_version") != SCHEMA_VERSION:
         raise ValueError("unsupported validation report schema")
+    expected_fields = {
+        "schema_version", "session_id", "generated_utc", "toolkit_revision",
+        "profile", "overall", "counts", "registered", "selected",
+        "out_of_scope", "results", "requirements_coverage",
+    }
+    if set(record) != expected_fields:
+        raise ValueError("unsupported canonical validation fields")
     if record.get("profile") not in _ALLOWED_PROFILES or record.get("overall") not in _ALLOWED_OVERALL:
         raise ValueError("invalid profile or overall outcome")
     if not isinstance(record.get("session_id"), str) or not re.fullmatch(
@@ -154,6 +161,11 @@ def validate_record(record: dict) -> None:
     for row in rows:
         if not isinstance(row, dict) or not _ID.fullmatch(str(row.get("validation_id", ""))):
             raise ValueError("invalid validation result ID")
+        if set(row) != {
+                "validation_id", "title", "phase", "category", "status",
+                "duration_seconds", "reason", "evidence", "requirement_ids",
+                "evidence_level"}:
+            raise ValueError("unsupported validation row fields")
         cid = row["validation_id"]
         if cid in seen:
             raise ValueError("duplicate validation result")
@@ -312,13 +324,24 @@ def write_reports(record: dict, destination: Path, *, regenerate: bool = False) 
     return tuple(destination / name for name in names)
 
 
+def _reject_duplicate_json_keys(items: list[tuple[str, object]]) -> dict:
+    result = {}
+    for key, value in items:
+        if key in result:
+            raise ValueError("duplicate canonical JSON object key")
+        result[key] = value
+    return result
+
+
 def regenerate_reports(destination: Path) -> tuple[Path, ...]:
     """Read canonical JSON, validate it, regenerate derived formats only."""
     path = Path(destination) / "validation.json"
-    record = json.loads(path.read_text(encoding="utf-8"))
+    record = json.loads(path.read_text(encoding="utf-8"),
+                        object_pairs_hook=_reject_duplicate_json_keys)
     manifest_path = Path(destination) / MANIFEST
     if manifest_path.is_file():
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"),
+                              object_pairs_hook=_reject_duplicate_json_keys)
         if not isinstance(manifest, dict) or manifest.get("complete") is not True:
             raise ValueError("incomplete validation session manifest")
         expected = manifest.get("sha256", {}).get("validation.json")
