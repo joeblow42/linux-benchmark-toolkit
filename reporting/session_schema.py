@@ -137,6 +137,13 @@ def _sanitize_data(value, *, key=None):
 
 def _source_path(path: str) -> str:
     _require(isinstance(path, str), "source path must be text")
+    # Previously normalized provenance must validate without modification.
+    if path == "[REDACTED]":
+        return path
+    if re.fullmatch(r"(?:sysfs|procfs|etc):[A-Za-z0-9_.@:+/-]{1,256}", path):
+        tail = path.split(":", 1)[1]
+        if all(segment not in ("", ".", "..") for segment in tail.split("/")):
+            return path
     # Accept only exact expected Linux virtual/OS filesystems.
     # In particular, '/tmp/test123/sys/...' is NOT treated as real sysfs.
     for prefix, tag in (("/sys/", "sysfs:"), ("/proc/", "procfs:"),
