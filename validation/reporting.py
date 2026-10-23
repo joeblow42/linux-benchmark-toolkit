@@ -14,6 +14,7 @@ import re
 import tempfile
 import uuid
 
+from .requirements import APPROVED_IDS, coverage
 from .registry import ValidationRegistry
 from .runner import ValidationRun
 from .results import ValidationStatus
@@ -35,9 +36,29 @@ _SAFE_REASONS = (
     re.compile(r"^legacy acceptance worker returned invalid results$"),
     re.compile(r"^legacy acceptance worker exit/status mismatch$"),
     re.compile(r"^legacy acceptance worker returned unsupported status$"),
+    re.compile(r"^Legacy acceptance check failed; see protected diagnostic log$"),
 )
 _ALLOWED_OVERALL = frozenset(("PASS", "FAIL", "INCOMPLETE"))
 _ALLOWED_PROFILES = frozenset(("QUICK", "STANDARD", "FULL"))
+
+_PRIVATE_PATTERNS = (
+    re.compile(r"(?i)(?:/home|/media|/mnt|/run/user)/[^\s<>\"']+"),
+    re.compile(r"(?i)[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}"),
+    re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b"),
+    re.compile(r"(?i)\b(?:password|passwd|token|secret|api_key)\s*[:=]\s*[^\s,;]+"),
+)
+
+
+def _safe_label(value: str, maximum: int = 200) -> str:
+    if not isinstance(value, str):
+        raise ValueError("invalid presentation metadata")
+    if len(value) > maximum or any(pattern.search(value) for pattern in _PRIVATE_PATTERNS):
+        return "[REDACTED]"
+    if any(ord(ch) < 32 for ch in value):
+        return "[REDACTED]"
+    return value
+
+
 
 
 def _safe_reason(reason: str) -> str:
@@ -68,15 +89,15 @@ def build_record(run: ValidationRun, registry: ValidationRegistry,
         case = known[result.validation_id]
         rows.append({
             "validation_id": result.validation_id,
-            "title": case.title,
+            "title": _safe_label(case.title),
             "phase": case.phase,
-            "category": case.category,
+            "category": _safe_label(case.category, 60),
             "status": result.status.value,
             "duration_seconds": round(result.duration_seconds, 3),
             "reason": _safe_reason(result.reason),
             "evidence": _safe_evidence(result.evidence),
             "requirement_ids": list(case.requirement_ids),
-            "evidence_level": case.evidence_level,
+            "evidence_level": _safe_label(case.evidence_level, 60),
         })
     created = timestamp or datetime.now(timezone.utc).isoformat()
     record = {
@@ -91,6 +112,7 @@ def build_record(run: ValidationRun, registry: ValidationRegistry,
         "selected": len(rows),
         "out_of_scope": sorted(set(known) - set(actual)),
         "results": rows,
+        "requirements_coverage": coverage(rows),
     }
     validate_record(record)
     return record
