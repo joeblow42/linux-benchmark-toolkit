@@ -1,23 +1,40 @@
-"""Development entry point for legacy suites under the unified controller.
+"""Development entry point for unified validation and report regeneration.
 
-Not the final --validate CLI or the full structured reporting integration.
+The final ./benchmark CLI and Dialog integration belong to Increment 6.
 """
+import argparse
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 
 from .adapters import extend_registry
 from .profiles import ValidationProfile
 from .quick import RUNNERS, quick_registry
+from .reporting import build_record, regenerate_reports, write_reports
 from .runner import ValidationContext, run_validation
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = sys.argv[1:] if argv is None else argv
-    if len(args) != 1 or args[0].lower() not in ("quick", "standard", "full"):
-        print("usage: python3 -m validation.suites quick|standard|full", file=sys.stderr)
-        return 2
-    profile = ValidationProfile.parse(args[0])
+    parser = argparse.ArgumentParser(description="Unified software validation (development CLI)")
+    parser.add_argument("profile", nargs="?", choices=("quick", "standard", "full"))
+    parser.add_argument("--output", type=Path, help="Directory for validation reports")
+    parser.add_argument("--report-only", type=Path,
+                        help="Regenerate derived reports from canonical validation.json")
+    options = parser.parse_args(sys.argv[1:] if argv is None else argv)
+    if options.report_only is not None:
+        if options.profile or options.output:
+            parser.error("--report-only cannot be combined with a profile or --output")
+        try:
+            paths = regenerate_reports(options.report_only)
+        except (OSError, ValueError) as error:
+            print(f"Validation report regeneration failed: {type(error).__name__}", file=sys.stderr)
+            return 2
+        print(f"Regenerated: {', '.join(str(p) for p in paths)}")
+        return 0
+    if not options.profile:
+        parser.error("validation profile is required unless --report-only is specified")
+    profile = ValidationProfile.parse(options.profile)
     root = Path(__file__).resolve().parents[1]
     registry = quick_registry()
     runners = dict(RUNNERS)
@@ -29,6 +46,19 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[{result.status.value}] {result.validation_id}"
               + (f" — {result.reason}" if result.reason else ""))
     print(f"Validation {profile.name}: {run.overall} ({run.counts})")
+    if options.output is not None:
+        try:
+            revision = subprocess.run(
+                ["git", "rev-parse", "--short=12", "HEAD"], cwd=root,
+                capture_output=True, text=True, timeout=3, check=False)
+            identifier = revision.stdout.strip() if revision.returncode == 0 else "unrecorded"
+            record = build_record(run, registry, revision=identifier)
+            paths = write_reports(record, options.output)
+        except (OSError, ValueError) as error:
+            print(f"Validation report generation failed: {type(error).__name__}",
+                  file=sys.stderr)
+            return 2
+        print(f"Reports: {', '.join(str(p) for p in paths)}")
     return {"PASS": 0, "FAIL": 1, "INCOMPLETE": 3}[run.overall]
 
 
