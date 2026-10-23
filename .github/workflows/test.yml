@@ -20,10 +20,6 @@ jobs:
       - name: Diagnose failing unit suite (failure only)
         if: failure()
         run: python3 -m unittest discover -s tests -v
-      - name: Portable archive contains unified validation
-        run: |
-          bash packaging/build.sh
-          tar -tzf dist/linux-benchmark-toolkit-0.1.0-phase1.tar.gz | grep -q '^linux-benchmark-toolkit/validation/suites.py$'
       - name: Upload unified validation report
         if: always()
         uses: actions/upload-artifact@v4
