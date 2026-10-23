@@ -118,6 +118,27 @@ class PrivacyAndIntegrityTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_record(record)
 
+    def test_unknown_canonical_fields_are_rejected(self):
+        _, record = fixture()
+        record["results"][0]["private_mount"] = "/home/test/private"
+        with self.assertRaises(ValueError):
+            validate_record(record)
+        _, record = fixture()
+        record["unexpected_private_value"] = "test"
+        with self.assertRaises(ValueError):
+            validate_record(record)
+
+    def test_duplicate_json_keys_rejected_during_regeneration(self):
+        _, record = fixture()
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            write_reports(record, root)
+            canonical = root / "validation.json"
+            old = canonical.read_text()
+            canonical.write_text(old.replace('"schema_version":', '"schema_version": "1.0.0", "schema_version":', 1))
+            with self.assertRaises(ValueError):
+                regenerate_reports(root)
+
     def test_manifest_blocks_tampered_canonical(self):
         _, record = fixture()
         with tempfile.TemporaryDirectory() as d:
