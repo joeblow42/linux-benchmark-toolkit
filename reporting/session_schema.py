@@ -164,7 +164,8 @@ def _sources(sources):
         _require(isinstance(item, dict), "source must be an object")
         _require(set(item).issubset({"path", "tool", "status", "exit_code", "reason"}),
                  "unexpected source fields")
-        _require("status" in item and item["status"] in STATUS_VALUES,
+        _require("status" in item and isinstance(item["status"], str)
+                 and item["status"] in STATUS_VALUES,
                  "invalid source status")
         entry = {"status": item["status"]}
         if "path" in item:
@@ -244,7 +245,8 @@ def _check_discovery(inv):
              set(summary) == {"outcome", "minimum_inventory_met", "selected",
                               "attempted", "executed", "status_counts"},
              "invalid summary fields")
-    _require(summary["outcome"] in OUTCOMES and
+    _require(isinstance(summary["outcome"], str) and
+             summary["outcome"] in OUTCOMES and
              type(summary["minimum_inventory_met"]) is bool,
              "invalid outcome or minimum flag")
     _require(all(type(summary[k]) is int and summary[k] >= 0
@@ -253,7 +255,8 @@ def _check_discovery(inv):
              summary["executed"] == len(inv["collectors"]) and
              len(timings) == summary["attempted"] and
              summary["attempted"] <= len(order), "inconsistent attempted counts")
-    _require(set(summary["status_counts"]) == set(STATUS_KEYS) and
+    _require(isinstance(summary["status_counts"], dict) and
+             set(summary["status_counts"]) == set(STATUS_KEYS) and
              all(type(x) is int and x >= 0 for x in summary["status_counts"].values()),
              "invalid status counts")
     actual = {key: 0 for key in STATUS_KEYS}
