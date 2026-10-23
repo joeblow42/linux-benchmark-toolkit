@@ -73,7 +73,9 @@ under `logs/` when a runner fails. Do not publish raw `logs/` files: they
 may contain sensitive host details. The portable reports withhold arbitrary
 diagnostic contents and reference logs by stable validation IDs. Files are
 created with owner-only permissions. Report-only regeneration does not execute
-validation cases.
+validation cases. New canonical records use validation schema 1.1.0; older
+1.0.0 records regenerate through an in-memory compatibility view without
+rewriting their canonical JSON.
 
 The approved Requirements Baseline Rev 1.2 has 256 IDs. Reports show linked
 tests and all uncovered IDs; a link or a successful check is **partial evidence**,
