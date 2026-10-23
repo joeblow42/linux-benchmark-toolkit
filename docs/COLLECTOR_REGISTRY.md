@@ -81,7 +81,7 @@ a software-validation failure.
 Run the isolated tests:
 
 ```sh
-python3 -m unittest tests.test_phase2_registry -v
+python3 -m unittest discover -s tests -p 'test_phase2_registry.py' -v
 ```
 
 Run the established complete software validation:
