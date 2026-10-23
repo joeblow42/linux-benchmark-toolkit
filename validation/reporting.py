@@ -129,6 +129,12 @@ def validate_record(record: dict) -> None:
         raise ValueError("invalid validation session ID")
     if not isinstance(record.get("generated_utc"), str) or not record["generated_utc"]:
         raise ValueError("missing timestamp")
+    try:
+        parsed_time = datetime.fromisoformat(record["generated_utc"])
+        if parsed_time.tzinfo is None:
+            raise ValueError("timestamp lacks timezone")
+    except (ValueError, TypeError) as error:
+        raise ValueError("invalid timestamp") from error
     if not isinstance(record.get("toolkit_revision"), str) or not (
             record["toolkit_revision"] == "unrecorded" or
             re.fullmatch(r"[a-f0-9]{7,40}", record["toolkit_revision"])):
@@ -158,14 +164,26 @@ def validate_record(record: dict) -> None:
             raise ValueError("unredacted diagnostic reason")
         if not isinstance(row.get("title"), str) or not isinstance(row.get("category"), str):
             raise ValueError("missing case metadata")
-        if len(row["title"]) > 200 or len(row["category"]) > 60:
-            raise ValueError("oversized case metadata")
+        if _safe_label(row["title"]) != row["title"] or (
+                _safe_label(row["category"], 60) != row["category"]):
+            raise ValueError("privacy-sensitive or oversized case metadata")
+        if not isinstance(row.get("evidence_level"), str) or (
+                _safe_label(row["evidence_level"], 60) != row["evidence_level"]):
+            raise ValueError("invalid evidence level")
         if type(row.get("phase")) is not int or row["phase"] < 1:
             raise ValueError("invalid phase")
         if not isinstance(row.get("requirement_ids"), list) or not isinstance(row.get("evidence"), list):
             raise ValueError("invalid case evidence")
         if any(not isinstance(x, str) or not _SAFE_REF.fullmatch(x) for x in row["evidence"]):
             raise ValueError("invalid evidence reference")
+        if len(set(row["evidence"])) != len(row["evidence"]):
+            raise ValueError("duplicate evidence references")
+        if any(not isinstance(x, str) or x not in APPROVED_IDS for x in row["requirement_ids"]):
+            raise ValueError("unknown approved requirement ID")
+        if len(set(row["requirement_ids"])) != len(row["requirement_ids"]):
+            raise ValueError("duplicate requirement links")
+    if record.get("requirements_coverage") != coverage(rows):
+        raise ValueError("requirements coverage disagrees with results")
     if record.get("counts") != counts or record.get("selected") != len(rows):
         raise ValueError("validation counts do not match results")
     outside = record.get("out_of_scope")
@@ -177,7 +195,8 @@ def validate_record(record: dict) -> None:
     if record.get("registered") != len(rows) + len(outside):
         raise ValueError("registered total does not match scope")
     calculated = ("FAIL" if counts["FAIL"] else
-                  "INCOMPLETE" if counts["SKIP"] or counts["BLOCKED"] else "PASS")
+                  "INCOMPLETE" if counts["SKIP"] or counts["BLOCKED"] or
+                  counts["NOT_APPLICABLE"] else "PASS")
     if calculated != record["overall"]:
         raise ValueError("overall outcome disagrees with results")
 
@@ -206,7 +225,9 @@ def _markdown(record: dict) -> str:
         "", "## Counts", "",
     ]
     rows += [f"- {status.value}: {record['counts'][status.value]}" for status in ValidationStatus]
-    rows += ["", f"Out of scope: {len(record['out_of_scope'])}", "",
+    rows += ["", f"Out of scope: {len(record['out_of_scope'])}",
+             f"Linked approved requirement IDs: {record['requirements_coverage']['linked']} / 256",
+             "Linked tests provide partial evidence, not requirement verification.", "",
              "| Validation ID | Check | Status | Seconds | Explanation |",
              "|---|---|---|---:|---|"]
     for item in record["results"]:
@@ -247,6 +268,7 @@ def _atomic_text(path: Path, contents: str) -> None:
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="") as stream:
             stream.write(contents)
+        os.fchmod(stream.fileno(), 0o600)
         os.replace(temporary, path)
     finally:
         if os.path.exists(temporary):
@@ -257,6 +279,7 @@ def write_reports(record: dict, destination: Path, *, regenerate: bool = False) 
     validate_record(record)
     destination = Path(destination)
     destination.mkdir(parents=True, exist_ok=True, mode=0o700)
+    destination.chmod(0o700)
     payload = json.dumps(record, sort_keys=True, indent=2, ensure_ascii=True) + "\n"
     output = {
         "validation.json": payload,
