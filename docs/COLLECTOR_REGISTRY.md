@@ -1,8 +1,8 @@
 # IC-01 — Phase 2 hardware collector registry
 
-**Status:** implementation branch; subject to review and acceptance.
+**Status (2026-10-23):** Owner-accepted and merged via PR #14 (`5592e968a462f3bf67d3926af5333c83f7cb09a7`).
 **Approved contract:** IC-01 of the Integration Interface Contract Specification.
-**Approved requirements baseline:** Revision 1.2 (256 requirements).
+**Approved requirements baseline:** Revision 1.3 (256 requirements; approved 2026-10-23). Registry requirement-ID associations are unchanged.
 **Boundary:** this file describes the *hardware collector* registry, not
 `validation/registry.py`, which registers *software validation tests*.
 
@@ -63,10 +63,10 @@ The existing `DiscoveryContext`, `CollectorResult`, `CollectionStatus`,
 and `run_collector()` in `discovery/core.py` remain authoritative. No
 collector signature or fixture keyword parameter changes are required.
 
-The future IC-02 orchestrator owns selecting applicable collectors,
+The separately implemented IC-02 orchestrator owns selecting applicable collectors,
 invoking them with an explicit context through `run_collector()`, ordering,
 per-collector failure isolation, timing, and orchestration outcomes.
-The registry does **not** implement IC-02, change `--mode discovery`,
+The registry does **not** itself execute IC-02, change `--mode discovery`,
 write `system.json`, or generate HTML/CSV. IC-03/05/06 govern subsequent
 persistence, privacy review, and reporting integration. Existing
 `run_probe()` command timeouts are not universal Python execution timeouts.
@@ -99,5 +99,4 @@ registrations, missing modules, invalid signatures, existing
 **Acceptance boundary:** IC-01 registry acceptance does not imply that a
 future orchestrator has invoked all ten collectors, preserved results across
 failures, or integrated collector output into canonical session reports.
-Those are IC-02 and subsequent acceptance gates. Review the branch and its
-CI/host evidence before authorizing merge to `main`.
+IC-02 orchestration was separately accepted and merged via PR #15; activating it through the CLI and generating v2 reports are still separate integration gates. IC-01's static registry acceptance is not a physical host discovery or benchmarking acceptance.
