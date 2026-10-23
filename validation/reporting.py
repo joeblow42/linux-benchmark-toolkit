@@ -183,7 +183,7 @@ def _markdown(record: dict) -> str:
         f"Generated (UTC): {record['generated_utc']}",
         "", "## Counts", "",
     ]
-    rows += [f"- {name}: {value}" for name, value in record["counts"].items()]
+    rows += [f"- {status.value}: {record['counts'][status.value]}" for status in ValidationStatus]
     rows += ["", f"Out of scope: {len(record['out_of_scope'])}", "",
              "| Validation ID | Check | Status | Seconds | Explanation |",
              "|---|---|---|---:|---|"]
@@ -200,7 +200,7 @@ def _html(record: dict) -> str:
     rows = "".join("<tr>" + "".join(f"<td>{esc(item[key])}</td>" for key in (
         "validation_id", "title", "status", "duration_seconds", "reason")) +
                    "</tr>" for item in record["results"])
-    summary = " · ".join(f"{esc(k)}: {esc(v)}" for k, v in record["counts"].items())
+    summary = " · ".join(f"{esc(status.value)}: {esc(record['counts'][status.value])}" for status in ValidationStatus)
     style = ("body{font:16px system-ui,sans-serif;max-width:1050px;margin:2rem auto;"
              "padding:0 1rem;color:#182235}table{border-collapse:collapse;width:100%}"
              "td,th{text-align:left;padding:.6rem;border-bottom:1px solid #ddd}"
