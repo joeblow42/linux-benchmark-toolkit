@@ -11,6 +11,7 @@ linux-benchmark-toolkit/
   lib/
   tests/
   reporting/
+  validation/       # software-validation framework and reporters
   config/
   fixtures/
   manifests/
@@ -32,3 +33,16 @@ Do not ship copied host GPU drivers as a blanket compatibility shortcut. Probe h
 5. Packaging includes third-party license notices and SHA-256 checksums.
 6. Results from one computer do not overwrite those from another.
 7. No automatic upload of hardware identifiers or benchmark data.
+
+## Current validation-enabled package
+
+The versioned software-validation archive is
+`linux-benchmark-toolkit-0.2.0-validation.tar.gz`, accompanied by a SHA-256
+manifest. The full external executable bundle described above remains a future
+release target. The current archive contains Bash and Python sources, unit and
+acceptance tests, independent validation reports, and no bundled proprietary
+drivers or performance-test utilities.
+
+Portable validation creates owner-only session/report files, `logs/` diagnostics,
+and `validation.manifest.json`, recording SHA-256 hashes and successful report
+publication. Raw diagnostics are local-only and may include sensitive host details.
