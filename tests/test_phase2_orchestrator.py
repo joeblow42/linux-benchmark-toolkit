@@ -123,6 +123,14 @@ class DiscoveryOrchestratorTests(TestCase):
         self.assertEqual(session["errors"][0]["kind"], "INVALID_RESULT")
         self.assertEqual(session["results"]["memory"]["status"], "COMPLETE")
 
+    def test_nonserializable_evidence_is_rejected_without_crashing(self):
+        invalid = CollectorResult("cpu", CollectionStatus.COMPLETE,
+                                  data={"not_json": object()})
+        session = self.run_fixture(entries={"cpu": invalid})
+        self.assertEqual(session["results"]["cpu"]["status"], "FAILED")
+        self.assertEqual(session["errors"][0]["kind"], "INVALID_RESULT")
+        self.assertEqual(session["summary"]["outcome"], "PARTIAL")
+
     def test_ic02_t09_full_minimum_inventory_missing(self):
         session = self.run_fixture(entries={"system": CollectionStatus.UNAVAILABLE})
         self.assertEqual(session["summary"]["outcome"], "FAILED")
@@ -176,7 +184,8 @@ class DiscoveryOrchestratorTests(TestCase):
                                    platform_name=lambda: "Darwin")
         resolver.assert_not_called()
         self.assertEqual(session["results"]["optical"]["status"], "UNSUPPORTED")
-        self.assertEqual(session["summary"]["outcome"], "COMPLETE")
+        self.assertEqual(session["summary"]["outcome"], "FAILED")
+        self.assertFalse(session["summary"]["minimum_inventory_met"])
 
     def test_unresolvable_collector_is_recorded_and_isolated(self):
         def resolve(cid):
