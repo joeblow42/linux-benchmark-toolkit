@@ -44,8 +44,12 @@ def main(argv: list[str] | None = None) -> int:
     with workspace_manager as workspace:
         report_root = Path(workspace)
         report_root.mkdir(parents=True, exist_ok=True, mode=0o700)
-        run = run_validation(registry, profile,
-                             ValidationContext(root, report_root), runners)
+        try:
+            run = run_validation(registry, profile,
+                                 ValidationContext(root, report_root), runners)
+        except KeyboardInterrupt:
+            print("Validation interrupted", file=sys.stderr)
+            return 130
     for result in run.results:
         print(f"[{result.status.value}] {result.validation_id}"
               + (f" — {result.reason}" if result.reason else ""))
