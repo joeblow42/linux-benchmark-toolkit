@@ -99,7 +99,10 @@ def _safe_json(value, *, depth: int = 0):
         for name, item in value.items():
             _require(isinstance(name, str) and bool(_FIELD.fullmatch(name)),
                      "unknown metadata key grammar")
-            _require(name.lower() not in _SENSITIVE_FIELDS,
+            normalized = name.lower()
+            _require(normalized not in _SENSITIVE_FIELDS and not
+                     normalized.startswith(("checkpoint", "resume", "resumed",
+                                            "recovery", "restore")),
                      "private or resume metadata field is prohibited")
             copied[name] = _safe_json(item, depth=depth + 1)
         return copied
@@ -131,8 +134,13 @@ def _metrics(metrics) -> dict:
         _require(isinstance(item, dict) and set(item) == {"value", "unit"},
                  "metric must specify numeric value and unit")
         value, unit = item["value"], item["unit"]
-        _require(type(value) in (int, float) and math.isfinite(value),
-                 "measured metric must be finite numeric evidence")
+        _require(type(value) in (int, float),
+                 "measured metric must be numeric evidence")
+        try:
+            finite = math.isfinite(value)
+        except OverflowError:
+            finite = False
+        _require(finite, "measured metric must be finite numeric evidence")
         _require(isinstance(unit, str) and bool(_UNIT.fullmatch(unit)),
                  "invalid or absent measured unit")
         copy[name] = {"value": value, "unit": unit}
