@@ -1,6 +1,7 @@
 """Increment 2 controller and Quick-profile regression tests."""
 from pathlib import Path
 import tempfile
+import time
 import unittest
 
 from validation import ValidationCase, ValidationProfile, ValidationRegistry, ValidationStatus
@@ -68,6 +69,16 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual([r.status for r in out.results], [
             ValidationStatus.SKIP, ValidationStatus.NOT_APPLICABLE])
         self.assertEqual(out.overall, "INCOMPLETE")
+
+    def test_advisory_timeout_metadata_marks_overrun(self):
+        reg = ValidationRegistry()
+        reg.register(make_case("VAL-P1-TIMING-001", timeout_seconds=0.001))
+        def slow(_):
+            time.sleep(0.015)
+        out = run_validation(reg, ValidationProfile.QUICK, self.context,
+                             {"test:pass": slow})
+        self.assertEqual(out.results[0].status, ValidationStatus.FAIL)
+        self.assertEqual(out.overall, "FAIL")
 
     def test_unknown_runner_blocks(self):
         reg = ValidationRegistry()
