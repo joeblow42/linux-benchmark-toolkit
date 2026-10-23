@@ -1,8 +1,6 @@
-"""Development entry point for unified validation and report regeneration.
-
-The final ./benchmark CLI and Dialog integration belong to Increment 6.
-"""
+"""Unified software validation, diagnostic evidence, and report regeneration."""
 import argparse
+from contextlib import nullcontext
 from pathlib import Path
 import subprocess
 import sys
@@ -16,7 +14,7 @@ from .runner import ValidationContext, run_validation
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Unified software validation (development CLI)")
+    parser = argparse.ArgumentParser(description="Unified software validation")
     parser.add_argument("profile", nargs="?", choices=("quick", "standard", "full"))
     parser.add_argument("--output", type=Path, help="Directory for validation reports")
     parser.add_argument("--report-only", type=Path,
@@ -39,9 +37,15 @@ def main(argv: list[str] | None = None) -> int:
     registry = quick_registry()
     runners = dict(RUNNERS)
     runners.update(extend_registry(registry, root))
-    with tempfile.TemporaryDirectory(prefix="lbt-unified-results-") as workspace:
+    workspace_manager = (
+        tempfile.TemporaryDirectory(prefix="lbt-unified-results-")
+        if options.output is None else nullcontext(str(options.output))
+    )
+    with workspace_manager as workspace:
+        report_root = Path(workspace)
+        report_root.mkdir(parents=True, exist_ok=True, mode=0o700)
         run = run_validation(registry, profile,
-                             ValidationContext(root, Path(workspace)), runners)
+                             ValidationContext(root, report_root), runners)
     for result in run.results:
         print(f"[{result.status.value}] {result.validation_id}"
               + (f" — {result.reason}" if result.reason else ""))
