@@ -139,6 +139,21 @@ class PrivacyAndIntegrityTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 regenerate_reports(root)
 
+    def test_precoverage_record_regenerates_without_changing_json(self):
+        _, record = fixture()
+        record.pop("requirements_coverage")
+        record["schema_version"] = "1.0.0"
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            source = root / "validation.json"
+            source.write_text(json.dumps(record, sort_keys=True))
+            before = source.read_bytes()
+            paths = regenerate_reports(root)
+            self.assertEqual(len(paths), 3)
+            self.assertEqual(source.read_bytes(), before)
+            self.assertTrue((root / MANIFEST).is_file())
+            self.assertIn("Linked approved requirement", (root / "validation.md").read_text())
+
     def test_manifest_blocks_tampered_canonical(self):
         _, record = fixture()
         with tempfile.TemporaryDirectory() as d:
