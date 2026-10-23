@@ -303,7 +303,7 @@ def write_reports(record: dict, destination: Path, *, regenerate: bool = False) 
         },
     }
     _atomic_text(destination / MANIFEST,
-                 json.dumps(manifest, sort_keys=True, indent=2) + "\\n")
+                 json.dumps(manifest, sort_keys=True, indent=2) + "\n")
     return tuple(destination / name for name in names)
 
 
