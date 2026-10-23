@@ -195,7 +195,8 @@ def archive_check(root, work):
     with tarfile.open(archive, 'r:gz') as fh:
         names = set(fh.getnames())
     for name in ('benchmark', 'reporting/generate.py', 'tests/acceptance-phase1.sh',
-                 'tests/acceptance_phase1.py'):
+                 'tests/acceptance_phase1.py', 'validation/suites.py',
+                 'validation/reporting.py', 'validation/requirements.py'):
         require('linux-benchmark-toolkit/' + name in names, 'archive missing ' + name)
 
 
