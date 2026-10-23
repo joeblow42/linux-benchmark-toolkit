@@ -4,6 +4,7 @@ validation.json is canonical. The other three formats are generated *only*
 from validated canonical JSON, never from live test execution.
 """
 import csv
+import hashlib
 from datetime import datetime, timezone
 import html
 import io
@@ -21,6 +22,7 @@ from .results import ValidationStatus
 
 SCHEMA_VERSION = "1.0.0"
 FORMATS = ("validation.json", "validation.csv", "validation.md", "validation.html")
+MANIFEST = "validation.manifest.json"
 _ID = re.compile(r"^VAL-[A-Z0-9]+(?:-[A-Z0-9]+)*$")
 _SAFE_REF = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
 # Only these controller-originated messages are permitted in portable reports.
@@ -291,6 +293,17 @@ def write_reports(record: dict, destination: Path, *, regenerate: bool = False) 
     names = FORMATS[1:] if regenerate else FORMATS
     for name in names:
         _atomic_text(destination / name, output[name])
+    manifest = {
+        "schema_version": SCHEMA_VERSION,
+        "session_id": record["session_id"],
+        "complete": True,
+        "sha256": {
+            name: hashlib.sha256((destination / name).read_bytes()).hexdigest()
+            for name in FORMATS
+        },
+    }
+    _atomic_text(destination / MANIFEST,
+                 json.dumps(manifest, sort_keys=True, indent=2) + "\\n")
     return tuple(destination / name for name in names)
 
 
@@ -298,4 +311,14 @@ def regenerate_reports(destination: Path) -> tuple[Path, ...]:
     """Read canonical JSON, validate it, regenerate derived formats only."""
     path = Path(destination) / "validation.json"
     record = json.loads(path.read_text(encoding="utf-8"))
+    manifest_path = Path(destination) / MANIFEST
+    if manifest_path.is_file():
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if not isinstance(manifest, dict) or manifest.get("complete") is not True:
+            raise ValueError("incomplete validation session manifest")
+        expected = manifest.get("sha256", {}).get("validation.json")
+        if expected != hashlib.sha256(path.read_bytes()).hexdigest():
+            raise ValueError("canonical validation data changed since completion")
+        if manifest.get("session_id") != record.get("session_id"):
+            raise ValueError("validation session manifest does not match canonical JSON")
     return write_reports(record, Path(destination), regenerate=True)
