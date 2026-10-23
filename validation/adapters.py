@@ -5,12 +5,11 @@ Phase 1 "Python unit tests" check becomes an explicit dependency/alias, not a
 second invocation. The legacy acceptance script and its CLI remain unchanged.
 """
 import importlib.util
+import json
 from pathlib import Path
-import signal
-import subprocess
 import sys
-import tempfile
 
+from .processes import run_bounded
 from .profiles import ValidationProfile
 from .registry import ValidationCase, ValidationRegistry
 from .runner import CheckOutcome, ValidationContext
@@ -39,26 +38,13 @@ def _unittest(context: ValidationContext) -> CheckOutcome:
     """Single bounded subprocess: group-level result, not 59 independent claims."""
     args = [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"]
     # The existing legacy check has a 50-second subprocess deadline.
-    try:
-        proc = subprocess.Popen(
-            args, cwd=context.root, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            text=True, start_new_session=True,
-        )
-        try:
-            stdout, stderr = proc.communicate(timeout=50)
-        except subprocess.TimeoutExpired:
-            import os
-            os.killpg(proc.pid, signal.SIGKILL)
-            proc.communicate()
-            return CheckOutcome(ValidationStatus.FAIL, "unit suite timed out (50 seconds)")
-    except OSError as error:
-        return CheckOutcome(ValidationStatus.FAIL, f"unittest unavailable: {type(error).__name__}")
-    if proc.returncode:
-        # Detailed raw output is intentionally not persisted at this stage.
-        tail = stderr.strip().splitlines()[-1:] or stdout.strip().splitlines()[-1:]
+    result = run_bounded(args, str(context.root), 50)
+    if result.timed_out:
+        return CheckOutcome(ValidationStatus.FAIL, "unit suite timed out (50 seconds)")
+    if result.returncode:
+        # Do not expose raw subprocess output in operator-facing reasons.
         return CheckOutcome(ValidationStatus.FAIL,
-                            "unit suite failed: " + (tail[0][:180] if tail else "no summary"))
-    # The suite is a group-level result; individual requirements are not approved.
+                            f"unit suite exited unsuccessfully (code {result.returncode})")
     return CheckOutcome(ValidationStatus.PASS, evidence=("unit-suite:unittest-discover",))
 
 
@@ -68,14 +54,32 @@ def _acceptance(case_index: int):
             # The controller executes the UNIT_ID dependency first, once.
             return CheckOutcome(ValidationStatus.PASS,
                                 evidence=(f"delegated-to:{UNIT_ID}",))
-        module = load_acceptance(context.root)
-        _, fn = module.CHECKS[case_index - 1]
-        with tempfile.TemporaryDirectory(prefix="lbt-unified-accept-") as temp:
-            try:
-                fn(context.root, Path(temp))
-            except module.SkipCheck as error:
-                return CheckOutcome(ValidationStatus.SKIP, str(error))
-        return None
+        # Isolate the original check in its own bounded process. Each check
+        # receives its own temporary workspace, created by the worker.
+        # Packaging and relocation cases may run longer than CLI checks.
+        timeout = 120 if case_index in (12, 13, 14, 15) else 35
+        cmd = [sys.executable, "-m", "validation.acceptance_worker",
+               str(context.root), str(case_index)]
+        result = run_bounded(cmd, str(context.root), timeout)
+        if result.timed_out:
+            return CheckOutcome(ValidationStatus.FAIL,
+                                f"legacy acceptance check timed out ({timeout} seconds)")
+        try:
+            response = json.loads(result.stdout)
+            status = ValidationStatus(response["status"])
+            reason = response.get("reason", "")
+        except (ValueError, KeyError, TypeError):
+            return CheckOutcome(ValidationStatus.FAIL,
+                                "legacy acceptance worker returned invalid results")
+        if (result.returncode == 0) != (status in (
+                ValidationStatus.PASS, ValidationStatus.SKIP)):
+            return CheckOutcome(ValidationStatus.FAIL,
+                                "legacy acceptance worker exit/status mismatch")
+        if status not in (ValidationStatus.PASS, ValidationStatus.SKIP, ValidationStatus.FAIL):
+            return CheckOutcome(ValidationStatus.FAIL,
+                                "legacy acceptance worker returned unsupported status")
+        return CheckOutcome(status, reason)
+
     return execute
 
 
