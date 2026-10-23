@@ -7,11 +7,12 @@ in-process Python functions.
 """
 from dataclasses import dataclass
 from pathlib import Path
-import os
 import shutil
 import time
+import traceback
 from typing import Callable
 
+from .evidence import private_diagnostic
 from .profiles import ValidationProfile
 from .registry import ValidationCase, ValidationRegistry
 from .results import ValidationResult, ValidationStatus
@@ -98,8 +99,10 @@ def run_validation(
                         raise ValueError("non-PASS outcome requires a reason")
                 except Exception as error:
                     status = ValidationStatus.FAIL
-                    reason = f"{type(error).__name__}: {error}"
-                    evidence = ()
+                    reason = f"{type(error).__name__}: validation check raised an exception"
+                    ref = private_diagnostic(context.results_dir, case.validation_id,
+                                             traceback.format_exc())
+                    evidence = (ref,) if ref else ()
         result = ValidationResult(
             case.validation_id, status, time.monotonic() - started,
             reason=reason, evidence=evidence,
@@ -108,6 +111,7 @@ def run_validation(
         by_id[case.validation_id] = result
     overall = ("FAIL" if any(r.status == ValidationStatus.FAIL for r in results)
                else "INCOMPLETE" if any(r.status in (
-                   ValidationStatus.SKIP, ValidationStatus.BLOCKED) for r in results)
+                   ValidationStatus.SKIP, ValidationStatus.BLOCKED,
+                   ValidationStatus.NOT_APPLICABLE) for r in results)
                else "PASS")
     return ValidationRun(profile, tuple(results), overall)
