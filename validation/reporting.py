@@ -39,6 +39,7 @@ _SAFE_REASONS = (
     re.compile(r"^legacy acceptance worker exit/status mismatch$"),
     re.compile(r"^legacy acceptance worker returned unsupported status$"),
     re.compile(r"^Legacy acceptance check failed; see protected diagnostic log$"),
+    re.compile(r"^validation check exceeded advisory timeout$"),
 )
 _ALLOWED_OVERALL = frozenset(("PASS", "FAIL", "INCOMPLETE"))
 _ALLOWED_PROFILES = frozenset(("QUICK", "STANDARD", "FULL"))
