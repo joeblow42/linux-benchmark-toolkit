@@ -82,7 +82,7 @@ class RunnerTests(unittest.TestCase):
                              {"test:pass": lambda _: CheckOutcome(
                                  ValidationStatus.NOT_APPLICABLE, "fixture not applicable")})
         self.assertEqual(out.results[0].status, ValidationStatus.NOT_APPLICABLE)
-        self.assertEqual(out.overall, "PASS")
+        self.assertEqual(out.overall, "INCOMPLETE")
 
     def test_standard_includes_quick_once(self):
         reg = ValidationRegistry()
