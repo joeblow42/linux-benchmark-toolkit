@@ -97,6 +97,13 @@ def run_validation(
                         status, reason, evidence = outcome.status, outcome.reason, outcome.evidence
                     if status != ValidationStatus.PASS and not reason.strip():
                         raise ValueError("non-PASS outcome requires a reason")
+                    # In-process Python checks cannot be forcibly terminated.
+                    # Apply advisory elapsed-time enforcement after they return.
+                    if (case.timeout_seconds is not None and
+                            time.monotonic() - started > case.timeout_seconds and
+                            status == ValidationStatus.PASS):
+                        status = ValidationStatus.FAIL
+                        reason = "validation check exceeded advisory timeout"
                 except Exception as error:
                     status = ValidationStatus.FAIL
                     reason = f"{type(error).__name__}: validation check raised an exception"
