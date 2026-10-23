@@ -77,6 +77,22 @@ class PrivacyAndIntegrityTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_record(record)
 
+    def test_bare_network_address_cannot_be_evidence_reference(self):
+        _, record = fixture()
+        record["results"][0]["evidence"] = ["192.168.51.206"]
+        with self.assertRaises(ValueError):
+            validate_record(record)
+
+    def test_host_identifiers_in_safe_pattern_reasons_rejected(self):
+        _, record = fixture()
+        record["results"][0]["status"] = "BLOCKED"
+        record["results"][0]["reason"] = "missing prerequisites: 192.168.51.206"
+        record["counts"]["PASS"] -= 1
+        record["counts"]["BLOCKED"] += 1
+        record["overall"] = "INCOMPLETE"
+        with self.assertRaises(ValueError):
+            validate_record(record)
+
     def test_unrecognized_requirement_link_rejected(self):
         _, record = fixture()
         record["results"][0]["requirement_ids"].append("LBT-FR-999")
