@@ -90,6 +90,13 @@ class PrivacyAndIntegrityTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_record(record)
 
+    def test_mac_and_serial_metadata_cannot_reach_public_report(self):
+        from validation.reporting import _safe_label
+        self.assertEqual(_safe_label("MAC=aa:bb:cc:dd:ee:ff"), "[REDACTED]")
+        self.assertEqual(_safe_label("serial=123456789"), "[REDACTED]")
+        self.assertEqual(_safe_label("host=example"), "host=example")
+        self.assertEqual(_safe_label("2001:db8::1"), "[REDACTED]")
+
     def test_bare_network_address_cannot_be_evidence_reference(self):
         _, record = fixture()
         record["results"][0]["evidence"] = ["192.168.51.206"]
