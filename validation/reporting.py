@@ -24,7 +24,11 @@ SCHEMA_VERSION = "1.0.0"
 FORMATS = ("validation.json", "validation.csv", "validation.md", "validation.html")
 MANIFEST = "validation.manifest.json"
 _ID = re.compile(r"^VAL-[A-Z0-9]+(?:-[A-Z0-9]+)*$")
-_SAFE_REF = re.compile(r"^[A-Za-z0-9_.:-]{1,128}$")
+_SAFE_REF = re.compile(
+    r"^(?:log:VAL-[A-Z0-9]+(?:-[A-Z0-9]+)*|"
+    r"delegated-to:VAL-[A-Z0-9]+(?:-[A-Z0-9]+)*|"
+    r"unit-suite:[A-Za-z0-9_-]{1,96})$"
+)
 # Only these controller-originated messages are permitted in portable reports.
 _SAFE_REASONS = (
     re.compile(r"^missing prerequisites: [A-Za-z0-9_,. +:-]+$"),
@@ -68,7 +72,7 @@ def _safe_reason(reason: str) -> str:
     """Keep recognized controller diagnostics; never persist arbitrary host text."""
     if not reason:
         return ""
-    if len(reason) <= 240 and any(pattern.fullmatch(reason) for pattern in _SAFE_REASONS):
+    if len(reason) <= 240 and not any(p.search(reason) for p in _PRIVATE_PATTERNS) and any(pattern.fullmatch(reason) for pattern in _SAFE_REASONS):
         return reason
     return "Diagnostic detail withheld by default privacy policy"
 
