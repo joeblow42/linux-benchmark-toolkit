@@ -54,6 +54,11 @@ _PRIVATE_PATTERNS = (
     re.compile(r"(?i)[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}"),
     re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b"),
     re.compile(r"(?i)\b(?:password|passwd|token|secret|api_key)\s*[:=]\s*[^\s,;]+"),
+
+    re.compile(r"(?i)\b(?:[0-9a-f]{2}:){5}[0-9a-f]{2}\b"),
+    re.compile(r"(?i)\b(?:[0-9a-f]{1,4}:){2,}[0-9a-f:]*\b"),
+    re.compile(r"(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b"),
+    re.compile(r"(?i)\b(?:serial|ssid|hostname|account|username|mac)\s*[:=]\s*[^\s,;]+"),
 )
 
 
