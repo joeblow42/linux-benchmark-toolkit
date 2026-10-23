@@ -130,7 +130,7 @@ def build_session_manifest(session_dir, *, state: str = "INCOMPLETE") -> dict:
     reinterpret a legacy session without a manifest as incomplete.
     """
     directory = _directory(session_dir)
-    if state not in _STATES:
+    if not isinstance(state, str) or state not in _STATES:
         raise SessionPersistenceError("VALIDATION_ERROR", "invalid manifest state")
     records = {}
     try:
@@ -177,10 +177,44 @@ def read_session_manifest(session_dir) -> dict | None:
     except (OSError, UnicodeError, ValueError) as exc:
         raise SessionPersistenceError("VALIDATION_ERROR", "manifest invalid") from exc
     if (not isinstance(doc, dict)
+        or set(doc) != {"manifest_version", "session_id", "schema_version",
+                       "state", "files"}
         or doc.get("session_id") != directory.name
         or doc.get("manifest_version") != "1.0"
         or doc.get("schema_version") != SCHEMA_VERSION
+        or not isinstance(doc.get("state"), str)
         or doc.get("state") not in _STATES
-        or not isinstance(doc.get("files"), dict)):
+        or not isinstance(doc.get("files"), dict)
+        or not set(doc["files"]).issubset(_ALLOWED)):
         raise SessionPersistenceError("VALIDATION_ERROR", "manifest schema invalid")
+    if doc["state"] == "COMPLETE":
+        if set(doc["files"]) != _REQUIRED_FINAL or not (directory / "logs").is_dir():
+            raise SessionPersistenceError("VALIDATION_ERROR",
+                                          "manifest falsely claims completion")
+    try:
+        for name, info in doc["files"].items():
+            if (not isinstance(info, dict)
+                or set(info) != {"sha256", "bytes"}
+                or type(info["bytes"]) is not int
+                or info["bytes"] < 0
+                or not isinstance(info["sha256"], str)
+                or len(info["sha256"]) != 64
+                or any(ch not in "0123456789abcdef" for ch in info["sha256"])):
+                raise SessionPersistenceError("VALIDATION_ERROR",
+                                              "manifest checksum record invalid")
+            file = directory / name
+            if file.is_symlink():
+                raise SessionPersistenceError("VALIDATION_ERROR",
+                                              "manifest references a symlink")
+            data = file.read_bytes()
+            if len(data) != info["bytes"] or sha256(data).hexdigest() != info["sha256"]:
+                raise SessionPersistenceError("VALIDATION_ERROR",
+                                              "manifest checksum mismatch")
+        if doc["state"] == "COMPLETE":
+            validate_system_document(
+                json.loads((directory / "system.json").read_text(encoding="utf-8")),
+                session_id=directory.name)
+    except (OSError, UnicodeError, ValueError, SessionSchemaError) as exc:
+        raise SessionPersistenceError("VALIDATION_ERROR",
+                                      "manifest verification failed") from exc
     return doc
