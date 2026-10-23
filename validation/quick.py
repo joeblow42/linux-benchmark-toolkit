@@ -1,7 +1,7 @@
-"""Safe Quick readiness checks, independently callable before CLI integration.
+"""Safe Quick readiness checks used by the unified CLI.
 
 Run from the repository root with: python3 -m validation.quick
-This is a temporary development entry point, not the final benchmark CLI.
+The standalone module is retained for compatibility.
 """
 from pathlib import Path
 import json
@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 
+from .requirements import links_for
 from .profiles import ValidationProfile
 from .registry import ValidationCase, ValidationRegistry
 from .runner import CheckOutcome, ValidationContext, run_validation
@@ -80,7 +81,7 @@ def quick_registry() -> ValidationRegistry:
         registry.register(ValidationCase(
             validation_id=case_id, title=title, phase=1, category="readiness",
             minimum_profile=ValidationProfile.QUICK, runner=runner,
-            dependencies=dependencies,
+            dependencies=dependencies, requirement_ids=links_for(case_id),
             prerequisites=("bash", "python3") if runner != "quick:writable" else (),
             safety_class="temporary_write" if runner in ("quick:writable", "quick:report")
                          else "read_only",
