@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
-VERSION="0.1.0-phase1"
+VERSION="0.2.0-validation"
 DEST="${1:-$ROOT/dist}"
 mkdir -p -- "$DEST"
 DEST="$(cd -- "$DEST" && pwd -P)"
