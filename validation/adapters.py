@@ -11,6 +11,7 @@ import sys
 
 from .evidence import private_diagnostic
 from .processes import run_bounded
+from .requirements import links_for
 from .profiles import ValidationProfile
 from .registry import ValidationCase, ValidationRegistry
 from .runner import CheckOutcome, ValidationContext
@@ -124,6 +125,7 @@ def extend_registry(registry: ValidationRegistry, root: Path) -> dict:
             validation_id=ACCEPTANCE_IDS[index - 1], title=title,
             phase=1, category="acceptance", minimum_profile=profile,
             runner=runner_name, dependencies=dependencies,
+            requirement_ids=links_for(ACCEPTANCE_IDS[index - 1]),
             prerequisites=("python3",),
             safety_class=("temporary_write" if index > 5 else "read_only"),
             evidence_level="integration", timeout_seconds=acceptance_timeout(index),
