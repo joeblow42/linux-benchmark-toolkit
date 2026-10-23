@@ -1,8 +1,7 @@
 # IC-04 — Result-status and assessment-domain contract
 
 **Implementation baseline:** approved IC-04 Detailed Design Draft 1.1 (23 October 2026).
-**Status:** implementation on development branch; project-owner acceptance and
-explicit merge authorization required.
+**Status (2026-10-23):** Owner-accepted and merged via PR #17 (`669e55886321f3d6f7374f2f7338ac9247898321`); typed contract only, not a benchmark execution engine.
 
 ## Separate status domains
 
@@ -106,11 +105,7 @@ IC-REC-01 retains collector failure isolation, atomic file replacement
 and accurate interruption classification. Bounded optical retries and
 operator-selected ddrescue mapfiles are separate features.
 
-**Requirements discrepancy:** Revision 1.2 `LBT-NFR-018` still states
-“Preserve partial results after interruption and support resumption.”
-The owner-approved exclusion contradicts its resumption clause.
-Record a formal baseline change separately; do not mark the whole
-requirement verified or silently rewrite Revision 1.2.
+**Requirements history (2026-10-23):** The preserved Revision 1.2 wording of `LBT-NFR-018` required resumption and conflicted with IC-REC-01. The owner has explicitly approved the targeted Revision 1.3 replacement: valid completed evidence is retained when available, checkpoint recovery and automatic/manual resumption are excluded, and subsequent executions start from the beginning. This approved wording does not establish requirement verification; Rev 1.2 remains historical evidence.
 
 ## Scope boundary
 
@@ -134,6 +129,4 @@ python3 -m unittest discover -s tests -p 'test_status_contract.py' -v
 `tests/test_status_contract.py` addresses IC04-T01–T19 and
 IC04-T21–T22 plus additional strict-contract, copy, and resume-guard
 cases. IC04-T20 is the existing Full suite, including Python tests and
-Phase 1 acceptance. All tests are synthetic; they are not physical
-benchmark evidence. GitHub CI and Bodhi acceptance both precede a
-separate owner decision whether to merge the draft PR.
+Phase 1 acceptance. All tests are synthetic; they are not physical benchmark evidence. Historical acceptance (2026-10-23): 25/25 dedicated Bodhi status-contract tests PASS, 21/21 Full top-level checks PASS, PR #17 merged following owner authorization, and main CI run 40015791627 succeeded.

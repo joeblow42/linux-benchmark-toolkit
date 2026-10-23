@@ -126,8 +126,7 @@ serializable valid evidence is never rewritten.
 
 The `KeyboardInterrupt` behavior captures completed in-memory evidence
 only. A process kill, power failure, and arbitrary termination are not
-recoverable in IC-02; persistent interruption support belongs to IC-03
-and later integration. Existing bounded subprocess probes remain bounded,
+retained in the returned IC-02 object when the interruption is handled. This is not checkpoint recovery or execution resumption: owner-approved IC-REC-01 excludes both automatic and manual continuation after interruption. IC-03 can persist explicitly supplied evidence only; abrupt termination does not guarantee a final artifact. Existing bounded subprocess probes remain bounded,
 but the orchestrator does **not** enforce hard deadlines for in-process
 Python collectors.
 
@@ -136,8 +135,7 @@ Python collectors.
 IC-02 does **not** activate this implementation from the Phase 1
 `benchmark --mode discovery` path, write `system.json`, add or rerun
 benchmarks, alter the existing report schema, or introduce a new
-software-validation controller. IC-03/05/06 will define session storage,
-privacy review, and reports. Requirement links in the approved IC-02
+software-validation controller. IC-03 now provides a separately callable v2 schema/writer; IC-05 and IC-06 will address further lifecycle/privacy and reporting integration. Requirement links in the approved IC-02
 design document indicate relevant evidence only, not complete requirement
 verification.
 
@@ -152,6 +150,4 @@ The new fixture-based unittest cases automatically participate in the
 existing Standard/Full validation adapter. On-target Bodhi/Linux execution
 and independent hardware comparisons remain separate acceptance evidence.
 
-No existing collector, launcher, reporting, or validation module was
-changed for this IC-02 implementation. The IC-02 branch requires owner
-review and explicit authorization before merging into `main`.
+No existing collector, launcher, reporting, or validation module was changed for this IC-02 implementation. **Acceptance status (2026-10-23):** Owner-accepted and merged in PR #15 (`8f47bd6fa6a14e9e1586f856662556bdd3218d29`). The normal Phase 1 Discovery CLI still does not invoke the IC-02 orchestrator.

@@ -48,7 +48,7 @@ Do not equate missing data with a failed benchmark. Capability, actual performan
 - No automatic package installation or unexpected external downloads.
 - Record fixture provenance and checksums. Do not include copyrighted commercial DVD content as test fixtures.
 - Default report redacts usernames, hardware serial numbers, IPs and other identifying details; optional opt-in detailed diagnostics.
-- Intermediate outputs survive interruption; never delete files that were not created by the toolkit.
+- Preserve valid completed outputs from interrupted operations when available; never delete files that were not created by the toolkit. Under owner-approved IC-REC-01, no automatic or manual checkpoint resumption is supported: a subsequent run starts from the beginning. An abrupt kill or power loss does not guarantee that new final files are written. Single-file atomic replacement does not make a whole session transactionally complete.
 
 ## Portability contract
 Package carries scripts, configuration, licensed distributable binaries where feasible, fixtures, Python runtime/libraries if needed, manifests and checksums. This does **not** make the toolkit independent of the host kernel, GPU driver stack, architecture, libc, permissions, or optical hardware. Detect incompatibilities and explain host-side requirements. Prefer ext4 for execution; an archive may be transported on exFAT and extracted to ext4. Relative paths only.

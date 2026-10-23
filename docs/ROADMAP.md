@@ -16,6 +16,9 @@ The toolkit uses one evolving repository; each phase has executable acceptance t
 - Structured inventory and hardware-focused HTML report.
 **Exit criteria:** verify on Bodhi and Basement against independent OS commands; missing devices represented as unavailable.
 
+## Integration-contract status (2026-10-23)
+IC-01 registry, IC-02 in-memory orchestration, IC-03 opt-in session-v2 persistence, and IC-04 typed status contracts were merged through PRs #14–17. IC-05 provenance/privacy/error lifecycle, IC-06 v2 reporting, and IC-07 extended validation/requirements-traceability integration remain outstanding. The Phase 2 end-to-end CLI-to-v2-report path is not complete; integrated contracts do not represent a percentage of overall phase delivery. IC-REC-01 intentionally excludes checkpoint resumption after interruption; a new attempt begins from the beginning.
+
 ## Phase 3 — General performance
 - Repeatable CPU and RAM workloads, file-backed fio, optional iperf3 peer, monitoring and thermal/reliability metrics.
 - Disk-capacity reserve, timeouts, stop conditions, non-root default, CSV series.

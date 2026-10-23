@@ -77,7 +77,7 @@ validation cases. New canonical records use validation schema 1.1.0; older
 1.0.0 records regenerate through an in-memory compatibility view without
 rewriting their canonical JSON.
 
-The approved Requirements Baseline Rev 1.2 has 256 IDs. Reports show linked
+The owner-approved Requirements Baseline Rev 1.3 (2026-10-23) has 256 IDs; its only substantive row change is the `LBT-NFR-018` no-resumption policy. Reports show linked
 tests and all uncovered IDs; a link or a successful check is **partial evidence**,
 not automatic verification that a requirement is satisfied. The seven explicit
 later-release deferrals remain in the baseline.
@@ -85,8 +85,10 @@ later-release deferrals remain in the baseline.
 The release archive name is `linux-benchmark-toolkit-0.2.0-validation.tar.gz`
 with a corresponding SHA-256 file. The legacy Phase 1 acceptance CLI and
 hardware `--mode discovery` functionality are retained. Collector integration,
-hardware benchmarking and benchmark session schema modernization remain separate
+hardware benchmarking and live benchmark session schema integration remain separate
 future work.
+
+IC-01 through IC-04 have been owner-accepted and merged (PRs #14–17): the static hardware registry, callable orchestration, opt-in `system.json` v2 mapper/writer, and typed result/status contract. These modules do **not** yet activate the normal Phase 1 Discovery CLI or v2 HTML/CSV reporting. IC-05 provenance/privacy/error lifecycle, IC-06 reporting, and IC-07 additional validation/traceability integration remain pending. IC-REC-01 excludes automatic/manual checkpoint resumption; a new execution starts from the beginning.
 
 Overall validation is PASS only if all selected cases PASS, or if there are
 only PASS results plus no non-PASS results. FAIL dominates; SKIP, BLOCKED, and
