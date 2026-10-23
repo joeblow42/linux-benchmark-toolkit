@@ -44,8 +44,6 @@ def _safe_reason(reason: str) -> str:
     """Keep recognized controller diagnostics; never persist arbitrary host text."""
     if not reason:
         return ""
-    if len(reason) <= 240 and all(pattern.fullmatch(reason) for pattern in _SAFE_REASONS[:0]):
-        return reason
     if len(reason) <= 240 and any(pattern.fullmatch(reason) for pattern in _SAFE_REASONS):
         return reason
     return "Diagnostic detail withheld by default privacy policy"
@@ -109,6 +107,10 @@ def validate_record(record: dict) -> None:
         raise ValueError("invalid validation session ID")
     if not isinstance(record.get("generated_utc"), str) or not record["generated_utc"]:
         raise ValueError("missing timestamp")
+    if not isinstance(record.get("toolkit_revision"), str) or not (
+            record["toolkit_revision"] == "unrecorded" or
+            re.fullmatch(r"[a-f0-9]{7,40}", record["toolkit_revision"])):
+        raise ValueError("invalid toolkit revision")
     rows = record.get("results")
     if not isinstance(rows, list) or not rows:
         raise ValueError("missing validation results")
@@ -129,8 +131,13 @@ def validate_record(record: dict) -> None:
             raise ValueError("invalid validation duration")
         if not isinstance(row.get("reason"), str) or len(row["reason"]) > 300:
             raise ValueError("invalid diagnostic reason")
+        if row["reason"] and row["reason"] != _safe_reason(row["reason"]) and (
+                row["reason"] != "Diagnostic detail withheld by default privacy policy"):
+            raise ValueError("unredacted diagnostic reason")
         if not isinstance(row.get("title"), str) or not isinstance(row.get("category"), str):
             raise ValueError("missing case metadata")
+        if len(row["title"]) > 200 or len(row["category"]) > 60:
+            raise ValueError("oversized case metadata")
         if type(row.get("phase")) is not int or row["phase"] < 1:
             raise ValueError("invalid phase")
         if not isinstance(row.get("requirement_ids"), list) or not isinstance(row.get("evidence"), list):
