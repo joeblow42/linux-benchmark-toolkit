@@ -15,6 +15,8 @@ jobs:
         run: |
           bash -n benchmark lib/*.sh tui/*.sh packaging/*.sh tests/*.sh
           python3 -m compileall -q reporting validation tests
+      - name: G5-01 initial catalog contract tests
+        run: python3 -m unittest discover -s tests -p 'test_g5_catalog.py' -v
       - name: Unified Full validation (unit and acceptance once)
         run: python3 -m validation.suites full --output validation-results/ci
       - name: Upload unified validation report
