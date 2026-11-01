@@ -26,6 +26,7 @@ class PassiveOutcome:
     disposition: str
     reason: str
     artifacts: tuple[ArtifactReceipt,...]
+    source_paths: tuple[str,...]
     errors: tuple[str,...]
     acquired_count: int
     acquired_bytes: int
