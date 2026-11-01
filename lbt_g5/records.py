@@ -12,7 +12,7 @@ import os
 import re
 import secrets
 import stat
-from .safety import valid_run_id, initial_source_policies
+from .safety import valid_run_id, initial_source_policies, RUN_SECONDS
 
 @dataclass(frozen=True)
 class AttemptReceipt:
@@ -37,13 +37,18 @@ class AttemptReceipt:
     status_record_pending: bool = True
     source_paths: tuple[str,...] = ()
     unavailable_fields: tuple[str,...] = ()
+    exit_code: int | None = None
+    elapsed_seconds: float | None = None
+    timed_out: bool = False
+    capture_limited: bool = False
 
 def utc_now():
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00","Z")
 
 def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                   *,evidence=(),bytes_count=0,missing=None,errors=(),
-                  invocation="NOT_INVOKED",target=None,source_paths=(),unavailable_fields=()):
+                  invocation="NOT_INVOKED",target=None,source_paths=(),unavailable_fields=(),
+                  exit_code=None,elapsed_seconds=None,timed_out=False,capture_limited=False):
     policy={p.source_id:p for p in initial_source_policies()}.get(source_id)
     if not valid_run_id(run_id) or policy is None:
         raise ValueError("invalid source or run identity")
@@ -56,6 +61,11 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
         raise ValueError("invalid preserved-byte count")
     if missing is not None and missing<0:
         raise ValueError("invalid missing extent")
+    if exit_code is not None and (type(exit_code) is not int or abs(exit_code)>65535):
+        raise ValueError("invalid process exit code")
+    if elapsed_seconds is not None and (not isinstance(elapsed_seconds,(int,float))
+        or elapsed_seconds<0 or elapsed_seconds!=elapsed_seconds or elapsed_seconds>RUN_SECONDS):
+        raise ValueError("invalid source elapsed duration")
     if len(unavailable_fields)>64 or len(str(unavailable_fields))>8192:
         raise ValueError("unbounded unavailable-attribute diagnostics")
     if len(errors)>64 or len(str(errors))>8192:
@@ -65,7 +75,9 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
         policy.operation_id,policy.authorization_class,
         invocation,target,decision,outcome,reason,bytes_count,
         ids,missing,tuple(str(e)[:256] for e in errors),utc_now(),
-        source_paths=tuple(source_paths),unavailable_fields=tuple(unavailable_fields))
+        source_paths=tuple(source_paths),unavailable_fields=tuple(unavailable_fields),
+        exit_code=exit_code,elapsed_seconds=elapsed_seconds,
+        timed_out=bool(timed_out),capture_limited=bool(capture_limited))
 
 def _safe_private_dir(parent_fd,name):
     try: os.mkdir(name,0o700,dir_fd=parent_fd)
