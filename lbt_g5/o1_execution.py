@@ -43,7 +43,16 @@ def execute_optional(request,attempt,subcall,writer,slots,calls):
             else:reason="BYTES_PRESERVED"
             state="PARTIAL" if receipts and (limited or captured.returncode) else (
                   "FAILED" if limited or captured.returncode else "CAPTURED")
-            return {"disposition":state,"reason":reason,"receipts":tuple(receipts)}
+            return {"disposition":state,"reason":reason,"receipts":tuple(receipts),
+                    "exit_code":captured.returncode,
+                    "elapsed_seconds":captured.elapsed_seconds,
+                    "timed_out":captured.timed_out,
+                    "capture_limited":captured.exceeded_limit or any(
+                        receipt.limit_applied for receipt in receipts),
+                    "missing_extent_known_at_least":
+                        captured.stdout_omitted_at_least+
+                        captured.stderr_omitted_at_least+
+                        sum(receipt.omitted_at_least for receipt in receipts)}
     except ProbeCapacityError:
         return {"disposition":"DENIED","reason":"CONCURRENCY_LIMIT","receipts":()}
     finally:
