@@ -32,3 +32,18 @@ class CompletionSmoke(unittest.TestCase):
             records=list(collect("SRC-03",roots={"SRC-03":str(efi)}))
             self.assertEqual(records[-1]["entries"],1)
             self.assertTrue(records[-1]["end"])
+
+    def test_private_error_identifies_failed_attribute(self):
+        import json
+        from lbt_g5.passive import _transport_decode
+        from lbt_g5.safety import initial_source_policies
+        policy=next(p for p in initial_source_policies() if p.source_id=="SRC-25")
+        message={"path":"/sys/class/hwmon/hwmon0/temp2_label",
+                 "error":"FileNotFoundError"}
+        end={"end":True,"entries":0,"bytes":0,"limited":False}
+        transport=(json.dumps(message)+"\n"+json.dumps(end)+"\n").encode()
+        records,errors,terminal,acquired=_transport_decode(transport,policy)
+        self.assertEqual(records,[])
+        self.assertIn("FileNotFoundError:/sys/class/hwmon/hwmon0/temp2_label",errors)
+        self.assertEqual(acquired,0)
+        self.assertTrue(terminal["end"])
