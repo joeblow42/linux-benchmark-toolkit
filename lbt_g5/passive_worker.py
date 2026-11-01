@@ -133,10 +133,13 @@ def collect(source, *, roots=None, max_bytes=None, max_entries=None):
         import shutil
         allowed=("lscpu","lsblk","lspci","ip","smartctl","nvme","vainfo",
                  "python3","dpkg-query","rpm")
+        acquired_bytes=0
         for name in allowed:
             resolved=shutil.which(name, path="/usr/bin:/bin:/usr/sbin:/sbin")
             value=json.dumps({"tool":name,"path":resolved},sort_keys=True).encode()
+            acquired_bytes+=len(value)
             yield {"path":"TOOL_RESOLVER/"+name,"bytes_b64":base64.b64encode(value).decode("ascii"),"limited":False}
+        yield {"end":True,"entries":len(allowed),"bytes":acquired_bytes,"limited":False}
         return
     if source not in ROOTS:
         raise ValueError("not an approved D0 worker source")
