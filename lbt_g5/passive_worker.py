@@ -155,10 +155,17 @@ def collect(source, *, roots=None, max_bytes=None, max_entries=None):
     if roots is ROOTS and path.startswith("/sys/"):
         allowed=tuple(os.path.realpath(x.rstrip("/")) for x in _ALLOWED_SYS_PREFIX)
     count=0
+    attempted=0
     captured=0
+    limited=False
     for candidate in _paths(source,roots):
-        if max_entries is not None and count>=max_entries: break
-        if max_bytes is not None and captured>=max_bytes: break
+        if max_entries is not None and attempted>=max_entries:
+            limited=True
+            break
+        if max_bytes is not None and captured>=max_bytes:
+            limited=True
+            break
+        attempted+=1
         try:
             data,at_limit=_read_regular(candidate,allowed,
                   min(MAX_PER_FILE,max_bytes-captured if max_bytes is not None else MAX_PER_FILE))
@@ -171,8 +178,9 @@ def collect(source, *, roots=None, max_bytes=None, max_entries=None):
                "limited":at_limit}
     # An explicit end record makes zero-read distinguishable from a truncated stream.
     yield {"end":True,"entries":count,"bytes":captured,
-           "limited":(max_entries is not None and count>=max_entries)
-             or (max_bytes is not None and captured>=max_bytes)}
+           "limited":limited or (max_entries is not None and attempted>=max_entries)
+             or (max_bytes is not None and captured>=max_bytes),
+           "attempted":attempted}
 
 def main():
     # No user-supplied roots, paths, flags, commands, or output destinations.
