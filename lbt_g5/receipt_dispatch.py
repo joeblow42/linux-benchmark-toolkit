@@ -42,7 +42,11 @@ def capture_and_record(request:SourceRequest,attempt,writer,slots,calls,
         diagnostic=()
         source_paths=()
         invocation=request.operation_id
-        missing=None
+        missing=outcome.get("missing_extent_known_at_least")
+        exit_code=outcome.get("exit_code")
+        elapsed_seconds=outcome.get("elapsed_seconds")
+        timed_out=bool(outcome.get("timed_out",False))
+        capture_limited=bool(outcome.get("capture_limited",False))
     else:
         items=tuple(getattr(outcome,"artifacts",()) or ())
         if hasattr(outcome,"stdout"):
@@ -55,6 +59,10 @@ def capture_and_record(request:SourceRequest,attempt,writer,slots,calls,
         argv=getattr(outcome,"argv",None)
         invocation=" ".join(argv) if argv else request.operation_id
         missing=getattr(outcome,"missing_extent_known_at_least",None)
+        exit_code=getattr(outcome,"exit_code",None)
+        elapsed_seconds=getattr(outcome,"elapsed_seconds",None)
+        timed_out=bool(getattr(outcome,"timed_out",False))
+        capture_limited=bool(getattr(outcome,"capture_limited",False) or getattr(outcome,"limited",False))
     decision="DENY" if state=="DENIED" else "ALLOW"
     if len(source_paths)!=len(items):
         source_paths=()
@@ -64,6 +72,8 @@ def capture_and_record(request:SourceRequest,attempt,writer,slots,calls,
         missing=missing,errors=diagnostic,
         invocation=invocation,target=request.target,
         source_paths=source_paths,
-        unavailable_fields=tuple(getattr(outcome,"unavailable_fields",()) or ()))
+        unavailable_fields=tuple(getattr(outcome,"unavailable_fields",()) or ()),
+        exit_code=exit_code,elapsed_seconds=elapsed_seconds,
+        timed_out=timed_out,capture_limited=capture_limited)
     location=commit_attempt(writer.run_directory,record)
     return RecordedOutcome(outcome,location)
