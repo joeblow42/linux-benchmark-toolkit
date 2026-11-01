@@ -134,7 +134,7 @@ class EvidenceWriter:
                     continue
                 available = max(0, limit-written)
                 with self._source_lock:
-                    key = (policy.source_id,attempt)
+                    key = (policy.source_id,)
                     remaining_source = max(0,policy.max_bytes-self._source_reserved.get(key,0))
                     take = self.meter.reserve(min(len(block),available,remaining_source))
                     self._source_reserved[key] = self._source_reserved.get(key,0)+take
