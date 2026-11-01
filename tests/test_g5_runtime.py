@@ -157,3 +157,37 @@ class Dispatch(unittest.TestCase):
         self.assertEqual((out.disposition,out.reason),("UNAVAILABLE","EXECUTABLE_NOT_FOUND"))
 
 if __name__=='__main__': unittest.main()
+
+class CaptureSemantics(unittest.TestCase):
+    def test_15_unexpected_runtime_defect_not_converted_to_capacity_denial(self):
+        from lbt_g5.safety import AuthorizationDecision
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp)/RUN; folder.mkdir()
+            writer=EvidenceWriter(str(folder),RUN)
+            policy={p.source_id:p for p in initial_source_policies()}['SRC-05']
+            auth=AuthorizationDecision(True,'ALLOW','APPROVED_PREFLIGHT_ONLY',policy)
+            with patch('lbt_g5.runtime.decide_source',return_value=auth),\
+                 patch('lbt_g5.runtime._resolve_executable',return_value='/usr/bin/lscpu'),\
+                 patch('lbt_g5.runtime._capture_child',side_effect=RuntimeError('unexpected defect')):
+                with self.assertRaisesRegex(RuntimeError,'unexpected defect'):
+                    execute_source_command(SourceRequest(RUN,'SRC-05','LSCPU'),0,'01',writer,
+                                           ProbeSlots(),SourceCallBudget())
+
+    def test_16_writer_quota_truncation_is_partial(self):
+        from lbt_g5.runtime import TransportCapture
+        from lbt_g5.evidence import RunMeter
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp)/RUN;folder.mkdir()
+            writer=EvidenceWriter(str(folder),RUN,RunMeter(max_bytes=3))
+            policy={p.source_id:p for p in initial_source_policies()}['SRC-05']
+            auth=AuthorizationDecision(True,'ALLOW','APPROVED_PREFLIGHT_ONLY',policy)
+            captured=TransportCapture(b'1234567',b'',0,0.1,False,False,0,0)
+            with patch('lbt_g5.runtime.decide_source',return_value=auth),\
+                 patch('lbt_g5.runtime._resolve_executable',return_value='/usr/bin/lscpu'),\
+                 patch('lbt_g5.runtime._capture_child',return_value=captured):
+                outcome=execute_source_command(SourceRequest(RUN,'SRC-05','LSCPU'),0,'01',writer,
+                                               ProbeSlots(),SourceCallBudget())
+            self.assertEqual((outcome.disposition,outcome.reason),('PARTIAL','CAPTURE_LIMIT'))
+            self.assertTrue(outcome.capture_limited)
+            self.assertEqual(outcome.missing_extent_known_at_least,4)
+            self.assertEqual(outcome.stdout.byte_count,3)
