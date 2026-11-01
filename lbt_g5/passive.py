@@ -70,10 +70,11 @@ def _transport_decode(payload: bytes, policy):
 def acquire_passive(request: SourceRequest, attempt: str, writer: EvidenceWriter,
                     slots: ProbeSlots, calls: SourceCallBudget) -> PassiveOutcome:
     pol={p.source_id:p for p in initial_source_policies()}.get(request.source_id)
+    paths=[]
     def done(disposition,reason,receipts=(),errors=(),elapsed=0.0,
              limited=False,missing=None,complete=False):
         return PassiveOutcome(request.source_id,disposition,reason,tuple(receipts),
-                              tuple(),tuple(errors),len(receipts),
+                              tuple(paths),tuple(errors),len(receipts),
                               sum(r.byte_count for r in receipts),elapsed,
                               limited,missing,complete)
     decision=decide_source(request,remaining_seconds=writer.meter.time_remaining(),
