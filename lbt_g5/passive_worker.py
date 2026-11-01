@@ -157,7 +157,8 @@ def collect(source, *, roots=None, max_bytes=None, max_entries=None):
         try:
             data,at_limit=_read_regular(candidate,allowed,
                   min(MAX_PER_FILE,max_bytes-captured if max_bytes is not None else MAX_PER_FILE))
-        except (OSError,PermissionError):
+        except (OSError,PermissionError) as exc:
+            yield {"path":candidate,"error":type(exc).__name__}
             continue
         count+=1
         captured+=len(data)
