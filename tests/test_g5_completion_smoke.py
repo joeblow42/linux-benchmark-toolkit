@@ -42,8 +42,50 @@ class CompletionSmoke(unittest.TestCase):
                  "error":"FileNotFoundError"}
         end={"end":True,"entries":0,"bytes":0,"limited":False}
         transport=(json.dumps(message)+"\n"+json.dumps(end)+"\n").encode()
-        records,errors,terminal,acquired=_transport_decode(transport,policy)
+        records,errors,terminal,acquired,unavailable=_transport_decode(transport,policy)
         self.assertEqual(records,[])
         self.assertIn("FileNotFoundError:/sys/class/hwmon/hwmon0/temp2_label",errors)
         self.assertEqual(acquired,0)
         self.assertTrue(terminal["end"])
+
+    def test_optional_missing_vs_unexpected_error(self):
+        import errno
+        from lbt_g5.passive_worker import _optional_absence
+        missing=FileNotFoundError(errno.ENOENT,"not present")
+        fault=OSError(errno.EIO,"failed")
+        self.assertTrue(_optional_absence("SRC-07","/sys/devices/system/cpu/cpu0/online",missing))
+        self.assertTrue(_optional_absence("SRC-12","/sys/class/block/loop0/device/model",missing))
+        self.assertTrue(_optional_absence("SRC-26","/sys/class/power_supply/AC/capacity",missing))
+        self.assertFalse(_optional_absence("SRC-26","/sys/class/power_supply/AC/type",missing))
+        self.assertFalse(_optional_absence("SRC-25","/sys/class/hwmon/hwmon0/temp1_input",fault))
+        self.assertTrue(_optional_absence("SRC-22","/sys/class/net/eno1/speed",
+                                         OSError(errno.EOPNOTSUPP,"unsupported")))
+
+    def test_optional_transport_is_not_source_failure(self):
+        import json
+        from lbt_g5.passive import _transport_decode
+        from lbt_g5.safety import initial_source_policies
+        policy=next(p for p in initial_source_policies() if p.source_id=="SRC-26")
+        msg={"path":"/sys/class/power_supply/AC/capacity","error":"FileNotFoundError",
+             "errno":2,"unavailable":True}
+        end={"end":True,"entries":0,"bytes":0,"limited":False}
+        raw=(json.dumps(msg)+"\n"+json.dumps(end)+"\n").encode()
+        acquired,errors,terminal,size,unavailable=_transport_decode(raw,policy)
+        self.assertEqual(errors,[])
+        self.assertEqual(len(unavailable),1)
+        self.assertEqual(size,0)
+        self.assertEqual(acquired,[])
+        self.assertTrue(terminal["end"])
+
+    def test_live_usb_overlay_eligible_but_remote_still_excluded(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as tmp:
+            source="\n".join((
+                "5 1 0:1 / / rw - overlay /cow rw",
+                "6 1 8:2 / "+tmp+" rw - vfat /dev/sdb1 rw",
+                "7 1 0:2 / /mnt/net rw - cifs remote rw"))
+            mounts=eligible_mounts(source)
+            self.assertIn("/",mounts)
+            self.assertIn(tmp,mounts)
+            self.assertNotIn("/mnt/net",mounts)
