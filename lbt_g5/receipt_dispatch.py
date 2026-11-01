@@ -63,6 +63,7 @@ def capture_and_record(request:SourceRequest,attempt,writer,slots,calls,
         bytes_count=sum(x.byte_count for x in items),
         missing=missing,errors=diagnostic,
         invocation=invocation,target=request.target,
-        source_paths=source_paths)
+        source_paths=source_paths,
+        unavailable_fields=tuple(getattr(outcome,"unavailable_fields",()) or ()))
     location=commit_attempt(writer.run_directory,record)
     return RecordedOutcome(outcome,location)
