@@ -146,6 +146,7 @@ def collect(source, *, roots=None, max_bytes=None, max_entries=None):
         # Record source presence, not a firmware-variable read.
         value=b"present\n" if os.path.isdir(path) else b"absent\n"
         yield {"path":"EFI_PRESENCE","bytes_b64":base64.b64encode(value).decode(),"limited":False}
+        yield {"end":True,"entries":1,"bytes":len(value),"limited":False}
         return
     allowed=(os.path.realpath(path),)
     if roots is ROOTS and path.startswith("/sys/"):
