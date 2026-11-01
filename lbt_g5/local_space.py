@@ -7,7 +7,8 @@ import re
 import json
 import sys
 
-LOCAL_TYPES=frozenset(("ext2","ext3","ext4","xfs","btrfs","f2fs","zfs"))
+LOCAL_TYPES=frozenset(("ext2","ext3","ext4","xfs","btrfs","f2fs","zfs",
+                       "overlay","squashfs","vfat"))
 REMOTE_TYPES=frozenset(("nfs","nfs4","cifs","smb3","fuse","fuseblk","sshfs"))
 
 def _unescape(text):
