@@ -52,7 +52,9 @@ def _transport_decode(payload: bytes, policy):
         if msg.get("end") is True:
             end=msg;break
         if "error" in msg:
-            errors.append(str(msg.get("error","READ_FAILED"))[:80])
+            error_type=str(msg.get("error","READ_FAILED"))[:64]
+            source_path=str(msg.get("path","UNSPECIFIED"))[:110]
+            errors.append((error_type+":"+source_path)[:120])
             continue
         if "bytes_b64" not in msg or not isinstance(msg.get("path"),str):
             errors.append("MALFORMED_SOURCE_RECORD");break
