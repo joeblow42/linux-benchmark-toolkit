@@ -126,6 +126,7 @@ def collect(source, *, roots=None, max_bytes=None, max_entries=None):
         value=json.dumps({"system":platform.system(),"machine":platform.machine(),
                           "release":platform.release()},sort_keys=True).encode("utf-8")
         yield {"path":"LOCAL_API","bytes_b64":base64.b64encode(value).decode("ascii"),"limited":False}
+        yield {"end":True,"entries":1,"bytes":len(value),"limited":False}
         return
     if source=="SRC-27":
         # Discover only fixed registered tools. No version subprocess or env dump.
