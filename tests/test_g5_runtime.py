@@ -191,3 +191,43 @@ class CaptureSemantics(unittest.TestCase):
             self.assertTrue(outcome.capture_limited)
             self.assertEqual(outcome.missing_extent_known_at_least,4)
             self.assertEqual(outcome.stdout.byte_count,3)
+
+
+class SourceBoundaryRegression(unittest.TestCase):
+    def test_17_multiple_ip_subcalls_do_not_replace_original_evidence(self):
+        from lbt_g5.runtime import TransportCapture
+        from lbt_g5.safety import AuthorizationDecision,initial_source_policies
+        pol={p.source_id:p for p in initial_source_policies()}["SRC-23"]
+        auth=AuthorizationDecision(True,"ALLOW","APPROVED_PREFLIGHT_ONLY",pol)
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp)/RUN
+            folder.mkdir()
+            writer=EvidenceWriter(str(folder),RUN)
+            req=SourceRequest(RUN,"SRC-23","IP_LOCAL")
+            slots=ProbeSlots()
+            calls=SourceCallBudget()
+            captured=TransportCapture(b"{}",b"",0,.02,False,False,0,0)
+            with patch("lbt_g5.runtime.decide_source",return_value=auth),\
+                 patch("lbt_g5.runtime._resolve_executable",return_value="/usr/bin/ip"),\
+                 patch("lbt_g5.runtime._capture_child",return_value=captured):
+                a=execute_source_command(req,0,"01",writer,slots,calls)
+                b=execute_source_command(req,1,"01",writer,slots,calls)
+            self.assertEqual((a.disposition,b.disposition),("CAPTURED","CAPTURED"))
+            self.assertNotEqual(a.stdout.evidence_id,b.stdout.evidence_id)
+            self.assertIn(":call0001-stdout",a.stdout.evidence_id)
+            self.assertIn(":call0002-stdout",b.stdout.evidence_id)
+            self.assertEqual((folder/a.stdout.private_relative_path).read_bytes(),b"{}")
+            self.assertEqual((folder/b.stdout.private_relative_path).read_bytes(),b"{}")
+
+    def test_18_passive_efi_and_tool_resolver_emit_complete_streams(self):
+        from lbt_g5.passive_worker import collect
+        with tempfile.TemporaryDirectory() as tmp:
+            from pathlib import Path
+            efi=Path(tmp)/"efi"
+            efi.mkdir()
+            presence=list(collect("SRC-03",roots={"SRC-03":str(efi)}))
+            self.assertEqual(presence[-1]["end"],True)
+            self.assertEqual(presence[-1]["entries"],1)
+        tools=list(collect("SRC-27"))
+        self.assertTrue(tools[-1]["end"])
+        self.assertEqual(tools[-1]["entries"],len(tools)-1)
