@@ -73,7 +73,7 @@ def acquire_passive(request: SourceRequest, attempt: str, writer: EvidenceWriter
     def done(disposition,reason,receipts=(),errors=(),elapsed=0.0,
              limited=False,missing=None,complete=False):
         return PassiveOutcome(request.source_id,disposition,reason,tuple(receipts),
-                              tuple(errors),len(receipts),
+                              tuple(),tuple(errors),len(receipts),
                               sum(r.byte_count for r in receipts),elapsed,
                               limited,missing,complete)
     decision=decide_source(request,remaining_seconds=writer.meter.time_remaining(),
