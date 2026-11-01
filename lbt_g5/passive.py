@@ -63,7 +63,7 @@ def _transport_decode(payload: bytes, policy):
         if len(records)>=policy.max_entries or total+len(raw)>policy.max_bytes:
             errors.append("SOURCE_LIMIT_REACHED");break
         total+=len(raw)
-        records.append((raw, bool(msg.get("limited"))))
+        records.append((msg["path"],raw,bool(msg.get("limited"))))
     # All records from an incomplete worker are still real and preservable.
     return records,errors,end,total
 
@@ -106,7 +106,7 @@ def acquire_passive(request: SourceRequest, attempt: str, writer: EvidenceWriter
             records,errors,end,total=_transport_decode(captured.stdout,pol)
             receipts=[]
             limited=captured.exceeded_limit or captured.timed_out
-            for i,(original,record_limit) in enumerate(records,1):
+            for i,(original_path,original,record_limit) in enumerate(records,1):
                 artifact=f"item{i:04d}"
                 result=writer.seal_chunks(pol,attempt,artifact,(original,))
                 if result.failure:
@@ -114,6 +114,7 @@ def acquire_passive(request: SourceRequest, attempt: str, writer: EvidenceWriter
                     break
                 receipt=result.receipt
                 receipts.append(receipt)
+                paths.append(original_path)
                 limited=limited or record_limit or receipt.limit_applied
             complete=(end is not None and captured.returncode==0 and not captured.timed_out
                       and not captured.exceeded_limit and not errors and not limited
