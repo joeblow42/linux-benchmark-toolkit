@@ -34,10 +34,12 @@ class PassiveOutcome:
     limited: bool
     missing_extent_known_at_least: int | None
     worker_finished: bool
+    unavailable_fields: tuple[str,...] = ()
 
 def _transport_decode(payload: bytes, policy):
     records=[]
     errors=[]
+    unavailable=[]
     end=None
     total=0
     for line in payload.splitlines():
@@ -51,6 +53,11 @@ def _transport_decode(payload: bytes, policy):
             errors.append("INVALID_TRANSPORT_RECORD");break
         if msg.get("end") is True:
             end=msg;break
+        if msg.get("unavailable") is True:
+            path=str(msg.get("path","UNKNOWN"))[:180]
+            code=str(msg.get("error","UNAVAILABLE"))[:50]
+            unavailable.append(code+":"+path)
+            continue
         if "error" in msg:
             error_type=str(msg.get("error","READ_FAILED"))[:64]
             source_path=str(msg.get("path","UNSPECIFIED"))[:110]
@@ -67,19 +74,21 @@ def _transport_decode(payload: bytes, policy):
         total+=len(raw)
         records.append((msg["path"],raw,bool(msg.get("limited"))))
     # All records from an incomplete worker are still real and preservable.
-    return records,errors,end,total
+    return records,errors,end,total,unavailable
 
 def acquire_passive(request: SourceRequest, attempt: str, writer: EvidenceWriter,
                     slots: ProbeSlots, calls: SourceCallBudget) -> PassiveOutcome:
     pol={p.source_id:p for p in initial_source_policies()}.get(request.source_id)
     paths=[]
+    unavailable=[]
     def done(disposition,reason,receipts=(),errors=(),elapsed=0.0,
              limited=False,missing=None,complete=False):
         bounded_errors=tuple(errors[:63])+(("ADDITIONAL_ERRORS_OMITTED",) if len(errors)>63 else ())
         return PassiveOutcome(request.source_id,disposition,reason,tuple(receipts),
                               tuple(paths),bounded_errors,len(receipts),
                               sum(r.byte_count for r in receipts),elapsed,
-                              limited,missing,complete)
+                              limited,missing,complete,
+                              tuple(unavailable[:63])+(("ADDITIONAL_OPTIONAL_FIELDS_OMITTED",) if len(unavailable)>63 else ()))
     decision=decide_source(request,remaining_seconds=writer.meter.time_remaining(),
         remaining_bytes=writer.meter.max_bytes-writer.meter.bytes_reserved)
     if not decision.allowed: return done("DENIED",decision.reason)
@@ -106,7 +115,8 @@ def acquire_passive(request: SourceRequest, attempt: str, writer: EvidenceWriter
                     transport_cap,64*1024,cap)
             except OSError as exc:
                 return done("FAILED",type(exc).__name__)
-            records,errors,end,total=_transport_decode(captured.stdout,pol)
+            records,errors,end,total,skipped=_transport_decode(captured.stdout,pol)
+            unavailable.extend(skipped)
             receipts=[]
             limited=captured.exceeded_limit or captured.timed_out
             for i,(original_path,original,record_limit) in enumerate(records,1):
@@ -119,10 +129,11 @@ def acquire_passive(request: SourceRequest, attempt: str, writer: EvidenceWriter
                 receipts.append(receipt)
                 paths.append(original_path)
                 limited=limited or record_limit or receipt.limit_applied
+            if end and end.get("limited"):
+                limited=True
             complete=(end is not None and captured.returncode==0 and not captured.timed_out
                       and not captured.exceeded_limit and not errors and not limited
                       and len(records)==end.get("entries") and total==end.get("bytes"))
-            if end and end.get("limited"): limited=True
             if captured.returncode not in (0,None): errors.append("WORKER_EXIT_NONZERO")
             if captured.timed_out: errors.append("TIME_BUDGET_EXCEEDED")
             if captured.exceeded_limit: errors.append("TRANSPORT_LIMIT")
