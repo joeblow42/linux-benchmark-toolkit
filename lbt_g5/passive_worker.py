@@ -212,10 +212,12 @@ def collect(source, *, roots=None, max_bytes=None, max_entries=None):
         yield {"path":candidate,"bytes_b64":base64.b64encode(data).decode("ascii"),
                "limited":at_limit}
     # An explicit end record makes zero-read distinguishable from a truncated stream.
+    # Hitting an exact numeric boundary is not evidence of truncation.
+    # The lookahead guard above sets limited only when an additional candidate
+    # exists after the authorized count/byte budget is exhausted. Per-file
+    # possibly truncated data are reported independently in each item record.
     yield {"end":True,"entries":count,"bytes":captured,
-           "limited":limited or (max_entries is not None and attempted>=max_entries)
-             or (max_bytes is not None and captured>=max_bytes),
-           "attempted":attempted}
+           "limited":limited,"attempted":attempted}
 
 def main():
     # No user-supplied roots, paths, flags, commands, or output destinations.
