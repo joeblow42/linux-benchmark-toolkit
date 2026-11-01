@@ -111,6 +111,10 @@ def _resolve_executable(binary: str) -> str | None:
     return None
 
 
+class ProbeCapacityError(RuntimeError):
+    """A routine capacity refusal, not an internal programming defect."""
+
+
 class ProbeSlots:
     """Nonblocking run-wide source concurrency; O1 excludes other probes."""
     def __init__(self):
@@ -130,7 +134,7 @@ class ProbeSlots:
                 allowed = self._ordinary < MAX_ORDINARY_PROBES and self._o1 == 0
                 if allowed: self._ordinary += 1
         if not allowed:
-            raise RuntimeError("concurrency ceiling reached")
+            raise ProbeCapacityError("concurrency ceiling reached")
         try:
             yield
         finally:
@@ -300,19 +304,21 @@ def execute_source_command(request: SourceRequest, subcall: int,
                                   captured.elapsed_seconds,captured.timed_out,
                                   captured.exceeded_limit)
                 receipts.append(seal.receipt)
-            incomplete=captured.timed_out or captured.exceeded_limit
+            writer_truncated=any(receipt is not None and receipt.limit_applied for receipt in receipts)
+            incomplete=captured.timed_out or captured.exceeded_limit or writer_truncated
             outcome="PARTIAL" if incomplete and any(receipts) else \
                     "FAILED" if incomplete else "CAPTURED"
             reason=("TIME_BUDGET_EXCEEDED" if captured.timed_out else
-                    "CAPTURE_LIMIT" if captured.exceeded_limit else
+                    "CAPTURE_LIMIT" if captured.exceeded_limit or writer_truncated else
                     "EXIT_NONZERO" if captured.returncode else "BYTES_PRESERVED")
             if not incomplete and captured.returncode:
                 outcome="PARTIAL" if any(receipts) else "FAILED"
             return result(outcome,reason,plan.argv,receipts[0],receipts[1],
                           captured.returncode,captured.elapsed_seconds,
-                          captured.timed_out,captured.exceeded_limit,
-                          captured.stdout_omitted_at_least+captured.stderr_omitted_at_least)
-    except RuntimeError:
+                          captured.timed_out,captured.exceeded_limit or writer_truncated,
+                          (captured.stdout_omitted_at_least+captured.stderr_omitted_at_least
+                           +sum(receipt.omitted_at_least for receipt in receipts if receipt is not None)))
+    except ProbeCapacityError:
         return result("DENIED","CONCURRENCY_LIMIT")
     finally:
         calls.end(request.run_id,request.source_id,time.monotonic()-start)
