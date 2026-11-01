@@ -297,7 +297,7 @@ def execute_source_command(request: SourceRequest, subcall: int,
                 if not data:
                     receipts.append(None)
                     continue
-                seal=writer.seal_chunks(denied.source,attempt,name,[data])
+                seal=writer.seal_chunks(denied.source,attempt,f"call{subcall+1:04d}-{name}",[data])
                 if seal.failure is not None:
                     return result("FAILED","EVIDENCE_PERSIST_FAILED",plan.argv,
                                   receipts[0] if receipts else None,None,captured.returncode,
