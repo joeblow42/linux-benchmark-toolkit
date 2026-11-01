@@ -35,13 +35,14 @@ class AttemptReceipt:
     observed_utc: str
     # Reserved for G5-04 validated status envelope. Not a status assertion.
     status_record_pending: bool = True
+    source_paths: tuple[str,...] = ()
 
 def utc_now():
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00","Z")
 
 def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                   *,evidence=(),bytes_count=0,missing=None,errors=(),
-                  invocation="NOT_INVOKED",target=None):
+                  invocation="NOT_INVOKED",target=None,source_paths=()):
     policy={p.source_id:p for p in initial_source_policies()}.get(source_id)
     if not valid_run_id(run_id) or policy is None:
         raise ValueError("invalid source or run identity")
@@ -60,7 +61,8 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
         f"{source_id}-{attempt}",policy.collector_id,source_id,
         policy.operation_id,policy.authorization_class,
         invocation,target,decision,outcome,reason,bytes_count,
-        ids,missing,tuple(str(e)[:256] for e in errors),utc_now())
+        ids,missing,tuple(str(e)[:256] for e in errors),utc_now(),
+        source_paths=tuple(source_paths))
 
 def _safe_private_dir(parent_fd,name):
     try: os.mkdir(name,0o700,dir_fd=parent_fd)
