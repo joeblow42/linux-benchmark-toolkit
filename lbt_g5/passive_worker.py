@@ -7,6 +7,7 @@ Worker output is not a public representation. Caller MUST apply its G4-07 hard
 deadline/output cap and validate this transport before preserving artifacts.
 """
 import base64
+import errno
 import json
 import os
 import platform
@@ -52,6 +53,36 @@ CPU_ROOT = frozenset(("online","possible","present"))
 _ALLOWED_SYS_PREFIX = ("/sys/devices/","/sys/class/","/sys/firmware/efi")
 # Hard safety guard within worker as well as parent-controlled cap.
 MAX_PER_FILE = 1024*1024
+
+_OPTIONAL_SYSFS = frozenset((
+    "SRC-04","SRC-07","SRC-12","SRC-17","SRC-19",
+    "SRC-22","SRC-24","SRC-25","SRC-26",
+))
+_REQUIRED_ATTR = {
+    "SRC-12": frozenset(("size","ro")),
+    "SRC-22": frozenset(("address","operstate","mtu","type","ifindex")),
+    "SRC-25": frozenset(("name",)),
+    "SRC-26": frozenset(("type",)),
+}
+_UNSUPPORTED_ERRNOS = frozenset((
+    errno.EINVAL,errno.ENODATA,errno.ENODEV,errno.EOPNOTSUPP,
+))
+
+def _optional_absence(source,path,exc):
+    """Classify only expected sysfs gaps; never hide arbitrary IO failures."""
+    number=getattr(exc,"errno",None)
+    if source not in _OPTIONAL_SYSFS:
+        return False
+    leaf=os.path.basename(path)
+    if source=="SRC-07" and path.endswith("/cpu0/online"):
+        return number==errno.ENOENT
+    if number==errno.ENOENT:
+        return leaf not in _REQUIRED_ATTR.get(source,frozenset())
+    if source=="SRC-22" and leaf in ("carrier","speed","duplex"):
+        return number in _UNSUPPORTED_ERRNOS
+    if source=="SRC-25" and HWMON.fullmatch(leaf) and leaf!="name":
+        return number in _UNSUPPORTED_ERRNOS
+    return False
 
 def _under(path, allowed):
     real = os.path.realpath(path)
@@ -169,8 +200,12 @@ def collect(source, *, roots=None, max_bytes=None, max_entries=None):
         try:
             data,at_limit=_read_regular(candidate,allowed,
                   min(MAX_PER_FILE,max_bytes-captured if max_bytes is not None else MAX_PER_FILE))
-        except (OSError,PermissionError) as exc:
-            yield {"path":candidate,"error":type(exc).__name__}
+        except OSError as exc:
+            record={"path":candidate,"error":type(exc).__name__,
+                    "errno":getattr(exc,"errno",None)}
+            if _optional_absence(source,candidate,exc):
+                record["unavailable"]=True
+            yield record
             continue
         count+=1
         captured+=len(data)
