@@ -89,3 +89,39 @@ class CompletionSmoke(unittest.TestCase):
             self.assertIn("/",mounts)
             self.assertIn(tmp,mounts)
             self.assertNotIn("/mnt/net",mounts)
+
+    def test_exact_one_file_entry_limit_is_not_truncation(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as temp:
+            path=Path(temp)/"mountinfo"
+            path.write_bytes(b"42 1 0:50 / / rw - overlay /cow rw\n")
+            records=list(collect("SRC-14",roots={"SRC-14":str(path)},
+                                 max_bytes=16*1024*1024,max_entries=1))
+            self.assertEqual(len(records),2)
+            self.assertEqual(records[-1]["entries"],1)
+            self.assertEqual(records[-1]["attempted"],1)
+            self.assertFalse(records[-1]["limited"])
+
+    def test_actual_extra_candidate_triggers_entry_cap(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            (root/"sys_vendor").write_text("Fixture Vendor")
+            records=list(collect("SRC-04",roots={"SRC-04":str(root)},
+                                 max_bytes=4*1024*1024,max_entries=1))
+            self.assertEqual(records[-1]["attempted"],1)
+            self.assertTrue(records[-1]["limited"])
+
+    def test_other_single_file_sources_do_not_falsely_truncate(self):
+        import tempfile
+        from pathlib import Path
+        for sid in ("SRC-02","SRC-06","SRC-08","SRC-09","SRC-10","SRC-16"):
+            with self.subTest(sid=sid),tempfile.TemporaryDirectory() as temp:
+                path=Path(temp)/"observed"
+                path.write_bytes(b"observed\n")
+                records=list(collect(sid,roots={sid:str(path)},
+                                     max_bytes=1024,max_entries=1))
+                self.assertEqual(records[-1]["attempted"],1)
+                self.assertFalse(records[-1]["limited"])
