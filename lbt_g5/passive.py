@@ -56,12 +56,16 @@ def _transport_decode(payload: bytes, policy):
         if msg.get("unavailable") is True:
             path=str(msg.get("path","UNKNOWN"))[:180]
             code=str(msg.get("error","UNAVAILABLE"))[:50]
-            unavailable.append(code+":"+path)
+            errno_value=msg.get("errno")
+            errno_tag=("["+str(errno_value)+"]") if type(errno_value) is int else ""
+            unavailable.append(code+errno_tag+":"+path)
             continue
         if "error" in msg:
             error_type=str(msg.get("error","READ_FAILED"))[:64]
             source_path=str(msg.get("path","UNSPECIFIED"))[:110]
-            errors.append((error_type+":"+source_path)[:120])
+            errno_value=msg.get("errno")
+            errno_tag=("["+str(errno_value)+"]") if type(errno_value) is int else ""
+            errors.append((error_type+errno_tag+":"+source_path)[:120])
             continue
         if "bytes_b64" not in msg or not isinstance(msg.get("path"),str):
             errors.append("MALFORMED_SOURCE_RECORD");break
