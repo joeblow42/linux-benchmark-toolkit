@@ -23,6 +23,18 @@ jobs:
         run: python3 -m unittest discover -s tests -p 'test_g5_runtime.py' -v
       - name: G5-02 passive, local-only and receipt completion tests
         run: python3 -m unittest discover -s tests -p 'test_g5_completion*.py' -v
+      - name: G5-03 single IC-02 orchestrator contract tests
+        run: python3 -m unittest discover -s tests -p 'test_g5_engine.py' -v
+      - name: G5-03 bounded source wall deadline regression
+        run: python3 -m unittest discover -s tests -p 'test_g5_additional_budget.py' -v
+      - name: G5-03 session-scoped privilege protocol security tests
+        run: python3 -m unittest discover -s tests -p 'test_g5_privilege_contract.py' -v
+      - name: G5-03 standalone root helper and sudo client fixtures (no sudo)
+        run: python3 -m unittest discover -s tests -p 'test_g5_root_helper.py' -v
+      - name: G5-03 privileged SRC-13 original-evidence integration
+        run: python3 -m unittest discover -s tests -p 'test_g5_privilege_integration.py' -v
+      - name: G5-03 TUI single-session privileged helper and consent tests
+        run: python3 -m unittest discover -s tests -p 'test_g5_tui_dev.py' -v
       - name: Unified Full validation (unit and acceptance once)
         run: python3 -m validation.suites full --output validation-results/ci
       - name: Upload unified validation report

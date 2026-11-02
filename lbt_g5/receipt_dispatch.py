@@ -18,7 +18,8 @@ class RecordedOutcome:
     receipt_private_path: str
 
 def capture_and_record(request:SourceRequest,attempt,writer,slots,calls,
-                       *,subcall=0,source14_evidence=None)->RecordedOutcome:
+                       *,subcall=0,source14_evidence=None,
+                       privileged_session=None)->RecordedOutcome:
     policies={p.source_id:p for p in initial_source_policies()}
     policy=policies.get(request.source_id)
     if policy is None:
@@ -31,7 +32,8 @@ def capture_and_record(request:SourceRequest,attempt,writer,slots,calls,
         outcome=acquire_additional(request,attempt,writer,slots,calls,
                                    source14_evidence=source14_evidence)
     elif policy.authorization_class=="O1":
-        outcome=execute_optional(request,attempt,subcall,writer,slots,calls)
+        outcome=execute_optional(request,attempt,subcall,writer,slots,calls,
+                                 privileged_session=privileged_session)
     else:
         raise ValueError("approved source has no bounded adapter")
 

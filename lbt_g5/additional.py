@@ -50,17 +50,30 @@ def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
     targets=[]
     errors=[]
     start=time.monotonic()
+    # A single source-level wall deadline must span *all* mounts, including
+    # process setup and evidence persistence; the call counter tracks only
+    # completed subcall durations and is insufficient as an absolute clock.
+    deadline=start+policy.max_seconds
     try:
         with slots.hold("D1"):
             for i,(label,argv) in enumerate(plans):
+                remaining_wall=deadline-time.monotonic()
+                remaining_calls=calls.remaining(request.run_id,request.source_id)
+                if remaining_wall<=0 or remaining_calls<=0:
+                    limited=True;errors.append("TIME_BUDGET_EXCEEDED");break
                 if not calls.begin(request.run_id,request.source_id,i):
-                    limited=True;errors.append("INVOCATION_LIMIT");break
+                    limited=True
+                    errors.append("TIME_BUDGET_EXCEEDED" if
+                                  calls.remaining(request.run_id,request.source_id)<=0
+                                  else "INVOCATION_LIMIT")
+                    break
                 callstart=time.monotonic()
                 try:
                     binary=_resolve_executable(argv[0])
                     if binary is None:
                         errors.append("EXECUTABLE_NOT_FOUND");break
                     seconds=min(8.0 if request.source_id=="SRC-28" else 2.0,
+                        deadline-time.monotonic(),
                         calls.remaining(request.run_id,request.source_id),
                         writer.meter.time_remaining())
                     if seconds<=0:
@@ -98,8 +111,9 @@ def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
     if receipts and not errors and not limited:
         return out("CAPTURED","BYTES_PRESERVED",receipts,targets,errors,elapsed)
     if receipts:
-        return out("PARTIAL","CAPTURE_LIMIT" if limited else "SOURCE_INCOMPLETE",
-                   receipts,targets,errors,elapsed,limited)
+        reason=("TIME_BUDGET_EXCEEDED" if "TIME_BUDGET_EXCEEDED" in errors
+                else "CAPTURE_LIMIT" if limited else "SOURCE_INCOMPLETE")
+        return out("PARTIAL",reason,receipts,targets,errors,elapsed,limited)
     if "EXECUTABLE_NOT_FOUND" in errors:
         return out("UNAVAILABLE","EXECUTABLE_NOT_FOUND",errors=errors,elapsed=elapsed)
     return out("FAILED","ACQUISITION_ERROR",errors=errors,elapsed=elapsed,limited=limited)

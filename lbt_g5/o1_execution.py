@@ -3,8 +3,8 @@ import time
 from .o1 import plan_optional
 from .runtime import _resolve_executable, _capture_child, ProbeCapacityError
 
-def execute_optional(request,attempt,subcall,writer,slots,calls):
-    """Never used automatically. Caller must present one-run source/target consent."""
+def execute_optional(request,attempt,subcall,writer,slots,calls,*,privileged_session=None):
+    """O1 consent required. Session helper is allowed for SRC-13 only."""
     from .safety import decide_source,initial_source_policies
     policy={p.source_id:p for p in initial_source_policies()}.get(request.source_id)
     auth=decide_source(request,remaining_seconds=writer.meter.time_remaining(),
@@ -24,8 +24,16 @@ def execute_optional(request,attempt,subcall,writer,slots,calls):
             cap=min(plan.max_seconds,calls.remaining(request.run_id,request.source_id),
                     writer.meter.time_remaining())
             if cap<=0:return {"disposition":"DENIED","reason":"TIME_BUDGET_EXCEEDED","receipts":()}
-            captured=_capture_child((binary,)+plan.argv[1:],plan.max_bytes,
-                plan.max_bytes,cap,plan.max_bytes)
+            if privileged_session is not None and request.source_id=="SRC-13":
+                from .privileged_session import PrivilegedSessionError
+                try:
+                    captured=privileged_session.capture(request,plan,seconds=cap)
+                except PrivilegedSessionError:
+                    return {"disposition":"FAILED","reason":"PRIVILEGED_HELPER_ERROR",
+                            "receipts":()}
+            else:
+                captured=_capture_child((binary,)+plan.argv[1:],plan.max_bytes,
+                    plan.max_bytes,cap,plan.max_bytes)
             receipts=[]
             for label,raw in (("stdout",captured.stdout),("stderr",captured.stderr)):
                 if not raw:continue
