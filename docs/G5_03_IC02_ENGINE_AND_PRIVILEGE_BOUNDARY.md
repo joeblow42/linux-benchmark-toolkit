@@ -132,3 +132,23 @@ another targeted Bodhi host run.
 SRC-26 requires examination of the private attempt errors/unavailable-field
 records from a new completed run. Source status cannot be determined solely
 from the earlier PARTIAL summary.
+
+## Privileged helper wire contract prototype — 2026-11-02
+
+The isolated pure-validation module `lbt_g5/privilege_contract.py` now
+defines `lbt-root-helper-1` request envelopes for SRC-13 DEVICE_HEALTH only:
+session identifier, monotonic request sequence, verified UTC run identity,
+selected disk/NVMe node, and strict <=8-MiB / <=12-second limits.
+It rejects unknown keys/operations, arbitrary argv, path traversal,
+duplicate or malformed JSON keys, stale or replayed sequence numbers and
+more than 32 drive-health requests per acquisition run. Contract fixtures
+exercise valid SATA/NVMe and denial/replay/limit/format cases.
+
+**This module is not the privileged helper.** It does not invoke sudo, run
+as root, open devices, or confer authority. The separately installed, root-owned
+helper, IPC/authenticated parent process association, device identity recheck,
+bounded process/stream capture, graceful session teardown and actual
+G5-02 evidence integration remain engineering tasks. The model's
+per-run O1 consent and host D0 discovery requirements remain mandatory.
+Do not claim sudo access or install a helper based only on a passing
+wire-format test.
