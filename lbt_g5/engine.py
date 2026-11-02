@@ -127,7 +127,13 @@ class UnifiedCollectorEngine:
             return frozenset()
         names = {match.group(1) for path in paths
                  if (match := matched.match(path))}
-        if target not in {"/dev/" + name for name in names}:
+        allowed = {"/dev/" + name for name in names}
+        if source_id == "SRC-13":
+            for name in names:
+                controller = re.fullmatch(r"(nvme[0-9]+)n[0-9]+", name)
+                if controller:
+                    allowed.add("/dev/" + controller.group(1))
+        if target not in allowed:
             return frozenset()
         try:
             mode = os.lstat(target).st_mode
@@ -136,6 +142,9 @@ class UnifiedCollectorEngine:
         if os.path.islink(target) or not (
                 stat.S_ISBLK(mode) or
                 (source_id == "SRC-13" and stat.S_ISCHR(mode))):
+            return frozenset()
+        if (source_id == "SRC-13" and stat.S_ISCHR(mode)
+                and not os.path.exists("/sys/class/nvme/" + os.path.basename(target))):
             return frozenset()
         return frozenset((target,))
 
@@ -173,9 +182,11 @@ class UnifiedCollectorEngine:
     def run(self, collector_ids=None, *, o1_requests: Mapping | None = None,
             disabled_sources=()):
         by_owner = self._sources_by_collector()
-        selected = tuple(by_owner if collector_ids is None else collector_ids)
-        if len(selected) != len(set(selected)) or set(selected) - set(by_owner):
+        requested = tuple(by_owner if collector_ids is None else collector_ids)
+        if len(requested) != len(set(requested)) or set(requested) - set(by_owner):
             raise ValueError("unknown or duplicate collector")
+        # Catalog ordering is stable, including D0 dependencies before O1.
+        selected = tuple(cid for cid in by_owner if cid in requested)
         o1 = {} if o1_requests is None else dict(o1_requests)
         disabled = frozenset(disabled_sources)
         policies = {p.source_id: p for p in initial_source_policies()}
