@@ -3,9 +3,11 @@
 No sudo, interactive Dialog, root execution or physical O1 device IO.
 """
 import os
+import io
 import tempfile
 import unittest
 from pathlib import Path
+from contextlib import redirect_stdout
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -133,6 +135,17 @@ class TuiSessionContracts(unittest.TestCase):
         self.assertEqual(auth.call_count,0)
         self.assertEqual(calls,[])
         self.assertTrue(any("Enable privileged" in n for n in dlg.notices))
+
+    def test_tui_exit_prints_run_ids_and_counts_without_raw_paths(self):
+        output=io.StringIO()
+        with redirect_stdout(output):
+            self._run(["os","exit"])
+        body=output.getvalue()
+        self.assertIn("INDEPENDENT",body.upper())
+        self.assertIn("run-2026306182900",body)
+        self.assertIn("integrity=PASS",body)
+        self.assertNotIn("private/evidence",body)
+        self.assertNotIn("/dev/sda",body)
 
     def test_menu_contains_no_report_viewer_or_diagnostics(self):
         items=dict(_MENU)
