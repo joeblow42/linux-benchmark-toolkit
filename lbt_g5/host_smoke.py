@@ -1,14 +1,16 @@
 """G5-03 controlled Linux host verification of the unified IC-02 engine.
 
 DEVELOPMENT TEST ONLY: not the production launcher, schema or public report.
-O1 sources intentionally lack consent and must be DENIED without device access.
-No sudo, no active benchmark, no package installation, no network probes.
+O1 sources require exact operator consent. Only --sudo with explicit
+--device-health and --acknowledge-drive-impact permits privileged SRC-13.
+No active benchmark, automatic package installation or network probes.
 This test creates private immutable original evidence and private receipts.
 """
 import argparse
 import hashlib
 import json
 import os
+import sys
 import time
 from contextlib import ExitStack
 from datetime import datetime, timezone
@@ -17,7 +19,7 @@ from pathlib import Path
 from .catalog import initial_catalog
 from .engine import UnifiedCollectorEngine
 from .safety import SourceConsent, SourceRequest
-from .privileged_session import PrivilegedHealthSession
+from .privileged_session import PrivilegedHealthSession, PrivilegedSessionError
 
 
 def main(argv=None):
@@ -103,15 +105,21 @@ def main(argv=None):
                           consent=SourceConsent(
                               run_id,"SRC-13","DEVICE_HEALTH",target,issued,True))
             for target in opts.device_health)
-    with ExitStack() as stack:
-        session = (stack.enter_context(PrivilegedHealthSession())
-                   if opts.sudo else None)
-        if session is not None:
-            print("Privileged helper: AUTHENTICATED", flush=True)
-        run = engine.run(selected, progress=show_progress,
-                         o1_requests=({"SRC-13":health_requests}
-                                      if health_requests else None),
-                         privileged_session=session)
+    try:
+        with ExitStack() as stack:
+            session = (stack.enter_context(PrivilegedHealthSession())
+                       if opts.sudo else None)
+            if session is not None:
+                print("Privileged helper: AUTHENTICATED", flush=True)
+            run = engine.run(selected, progress=show_progress,
+                             o1_requests=({"SRC-13":health_requests}
+                                          if health_requests else None),
+                             privileged_session=session)
+    except PrivilegedSessionError as exc:
+        print("Privileged helper initialization failed: {}".format(exc),
+              file=sys.stderr, flush=True)
+        print("Evidence directory retained:", folder, file=sys.stderr, flush=True)
+        return 2
     sources = {}
     items = 0
     byte_count = 0
