@@ -104,6 +104,16 @@ class G504CanonicalSession(unittest.TestCase):
         with self.assertRaises(CanonicalContractError):
             validate_canonical(self.folder)
 
+    def test_tamper_original_attempt_receipt_after_commit_rejected(self):
+        x = self.recorded()
+        build_canonical(self.folder, self.run_for(x))
+        receipt = self.folder / x.receipt_private_path
+        current = json.loads(receipt.read_text())
+        current["reason"] = "FORGED_REASON"
+        receipt.write_text(json.dumps(current))
+        with self.assertRaises(CanonicalContractError):
+            validate_canonical(self.folder)
+
     def test_tamper_canonical_after_commit_rejected(self):
         x = self.recorded()
         build_canonical(self.folder, self.run_for(x))
