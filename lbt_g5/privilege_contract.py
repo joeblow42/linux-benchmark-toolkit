@@ -13,6 +13,8 @@ from dataclasses import dataclass
 import json
 import re
 
+from .safety import valid_run_id
+
 PROTOCOL_VERSION = "lbt-root-helper-1"
 MAX_REQUEST_BYTES = 4096
 MAX_RESPONSE_BYTES = 12 * 1024 * 1024  # framing ceiling; output still <= 8 MiB
@@ -42,8 +44,16 @@ def _decode_wire(raw: bytes) -> dict:
         raise PrivilegeContractError("invalid request frame")
     if b"\x00" in raw or b"\n" in raw or b"\r" in raw:
         raise PrivilegeContractError("only one JSON frame is allowed")
+    def reject_duplicate_fields(pairs):
+        obj = {}
+        for key, value in pairs:
+            if key in obj:
+                raise PrivilegeContractError("duplicate JSON field")
+            obj[key] = value
+        return obj
     try:
-        doc = json.loads(raw.decode("utf-8"))
+        doc = json.loads(raw.decode("utf-8"),
+                         object_pairs_hook=reject_duplicate_fields)
     except (ValueError, UnicodeError) as exc:
         raise PrivilegeContractError("malformed JSON") from exc
     if type(doc) is not dict:
@@ -89,6 +99,7 @@ class HealthSessionContract:
         byte_limit = doc["max_bytes"]
         seconds = doc["max_seconds"]
         if (type(run_id) is not str or not _RUN_ID.fullmatch(run_id)
+                or not valid_run_id(run_id)
                 or type(target) is not str or not _DEVICE.fullmatch(target)
                 or type(seq) is not int or seq != self._sequence+1):
             raise PrivilegeContractError("invalid run, target or sequence")
