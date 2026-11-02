@@ -103,3 +103,32 @@ The script verifies SHA-256 for all actually captured original artifacts and
 prints transport dispositions and counts, not collected private data.
 One local test is NOT whole-project release/host acceptance; inspect partial,
 unavailable and denied outcomes before asserting source coverage.
+
+## Bodhi host anomaly investigation (2026-11-02)
+
+The initial full IC-02 Bodhi smoke run 2026306040218 captured 28 source
+families, 29 attempts, 307 immutable artifacts and 99,503 original bytes,
+all SHA-256 PASS. Its temporary-directory evidence was later unavailable.
+
+A second targeted persistent-storage run 2026306162501 reported no per-source
+progress after startup because the old harness displayed results only at the
+end. The preserved private receipts show SRC-14 CAPTURED (0.033 s), SRC-15
+PARTIAL/CAPTURE_LIMIT (19.515 s, error INVOCATION_LIMIT, the receipt-specific
+artifact count was not included in the diagnostic extract), and SRC-16 CAPTURED (0.032 s). No SRC-17
+receipt was committed before the run stopped. SRC-17's cause is **unknown**:
+absence of its receipt proves no committed outcome, not that the optical device
+was absent. /sys/class/block/sr0 and /dev/sr0 were visible at a later check.
+
+The SRC-15 adapter previously enforced its 15-second source budget by
+accounting for completed subcalls; it could exceed that ceiling and conflate
+exhausted time with invocation-count limits. Corrected in G5-03 by applying a
+source-level monotonic wall-clock deadline to each future worker and by
+recording TIME_BUDGET_EXCEEDED instead of INVOCATION_LIMIT/CAPTURE_LIMIT when
+the cumulative time is exhausted. The host smoke harness now announces each
+BEGIN and END/ERROR immediately with elapsed timing. This does not increase
+any approved G4-07 source limit. Negative fixture and CI evidence must precede
+another targeted Bodhi host run.
+
+SRC-26 requires examination of the private attempt errors/unavailable-field
+records from a new completed run. Source status cannot be determined solely
+from the earlier PARTIAL summary.
