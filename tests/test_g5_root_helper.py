@@ -67,9 +67,8 @@ class RootHelperFixtures(unittest.TestCase):
                         b'{"protocol":"lbt-root-helper-1","protocol":"override"}\n'):
             with self.subTest(payload=payload[:60]):
                 out=io.BytesIO()
-                with self.assertRaises(AssertionError) if False else _noop_context():
-                    code=helper.serve(TAG,io.BytesIO(payload),out,
-                        executor=lambda m: self.fail("untrusted helper execution"))
+                code=helper.serve(TAG,io.BytesIO(payload),out,
+                    executor=lambda m: self.fail("untrusted helper execution"))
                 self.assertNotEqual(code,0)
 
     def test_frame_size_rejected_before_execution(self):
@@ -101,10 +100,6 @@ class RootHelperFixtures(unittest.TestCase):
         finally:
             client.proc=None
 
-
-class _noop_context:
-    def __enter__(self):return self
-    def __exit__(self,*exc):return False
 
 
 if __name__=="__main__":
