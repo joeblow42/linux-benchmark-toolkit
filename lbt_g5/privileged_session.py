@@ -10,7 +10,7 @@ import json
 import os
 import secrets
 import select
-import shutil
+import stat
 import subprocess
 import time
 
@@ -91,6 +91,16 @@ class PrivilegedHealthSession:
         if not (os.path.isfile(PYTHON) and os.path.isfile(SUDO)
                 and os.path.isfile(HELPER)):
             raise PrivilegedSessionError("sudo or installed root-owned helper unavailable")
+        # Fail before prompting if root executable could be replaced by a user.
+        for checked in ("/usr/local","/usr/local/libexec",
+                        "/usr/local/libexec/lbt",HELPER):
+            try:
+                info = os.lstat(checked)
+            except OSError as exc:
+                raise PrivilegedSessionError("missing trusted helper installation") from exc
+            if (info.st_uid != 0 or info.st_mode & 0o022
+                    or stat.S_ISLNK(info.st_mode)):
+                raise PrivilegedSessionError("unsafe installed helper ownership")
         try:
             tty_fd = os.open("/dev/tty", os.O_RDONLY | os.O_NOCTTY)
         except OSError as exc:
