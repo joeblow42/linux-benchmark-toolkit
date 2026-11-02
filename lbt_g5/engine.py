@@ -51,7 +51,8 @@ class UnifiedCollectorEngine:
     """One run, one source dispatcher, one shared budget/concurrency boundary.
 
     Run directory must already exist; lifecycle/manifest naming is G5-04.
-    O1 requires a valid exact-source, exact-run consent AND a device discovered
+    O1 accepts per-source bounded target requests, each requiring exact-run
+    consent AND a device discovered
     through this run's sealed D0 inventory. A caller cannot assert trust merely
     by populating SourceRequest.trusted_targets.
     """
@@ -187,20 +188,33 @@ class UnifiedCollectorEngine:
             raise ValueError("unknown or duplicate collector")
         # Catalog ordering is stable, including D0 dependencies before O1.
         selected = tuple(cid for cid in by_owner if cid in requested)
-        o1 = {} if o1_requests is None else dict(o1_requests)
+        inputs = {} if o1_requests is None else dict(o1_requests)
         disabled = frozenset(disabled_sources)
         policies = {p.source_id: p for p in initial_source_policies()}
         active = {source.source_id for cid in selected for source in by_owner[cid]}
-        if set(o1) - active or disabled - active:
+        if set(inputs) - active or disabled - active:
             raise ValueError("unselected or unknown source")
-        for sid, req in o1.items():
-            if (policies[sid].authorization_class != "O1"
-                    or not isinstance(req, SourceRequest)
-                    or req.run_id != self.run_id
-                    or req.source_id != sid
-                    or req.operation_id != policies[sid].operation_id
-                    or req.override_argv is not None or req.override_path is not None):
-                raise ValueError("invalid or non-O1 source request")
+        o1 = {}
+        for sid, submitted in inputs.items():
+            policy = policies[sid]
+            if policy.authorization_class != "O1":
+                raise ValueError("non-O1 source request")
+            requests = ((submitted,) if isinstance(submitted, SourceRequest)
+                        else tuple(submitted) if isinstance(submitted, (list, tuple))
+                        else ())
+            if not requests or len(requests) > policy.max_entries:
+                raise ValueError("invalid O1 request count")
+            targets = set()
+            for req in requests:
+                if (not isinstance(req, SourceRequest)
+                        or req.run_id != self.run_id
+                        or req.source_id != sid
+                        or req.operation_id != policy.operation_id
+                        or req.override_argv is not None or req.override_path is not None
+                        or not isinstance(req.target, str) or req.target in targets):
+                    raise ValueError("invalid, duplicate or non-O1 source request")
+                targets.add(req.target)
+            o1[sid] = requests
         with self._once_lock:
             if self._used:
                 raise RuntimeError("IC-02 engine is single-use per run")
@@ -214,23 +228,27 @@ class UnifiedCollectorEngine:
                 sid = source.source_id
                 policy = policies[sid]
                 if policy.authorization_class == "O1":
-                    request = o1.get(sid, SourceRequest(
-                        self.run_id, sid, policy.operation_id))
-                    request = replace(request,
-                        trusted_targets=self._trusted_targets(
-                            sid, request.target, receipts_by_source),
-                        operator_disabled=(sid in disabled or request.operator_disabled))
+                    requests = o1.get(sid, (SourceRequest(
+                        self.run_id, sid, policy.operation_id),))
                 else:
-                    request = SourceRequest(self.run_id, sid, policy.operation_id,
-                                            operator_disabled=sid in disabled)
-                for subcall in _SUBCALLS.get(sid, (0,)):
-                    attempt = "%02d" % (subcall + 1)
-                    source14 = (self._mountinfo_original(receipts_by_source)
-                                if sid == "SRC-15" else None)
-                    recorded = capture_and_record(
-                        request, attempt, self.writer, self.slots, self.calls,
-                        subcall=subcall, source14_evidence=source14)
-                    attempts.append(recorded)
-                    receipts_by_source.setdefault(sid, []).append(recorded)
+                    requests = (SourceRequest(self.run_id, sid, policy.operation_id,
+                                             operator_disabled=sid in disabled),)
+                for index, request in enumerate(requests):
+                    if policy.authorization_class == "O1":
+                        request = replace(request,
+                            trusted_targets=self._trusted_targets(
+                                sid, request.target, receipts_by_source),
+                            operator_disabled=(sid in disabled or request.operator_disabled))
+                    subcalls = (_SUBCALLS.get(sid, (0,))
+                                if policy.authorization_class != "O1" else (index,))
+                    for subcall in subcalls:
+                        attempt = "%02d" % (subcall + 1)
+                        source14 = (self._mountinfo_original(receipts_by_source)
+                                    if sid == "SRC-15" else None)
+                        recorded = capture_and_record(
+                            request, attempt, self.writer, self.slots, self.calls,
+                            subcall=subcall, source14_evidence=source14)
+                        attempts.append(recorded)
+                        receipts_by_source.setdefault(sid, []).append(recorded)
             collected.append(CollectorRun(cid, tuple(attempts)))
         return EngineRun(self.run_id, tuple(collected))
