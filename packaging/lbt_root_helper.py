@@ -150,14 +150,15 @@ def _device_kind(path):
 
 
 def _stop(proc):
-    if proc.poll() is not None:
-        return
+    # The direct child may have exited while descendants still hold pipes.
+    # Kill the entire dedicated group even after its leader has exited.
     try:
         os.killpg(proc.pid, signal.SIGKILL)
     except ProcessLookupError:
         pass
     except OSError:
-        proc.kill()
+        if proc.poll() is None:
+            proc.kill()
 
 
 def _run_capture(argv, byte_limit, seconds):
