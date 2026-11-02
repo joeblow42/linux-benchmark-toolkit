@@ -6,6 +6,7 @@ import json
 import os
 import subprocess
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -14,6 +15,8 @@ from unittest.mock import patch
 from lbt_g5.privileged_session import PrivilegedHealthSession, PrivilegedSessionError
 from lbt_g5.privilege_contract import PROTOCOL_VERSION
 from lbt_g5.safety import SourceConsent, SourceRequest
+from datetime import datetime, timezone
+from lbt_g5.o1 import OptionalSourcePlan
 
 FILE=Path(__file__).resolve().parents[1]/"packaging"/"lbt_root_helper.py"
 spec=importlib.util.spec_from_file_location("testable_standalone_lbt_helper",FILE)
@@ -85,6 +88,56 @@ class RootHelperFixtures(unittest.TestCase):
     def test_no_arbitrary_helper_location(self):
         with self.assertRaises(PrivilegedSessionError):
             PrivilegedHealthSession(helper_path="/tmp/user-owned-helper.py")
+
+    def test_two_privileged_client_captures_reuse_one_pipe_session(self):
+        """Full client/server wire path using a fake executor, never sudo/root."""
+        client=PrivilegedHealthSession()
+        req_in, req_out = os.pipe()
+        rep_in, rep_out = os.pipe()
+        called=[]
+        thread_errors=[]
+        def execute(message):
+            called.append(message["target"])
+            raw=b"test-only original "+message["target"].encode()
+            return dict(returncode=0,elapsed_seconds=.05,
+                        timed_out=False,exceeded_limit=False,
+                        stdout_b64=base64.b64encode(raw).decode(),
+                        stderr_b64="",stdout_omitted_at_least=0,
+                        stderr_omitted_at_least=0)
+        def server():
+            try:
+                with os.fdopen(req_in,"rb",buffering=0) as source:
+                    with os.fdopen(rep_out,"wb",buffering=0) as sink:
+                        helper.serve(client.tag,source,sink,executor=execute)
+            except BaseException as error:
+                thread_errors.append(error)
+        worker=threading.Thread(target=server,daemon=True)
+        worker.start()
+        read_pipe=os.fdopen(rep_in,"rb",buffering=0)
+        write_pipe=os.fdopen(req_out,"wb",buffering=0)
+        client.proc=SimpleNamespace(
+            stdin=write_pipe,stdout=read_pipe,
+            poll=lambda:None,wait=lambda timeout=None:worker.join(timeout))
+        try:
+            self.assertTrue(client._read_frame(2.0)["ready"])
+            for target in ("/dev/sda","/dev/nvme0"):
+                consent=SourceConsent(RUN,"SRC-13","DEVICE_HEALTH",target,
+                                      datetime.now(timezone.utc),True)
+                req=SourceRequest(RUN,"SRC-13","DEVICE_HEALTH",target=target,
+                                  consent=consent,
+                                  trusted_targets=frozenset((target,)))
+                plan=OptionalSourcePlan("SRC-13","DEVICE_HEALTH",target,
+                    ("smartctl","-i","-H",target),4096,2,"may wake drive")
+                capture=client.capture(req,plan,seconds=2.0)
+                self.assertEqual(capture.stdout,
+                                 b"test-only original "+target.encode())
+            self.assertEqual(called,["/dev/sda","/dev/nvme0"])
+            self.assertEqual(client.sequence,2)
+        finally:
+            client.close()
+            worker.join(timeout=2)
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(thread_errors,[])
 
     def test_unprivileged_client_can_parse_real_protocol_fixture(self):
         client=PrivilegedHealthSession()
