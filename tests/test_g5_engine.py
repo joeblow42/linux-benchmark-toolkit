@@ -191,5 +191,62 @@ class UnifiedEngineContracts(unittest.TestCase):
         self.assertEqual(record["evidence_ids"], [])
 
 
+    def test_explicit_collector_order_does_not_bypass_d0_inventory(self):
+        observed = []
+        with patch("lbt_g5.engine.capture_and_record",
+                   side_effect=lambda request, *args, **kwargs:
+                   (observed.append(request.source_id) or result())):
+            run = self.engine.run(("COL-VAAPI", "COL-GPU"))
+        self.assertEqual([c.collector_id for c in run.collectors],
+                         ["COL-GPU", "COL-VAAPI"])
+        self.assertEqual(observed, ["SRC-19", "SRC-20", "SRC-21"])
+
+    def test_multiple_o1_targets_have_separate_bounded_attempts(self):
+        policy = next(p for p in initial_source_policies() if p.source_id=="SRC-13")
+        requests = (
+            SourceRequest(RUN,"SRC-13",policy.operation_id,target="/dev/sda"),
+            SourceRequest(RUN,"SRC-13",policy.operation_id,target="/dev/sdb"),
+        )
+        seen = []
+        with patch("lbt_g5.engine.capture_and_record",
+                   side_effect=lambda req, attempt, *args, **kwargs:
+                   (seen.append((req.target, attempt, kwargs["subcall"])) or
+                    result("DENIED"))):
+            run = self.engine.run(("COL-BLOCK",),o1_requests={"SRC-13":requests})
+        self.assertEqual(run.source_attempt_count, 4)  # 11,12 plus 13 twice
+        self.assertEqual(seen[-2:],
+                         [("/dev/sda","01",0),("/dev/sdb","02",1)])
+
+    def test_duplicate_o1_device_and_source_limit_rejected_early(self):
+        policy = next(p for p in initial_source_policies() if p.source_id=="SRC-13")
+        one = SourceRequest(RUN,"SRC-13",policy.operation_id,target="/dev/sda")
+        with patch("lbt_g5.engine.capture_and_record") as capture:
+            with self.assertRaises(ValueError):
+                self.engine.run(("COL-BLOCK",),o1_requests={"SRC-13":(one,one)})
+            capture.assert_not_called()
+
+    def test_one_vaapi_device_per_run_enforced(self):
+        policy = next(p for p in initial_source_policies() if p.source_id=="SRC-21")
+        one = SourceRequest(RUN,"SRC-21",policy.operation_id,target="/dev/dri/renderD128")
+        two = SourceRequest(RUN,"SRC-21",policy.operation_id,target="/dev/dri/renderD129")
+        with patch("lbt_g5.engine.capture_and_record") as capture:
+            with self.assertRaises(ValueError):
+                self.engine.run(("COL-VAAPI",),o1_requests={"SRC-21":(one,two)})
+            capture.assert_not_called()
+
+    def test_nvme_controller_requires_sealed_namespace_inventory(self):
+        import stat
+        receipt = SimpleNamespace(source_id="SRC-12")
+        self.assertEqual(self.engine._trusted_targets(
+            "SRC-13","/dev/nvme0",{}),frozenset())
+        seen = {"SRC-12":[result(paths=("/sys/class/block/nvme0n1/size",),
+                                  artifacts=(receipt,))]}
+        with patch("lbt_g5.engine.os.lstat",
+                   return_value=SimpleNamespace(st_mode=stat.S_IFCHR)):
+            with patch("lbt_g5.engine.os.path.exists",return_value=True):
+                self.assertEqual(self.engine._trusted_targets(
+                    "SRC-13","/dev/nvme0",seen),frozenset({"/dev/nvme0"}))
+
+
 if __name__=="__main__":
     unittest.main()
