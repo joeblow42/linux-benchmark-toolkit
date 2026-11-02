@@ -152,3 +152,74 @@ G5-02 evidence integration remain engineering tasks. The model's
 per-run O1 consent and host D0 discovery requirements remain mandatory.
 Do not claim sudo access or install a helper based only on a passing
 wire-format test.
+
+
+## G5-03 restricted privileged helper test readiness (not final package)
+
+The G5-03 development-only CLI entry point supports:
+- 'python3 -m lbt_g5.host_smoke --sudo' — request **one sudo/administrator
+  authentication at application initiation** and hold a session-scoped helper
+  for that run, even if no drive-health target is specified.
+- '--device-health /dev/sdX' (repeatable for different approved devices) and
+  '--acknowledge-drive-impact' — explicitly authorize SRC-13 drive-health
+  operations with the standard IC-02 D0 inventory check and O1 exact-target
+  consent. A sudo login is NOT itself consent. Without these options,
+  SRC-13 continues to record DENIED/OPERATOR_AUTH_REQUIRED.
+- The main LBT process and original-evidence writer remain the invoking user;
+  the installed helper returns bounded original bytes over private stdin/stdout
+  pipes and accepts only fixed smartctl -i -H /dev/sdX or nvme smart-log
+  /dev/nvmeX operations.
+
+There is no permission to launch an arbitrary program with root privileges
+through these options. No password is read or retained by LBT. The helper
+is bootstrapped only once by sudo -k; its session ends when the CLI exits.
+The existing generic G4-07 primary-app euid==0 prohibition remains active.
+
+### Controlled standalone helper installation
+
+From the verified branch, review 'packaging/lbt_root_helper.py' before
+installation. An interactive administrator must install this *standalone*
+script into a root-owned, non-group/world-writable directory; **never** run
+the user-writable checkout source directly under sudo. The following is
+a **manual, privileged host setup** and is not performed by the CLI:
+
+    sudo install -d -o root -g root -m 0755 /usr/local/libexec/lbt
+    sudo install -o root -g root -m 0644 \
+       packaging/lbt_root_helper.py /usr/local/libexec/lbt/lbt-root-helper.py
+    stat -c '%U:%G %a %n' /usr/local/libexec/lbt /usr/local/libexec/lbt/lbt-root-helper.py
+
+The installed file and every parent must be root-owned and not writable
+by ordinary users. The helper independently checks its installation path
+and access mode when invoked under sudo. There are no permissions grants
+to raw disk devices, no new sudoers rules, no setuid executables and no
+password storage.
+
+### Recommended two-stage host readiness tests
+
+From repository root on Bodhi Linux 7 AMD64, with persistent
+owner-restricted evidence:
+
+    python3 -m lbt_g5.host_smoke --sudo \
+       --output-root "$HOME/lbt-g5-03-verify/evidence" \
+       --collectors COL-OS
+
+Expected: sudo prompts at most once, helper reports AUTHENTICATED,
+collector D0 passes, no drive query is performed; inspect the exit status.
+Next, only for individually selected locally discovered devices
+after approving the may-wake-drive impact:
+
+    python3 -m lbt_g5.host_smoke --sudo \
+       --output-root "$HOME/lbt-g5-03-verify/evidence" \
+       --collectors COL-BLOCK \
+       --device-health /dev/sda --acknowledge-drive-impact
+
+Never substitute another machine's device ID without verifying its own
+host inventory. The result must retain original output and exit code in
+user-owned private evidence. A permission denial, missing tool, missing
+installed helper, user cancellation or helper failure must remain explicit.
+
+**Limits / outstanding acceptance:** CLI proof remains pending on Bodhi.
+The privilege protocol has non-root regression coverage, but no actual sudo
+or SMART host result has been verified in this increment. Restrict this
+helper to local development pending independent security review and packaging
+hardening. No production launcher cutover or G5 gate closure implied.
