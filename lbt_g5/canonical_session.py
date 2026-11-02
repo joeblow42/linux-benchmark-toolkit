@@ -48,7 +48,9 @@ def _check_run(path, run_id):
     _check_private_dir(path)
     _check_private_dir(path / "private")
     _check_private_dir(path / "private" / "source_attempt_records")
-    _check_private_dir(path / "private" / "evidence")
+    # Denied-only and zero-observation runs need not have an evidence folder.
+    if os.path.lexists(path / "private" / "evidence"):
+        _check_private_dir(path / "private" / "evidence")
 
 
 def _read_restricted(path, ceiling):
