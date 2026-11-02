@@ -167,6 +167,7 @@ class OperatorTui:
         self.helper_factory = helper_factory or PrivilegedHealthSession
         self.engine_factory = engine_factory
         self._helper = None
+        self._sudo_attempted = False
         self._sessions = 0
 
     def _acquire(self, choice, device=None):
@@ -206,13 +207,22 @@ class OperatorTui:
         # The helper context spans the complete menu lifetime.
         with ExitStack() as stack:
             if sudo:
+                self._sudo_attempted = True
                 self._helper = stack.enter_context(self.helper_factory())
             while True:
                 choice = self.dialog.menu(self._helper is not None)
                 if choice == "exit":
                     break
                 if choice == "enable":
-                    if self._helper is None:
+                    if self._helper is not None:
+                        self.dialog.notice("Privileged helper already active. "
+                                           "No second password prompt is needed.")
+                    elif self._sudo_attempted:
+                        self.dialog.notice(
+                            "Administrator authentication was already attempted "
+                            "in this TUI session. Restart LBT to try again.")
+                    else:
+                        self._sudo_attempted = True
                         try:
                             self._helper = stack.enter_context(self.helper_factory())
                             self.dialog.notice(
@@ -221,9 +231,6 @@ class OperatorTui:
                         except PrivilegedSessionError:
                             self.dialog.notice("Administrator authentication failed. "
                                                "Unprivileged collection remains available.")
-                    else:
-                        self.dialog.notice("Privileged helper already active. "
-                                           "No second password prompt is needed.")
                     continue
                 if choice == "health":
                     device = self.dialog.device()
