@@ -227,8 +227,8 @@ def build_canonical(run_directory, engine_run):
                 r"private/source_attempt_records/SRC-[0-9]{2,}-[0-9]{2,}\.json",
                 receipt_path)):
             raise CanonicalContractError("invalid receipt location")
-        metadata = _json_load(_read_restricted(folder / receipt_path,
-                                                MAX_RECEIPT_BYTES))
+        receipt_raw = _read_restricted(folder / receipt_path, MAX_RECEIPT_BYTES)
+        metadata = _json_load(receipt_raw)
         source_id = metadata.get("source_id")
         policy = policies.get(source_id)
         attempt_id = metadata.get("attempt_id")
@@ -303,6 +303,8 @@ def build_canonical(run_directory, engine_run):
             limit_record_ids=([limit_id] if limit_id else [])))
         attempts.append({
             "attempt_id": attempt_id, "receipt_private_path": receipt_path,
+            "receipt_sha256": hashlib.sha256(receipt_raw).hexdigest(),
+            "receipt_byte_count": len(receipt_raw),
             "source_id": source_id, "collector_id": policy.collector_id,
             "source_disposition": metadata["outcome"],
             "source_reason": metadata["reason"],
@@ -427,6 +429,21 @@ def validate_canonical(run_directory):
         validate_status_record(status, evidence_ids=evidence,
                                attempt_ids=attempt_ids, limit_ids=limits)
     for a in attempts:
+        receipt_path = a.get("receipt_private_path")
+        if receipt_path != ("private/source_attempt_records/" + a["attempt_id"] + ".json"):
+            raise CanonicalContractError("attempt receipt path invalid")
+        receipt_raw = _read_restricted(folder / receipt_path,
+                                       a["receipt_byte_count"])
+        if (len(receipt_raw) != a["receipt_byte_count"]
+                or hashlib.sha256(receipt_raw).hexdigest() != a["receipt_sha256"]):
+            raise CanonicalContractError("original source attempt receipt altered")
+        receipt_record = _json_load(receipt_raw)
+        if (receipt_record.get("run_id") != run_id
+                or receipt_record.get("attempt_id") != a["attempt_id"]
+                or receipt_record.get("source_id") != a["source_id"]
+                or receipt_record.get("evidence_ids") != a["evidence_ids"]
+                or receipt_record.get("acquired_bytes") != a["capture_bytes"]):
+            raise CanonicalContractError("source receipt/canonical disagreement")
         if a["status_record_id"] not in {x["record_id"] for x in statuses}:
             raise CanonicalContractError("dangling status reference")
         if any(e not in evidence or evidence[e]["source_attempt_id"] != a["attempt_id"]
