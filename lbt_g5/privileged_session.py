@@ -182,7 +182,7 @@ class PrivilegedHealthSession:
                 response["timed_out"],response["exceeded_limit"],
                 response["stdout_omitted_at_least"],
                 response["stderr_omitted_at_least"])
-        except (OSError, ValueError, binascii.Error,
+        except (OSError, ValueError, TypeError, binascii.Error,
                 PrivilegeContractError, PrivilegedSessionError) as exc:
             self.close()
             raise PrivilegedSessionError("privileged request failed") from exc
