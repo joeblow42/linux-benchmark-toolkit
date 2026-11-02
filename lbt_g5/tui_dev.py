@@ -169,6 +169,7 @@ class OperatorTui:
         self._helper = None
         self._sudo_attempted = False
         self._sessions = 0
+        self._completed = []
 
     def _acquire(self, choice, device=None):
         run_id = _run_id()
@@ -188,6 +189,7 @@ class OperatorTui:
                              privileged_session=self._helper)
         totals = verify_acquisition(outcome,folder)
         self._sessions += 1
+        self._completed.append((run_id, totals))
         # The TUI displays operational completion only, no report viewer/links.
         return ("Run "+run_id+"\nSources: "+str(totals[0])+
                 " | Attempts: "+str(totals[1])+
@@ -252,6 +254,14 @@ class OperatorTui:
                     self.dialog.notice("Acquisition interrupted: "+type(exc).__name__+
                                        ". Private evidence is retained.")
         self._helper = None
+        print("G5-03 DEVELOPMENT TUI SESSION COMPLETE",flush=True)
+        print("Administrator authentication attempts:",
+              int(self._sudo_attempted),flush=True)
+        print("Independent IC-02 acquisitions:",self._sessions,flush=True)
+        for run_id, totals in self._completed:
+            print("{} families={} attempts={} artifacts={} bytes={} "
+                  "noncaptured={} integrity=PASS".format(
+                      run_id,*totals),flush=True)
         return 0
 
 
