@@ -139,6 +139,32 @@ class RootHelperFixtures(unittest.TestCase):
         self.assertFalse(worker.is_alive())
         self.assertEqual(thread_errors,[])
 
+    def test_host_cli_sudo_flag_uses_one_session_at_startup(self):
+        from lbt_g5.host_smoke import main
+        from lbt_g5.engine import EngineRun
+        from unittest.mock import Mock
+        if os.geteuid()==0:
+            self.skipTest("main toolkit may not run as root")
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch("lbt_g5.host_smoke.PrivilegedHealthSession") as session:
+                session.return_value.__enter__.return_value=Mock()
+                with patch("lbt_g5.host_smoke.UnifiedCollectorEngine") as engine:
+                    engine.return_value.run.return_value=EngineRun(RUN,())
+                    self.assertEqual(main(["--sudo","--collectors","COL-OS",
+                                           "--output-root",tmp]),0)
+                    self.assertEqual(session.return_value.__enter__.call_count,1)
+                    self.assertEqual(engine.return_value.run.call_count,1)
+
+    def test_cli_rejects_drive_without_sudo_and_consent(self):
+        from lbt_g5.host_smoke import main
+        with self.assertRaises(SystemExit):
+            main(["--device-health","/dev/sda","--acknowledge-drive-impact"])
+        with self.assertRaises(SystemExit):
+            main(["--sudo","--device-health","/dev/sda"])
+        with self.assertRaises(SystemExit):
+            main(["--sudo","--device-health","/dev/sda",
+                  "--acknowledge-drive-impact","--collectors","COL-MEM"])
+
     def test_unprivileged_client_can_parse_real_protocol_fixture(self):
         client=PrivilegedHealthSession()
         payload=(json.dumps({"protocol":PROTOCOL_VERSION,"session":client.tag,
