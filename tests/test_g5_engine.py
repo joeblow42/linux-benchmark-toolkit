@@ -248,5 +248,19 @@ class UnifiedEngineContracts(unittest.TestCase):
                     "SRC-13","/dev/nvme0",seen),frozenset({"/dev/nvme0"}))
 
 
+    def test_developer_host_harness_uses_the_same_engine(self):
+        import os
+        from lbt_g5.host_smoke import main
+        if os.geteuid() == 0:
+            self.skipTest("G4-07 disallows root")
+        target = Path(self.tmp.name) / "host"
+        self.assertEqual(main([
+            "--output-root", str(target), "--collectors", "COL-MEM"]), 0)
+        sessions = list(target.glob("run-*"))
+        self.assertEqual(len(sessions), 1)
+        self.assertEqual(len(list(
+            (sessions[0] / "private" / "source_attempt_records").glob("*.json"))), 3)
+
+
 if __name__=="__main__":
     unittest.main()
