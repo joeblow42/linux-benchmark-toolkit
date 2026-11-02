@@ -31,6 +31,8 @@ STDOUT_MAX = 12 * 1024 * 1024
 OUTPUT_MAX = 8 * 1024 * 1024
 SECONDS_MAX = 12.0
 MAX_COUNT = 32
+MAX_RUN_BYTES = 32 * 1024 * 1024
+MAX_RUN_SECONDS = 60.0
 FIELDS = frozenset(("protocol","session","sequence","run_id","source_id",
                     "operation_id","target","max_bytes","max_seconds"))
 _TOOLS = {
@@ -250,6 +252,23 @@ def _send(pipe, frame):
     pipe.flush()
 
 
+def _limit_run_request(msg, usage):
+    """Independently enforce cumulative G4-07 SRC-13 limits per run.
+
+    An already exhausted run never executes a device command. The original
+    per-target bound remains in effect in addition to the run-wide budget.
+    """
+    used = usage.get(msg["run_id"], (0, 0.0))
+    remaining_bytes = MAX_RUN_BYTES - used[0]
+    remaining_seconds = MAX_RUN_SECONDS - used[1]
+    if remaining_bytes <= 0 or remaining_seconds <= 0:
+        raise Rejected("RUN_BUDGET_EXHAUSTED")
+    limited = dict(msg)
+    limited["max_bytes"] = min(msg["max_bytes"], remaining_bytes)
+    limited["max_seconds"] = min(float(msg["max_seconds"]), remaining_seconds)
+    return limited
+
+
 def serve(tag, source, sink, executor=None):
     """Bounded line protocol. Injectable executor for tests; no runtime injection."""
     if type(tag) is not str or not SESSION_RE.fullmatch(tag):
@@ -258,6 +277,7 @@ def serve(tag, source, sink, executor=None):
     _send(sink, {"protocol": PROTOCOL,"session":tag,"ready":True})
     sequence = 1
     counts = {}
+    run_usage = {}
     while True:
         raw = source.readline(REQUEST_MAX+2)
         if raw == b"":
@@ -270,15 +290,37 @@ def serve(tag, source, sink, executor=None):
         except Rejected as exc:
             _send(sink,{"protocol":PROTOCOL,"session":tag,"error":str(exc)})
             return 65
-        # Reserve before touching any device so errors cannot permit a replay.
+        # Reserve before touching any device; even a rejected budget consumes
+        # its sequence number, so the caller cannot retry the same request.
         sequence += 1
         counts[msg["run_id"]] = counts.get(msg["run_id"],0)+1
         try:
-            captured = execute(msg)
+            bounded = _limit_run_request(msg, run_usage)
+        except Rejected:
+            _send(sink,{"protocol":PROTOCOL,"session":tag,
+                        "sequence":msg["sequence"],
+                        "error":"RUN_BUDGET_EXHAUSTED"})
+            continue
+        started = time.monotonic()
+        try:
+            captured = execute(bounded)
         except (OSError, Rejected) as exc:
+            elapsed = max(0.0,time.monotonic()-started)
+            previous = run_usage.get(msg["run_id"],(0,0.0))
+            run_usage[msg["run_id"]] = (previous[0],previous[1]+elapsed)
             _send(sink,{"protocol":PROTOCOL,"session":tag,
                        "sequence":msg["sequence"],"error":type(exc).__name__})
             continue
+        # The installed executor controls these fields; account for actual
+        # original bytes and monotonic elapsed time even when no data returns.
+        # The fixture executor has the same contract for offline tests.
+        original_bytes = sum(len(base64.b64decode(captured[field]))
+                             for field in ("stdout_b64","stderr_b64"))
+        elapsed = max(float(captured["elapsed_seconds"]),
+                      max(0.0,time.monotonic()-started))
+        previous = run_usage.get(msg["run_id"],(0,0.0))
+        run_usage[msg["run_id"]] = (
+            previous[0]+original_bytes, previous[1]+elapsed)
         _send(sink, dict(protocol=PROTOCOL, session=tag,
                          sequence=msg["sequence"], **captured))
 
