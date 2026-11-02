@@ -150,5 +150,46 @@ class UnifiedEngineContracts(unittest.TestCase):
         self.assertIs(engine.capture_and_record.__module__ == "lbt_g5.receipt_dispatch", True)
 
 
+    def test_real_unprivileged_memory_collector_seals_original_bytes(self):
+        """Actual Linux /proc integration through IC-02, not a mocked worker."""
+        import hashlib
+        import json
+        import os
+        if os.geteuid() == 0:
+            self.skipTest("G4-07 disallows root")
+        outcome = self.engine.run(("COL-MEM",))
+        self.assertEqual(outcome.source_attempt_count, 3)
+        by_source = dict(zip(("SRC-08","SRC-09","SRC-10"),
+                             outcome.collectors[0].source_attempts))
+        memory = by_source["SRC-08"].outcome
+        self.assertEqual(memory.disposition, "CAPTURED")
+        self.assertTrue(memory.artifacts)
+        for receipt in memory.artifacts:
+            raw = (self.folder / receipt.private_relative_path).read_bytes()
+            self.assertEqual(len(raw), receipt.byte_count)
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), receipt.sha256)
+        for recorded in outcome.collectors[0].source_attempts:
+            private = self.folder / recorded.receipt_private_path
+            self.assertTrue(private.is_file())
+            meta = json.loads(private.read_text())
+            self.assertTrue(meta["status_record_pending"])
+            self.assertEqual(meta["run_id"], RUN)
+            self.assertEqual(meta["collector_id"], "COL-MEM")
+
+    def test_real_optional_attempt_without_consent_never_invokes_device(self):
+        """Use true G5-02 dispatcher: denied O1 writes receipt, no VAAPI probe."""
+        import json
+        if __import__("os").geteuid() == 0:
+            self.skipTest("G4-07 disallows root")
+        outcome = self.engine.run(("COL-VAAPI",))
+        self.assertEqual(outcome.source_attempt_count, 1)
+        attempt = outcome.collectors[0].source_attempts[0]
+        self.assertEqual(attempt.outcome["disposition"], "DENIED")
+        record = json.loads(
+            (self.folder / attempt.receipt_private_path).read_text())
+        self.assertEqual(record["reason"], "OPERATOR_AUTH_REQUIRED")
+        self.assertEqual(record["evidence_ids"], [])
+
+
 if __name__=="__main__":
     unittest.main()
