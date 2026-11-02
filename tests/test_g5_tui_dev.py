@@ -10,6 +10,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from lbt_g5.tui_dev import OperatorTui, TuiRuntimeError, _MENU, Dialog
+from lbt_g5.privileged_session import PrivilegedSessionError
 
 
 class ScriptedDialog:
@@ -138,6 +139,33 @@ class TuiSessionContracts(unittest.TestCase):
         self.assertNotIn("diagnostics",items)
         self.assertNotIn("report",items)
         self.assertNotIn("view",items)
+
+    def test_failed_sudo_is_not_reprompted_while_tui_remains_open(self):
+        class FailingHelper:
+            def __enter__(self):
+                raise PrivilegedSessionError("simulated password failure")
+            def __exit__(self,*unused):
+                raise AssertionError("helper never started")
+        dialog=ScriptedDialog(["enable","enable","os","exit"])
+        starts=Mock(return_value=FailingHelper())
+        with patch("lbt_g5.tui_dev.os.geteuid",return_value=os.geteuid()):
+            with patch("lbt_g5.tui_dev.sys.stdin.isatty",return_value=True):
+                with patch("lbt_g5.tui_dev.sys.stderr.isatty",return_value=True):
+                    with patch("lbt_g5.tui_dev._run_id",
+                               return_value="run-2026306182900"):
+                        with patch("lbt_g5.tui_dev.verify_acquisition",
+                                   return_value=(4,4,1,8,0)):
+                            engine=Mock()
+                            engine.return_value.run.return_value=SimpleNamespace(
+                                run_id="run-2026306182900",
+                                collectors=(),source_attempt_count=0)
+                            tui=OperatorTui(self.output,dialog=dialog,
+                                            helper_factory=starts,
+                                            engine_factory=engine)
+                            self.assertEqual(tui.run(),0)
+        self.assertEqual(starts.call_count,1)
+        self.assertEqual(engine.return_value.run.call_count,1)
+        self.assertTrue(any("already attempted" in n for n in dialog.notices))
 
     def test_dialog_device_path_rejects_injection(self):
         dialog=object.__new__(Dialog)
