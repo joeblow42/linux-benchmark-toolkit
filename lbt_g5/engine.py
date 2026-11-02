@@ -181,7 +181,7 @@ class UnifiedCollectorEngine:
         return None
 
     def run(self, collector_ids=None, *, o1_requests: Mapping | None = None,
-            disabled_sources=(), progress=None):
+            disabled_sources=(), progress=None, privileged_session=None):
         """Execute registered sources; progress is a best-effort observer only.
 
         START/END/ERROR notifications never change source authorization or
@@ -263,7 +263,8 @@ class UnifiedCollectorEngine:
                         try:
                             recorded = capture_and_record(
                                 request, attempt, self.writer, self.slots, self.calls,
-                                subcall=subcall, source14_evidence=source14)
+                                subcall=subcall, source14_evidence=source14,
+                                privileged_session=privileged_session)
                         except Exception:
                             notify(cid, sid, "ERROR")
                             raise
