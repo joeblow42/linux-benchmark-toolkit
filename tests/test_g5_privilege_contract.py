@@ -85,9 +85,9 @@ class ProtocolSafety(unittest.TestCase):
                     b"a"*4097,
                     encode(session="ffffffffffffffffffffffffffffffff"),
                     encode(protocol="lbt-root-helper-0"),
-                    encode(run_id="run-2026010110000")):
-            # Last run id is syntactically valid; only assert shape on others.
-            if b"run-2026010110000" in raw:continue
+                    encode(run_id="run-2026367163727"),
+                    b'{"protocol":"lbt-root-helper-1","protocol":"duplicate"}'):
+
             with self.subTest(raw=raw[:60]):
                 with self.assertRaises(PrivilegeContractError):
                     self.session.accept(raw)
