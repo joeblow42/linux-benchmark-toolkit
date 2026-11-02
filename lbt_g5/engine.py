@@ -181,7 +181,21 @@ class UnifiedCollectorEngine:
         return None
 
     def run(self, collector_ids=None, *, o1_requests: Mapping | None = None,
-            disabled_sources=()):
+            disabled_sources=(), progress=None):
+        """Execute registered sources; progress is a best-effort observer only.
+
+        START/END/ERROR notifications never change source authorization or
+        create a parallel execution path. Receipts remain authoritative.
+        """
+        if progress is not None and not callable(progress):
+            raise TypeError("progress observer must be callable")
+        def notify(collector_id, source_id, event):
+            if progress is not None:
+                try:
+                    progress(collector_id, source_id, event)
+                except Exception:
+                    # Observability failure must not change an acquisition.
+                    pass
         by_owner = self._sources_by_collector()
         requested = tuple(by_owner if collector_ids is None else collector_ids)
         if len(requested) != len(set(requested)) or set(requested) - set(by_owner):
@@ -245,10 +259,16 @@ class UnifiedCollectorEngine:
                         attempt = "%02d" % (subcall + 1)
                         source14 = (self._mountinfo_original(receipts_by_source)
                                     if sid == "SRC-15" else None)
-                        recorded = capture_and_record(
-                            request, attempt, self.writer, self.slots, self.calls,
-                            subcall=subcall, source14_evidence=source14)
+                        notify(cid, sid, "START")
+                        try:
+                            recorded = capture_and_record(
+                                request, attempt, self.writer, self.slots, self.calls,
+                                subcall=subcall, source14_evidence=source14)
+                        except Exception:
+                            notify(cid, sid, "ERROR")
+                            raise
                         attempts.append(recorded)
                         receipts_by_source.setdefault(sid, []).append(recorded)
+                        notify(cid, sid, "END")
             collected.append(CollectorRun(cid, tuple(attempts)))
         return EngineRun(self.run_id, tuple(collected))
