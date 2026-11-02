@@ -2,6 +2,7 @@
 
 No sudo, interactive Dialog, root execution or physical O1 device IO.
 """
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -67,7 +68,7 @@ class TuiSessionContracts(unittest.TestCase):
             return SimpleNamespace(run=invoke)
         tui=OperatorTui(self.output,dialog=dialog,
                         helper_factory=factory,engine_factory=engine_builder)
-        with patch("lbt_g5.tui_dev.os.geteuid",return_value=1000):
+        with patch("lbt_g5.tui_dev.os.geteuid",return_value=os.geteuid()):
             with patch("lbt_g5.tui_dev.sys.stdin.isatty",return_value=True):
                 with patch("lbt_g5.tui_dev.sys.stderr.isatty",return_value=True):
                     with patch("lbt_g5.tui_dev._run_id",
