@@ -9,6 +9,7 @@ import argparse
 import hashlib
 import json
 import os
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -53,7 +54,19 @@ def main(argv=None):
     print("Collector selection:", opts.collectors, flush=True)
     print("Privileged helper: DISABLED", flush=True)
 
-    run = engine.run(selected)
+    active = {}
+    def show_progress(collector_id, source_id, event):
+        key = (collector_id, source_id)
+        if event == "START":
+            active[key] = time.monotonic()
+            print("BEGIN {} {}".format(collector_id, source_id), flush=True)
+        else:
+            start = active.pop(key, None)
+            elapsed = max(0.0, time.monotonic() - start) if start is not None else 0.0
+            print("{} {} {} elapsed={:.3f}s".format(
+                event, collector_id, source_id, elapsed), flush=True)
+
+    run = engine.run(selected, progress=show_progress)
     sources = {}
     items = 0
     byte_count = 0
