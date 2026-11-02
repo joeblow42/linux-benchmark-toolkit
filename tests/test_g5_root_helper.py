@@ -74,6 +74,42 @@ class RootHelperFixtures(unittest.TestCase):
                     executor=lambda m: self.fail("untrusted helper execution"))
                 self.assertNotEqual(code,0)
 
+    def test_root_helper_enforces_60_second_cumulative_run_limit(self):
+        source=io.BytesIO(b"".join(
+            msg(sequence=n,max_seconds=12.0) for n in range(1,7)))
+        out=io.BytesIO()
+        executed=[]
+        def fake(op):
+            executed.append(op["sequence"])
+            return dict(returncode=0,elapsed_seconds=12.0,timed_out=False,
+                        exceeded_limit=False,stdout_b64="",stderr_b64="",
+                        stdout_omitted_at_least=0,stderr_omitted_at_least=0)
+        self.assertEqual(helper.serve(TAG,source,out,executor=fake),0)
+        frames=[json.loads(line) for line in out.getvalue().splitlines()]
+        self.assertEqual(executed,[1,2,3,4,5])
+        self.assertEqual(frames[-1]["error"],"RUN_BUDGET_EXHAUSTED")
+        self.assertEqual(frames[-1]["sequence"],6)
+
+    def test_root_helper_caps_cumulative_bytes_without_executing_when_empty(self):
+        request=json.loads(msg())
+        near_limit={RUN:(helper.MAX_RUN_BYTES-1,0.0)}
+        limited=helper._limit_run_request(request,near_limit)
+        self.assertEqual(limited["max_bytes"],1)
+        self.assertEqual(limited["max_seconds"],2.0)
+        self.assertEqual(request["max_bytes"],4096)
+        for totals in ({RUN:(helper.MAX_RUN_BYTES,0.0)},
+                       {RUN:(0,helper.MAX_RUN_SECONDS)}):
+            with self.subTest(totals=totals):
+                with self.assertRaises(helper.Rejected):
+                    helper._limit_run_request(request,totals)
+
+    def test_root_helper_cumulative_limit_resets_for_new_run(self):
+        request=json.loads(msg())
+        other_run="run-2026306163728"
+        used={RUN:(helper.MAX_RUN_BYTES,helper.MAX_RUN_SECONDS)}
+        request["run_id"]=other_run
+        self.assertEqual(helper._limit_run_request(request,used)["max_bytes"],4096)
+
     def test_frame_size_rejected_before_execution(self):
         out=io.BytesIO()
         result=helper.serve(TAG,io.BytesIO(b"x"*4100+b"\n"),out,
