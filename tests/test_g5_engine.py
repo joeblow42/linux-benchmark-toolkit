@@ -262,5 +262,36 @@ class UnifiedEngineContracts(unittest.TestCase):
             (sessions[0] / "private" / "source_attempt_records").glob("*.json"))), 3)
 
 
+    def test_source_progress_announced_before_and_after_dispatch(self):
+        observed = []
+        with patch("lbt_g5.engine.capture_and_record", return_value=result()):
+            self.engine.run(("COL-OPTICAL",), progress=lambda cid,sid,evt:
+                            observed.append((cid,sid,evt)))
+        self.assertEqual(observed, [
+            ("COL-OPTICAL","SRC-16","START"), ("COL-OPTICAL","SRC-16","END"),
+            ("COL-OPTICAL","SRC-17","START"), ("COL-OPTICAL","SRC-17","END"),
+            ("COL-OPTICAL","SRC-18","START"), ("COL-OPTICAL","SRC-18","END"),
+        ])
+
+    def test_progress_reports_exception_but_does_not_falsify_receipt(self):
+        observed=[]
+        with patch("lbt_g5.engine.capture_and_record",
+                   side_effect=RuntimeError("simulated abnormal termination")):
+            with self.assertRaisesRegex(RuntimeError,"simulated abnormal"):
+                self.engine.run(("COL-OPTICAL",), progress=lambda cid,sid,evt:
+                                observed.append((sid,evt)))
+        self.assertEqual(observed,[("SRC-16","START"),("SRC-16","ERROR")])
+
+    def test_faulty_progress_observer_cannot_disable_acquisition(self):
+        attempts=[]
+        def observer(*args):
+            raise RuntimeError("diagnostic unavailable")
+        with patch("lbt_g5.engine.capture_and_record",
+                   side_effect=lambda req,*args,**kwargs:
+                   (attempts.append(req.source_id) or result())):
+            self.engine.run(("COL-MEM",),progress=observer)
+        self.assertEqual(attempts,["SRC-08","SRC-09","SRC-10"])
+
+
 if __name__=="__main__":
     unittest.main()
