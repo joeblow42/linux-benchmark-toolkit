@@ -12,8 +12,10 @@ invocation/evidence path. ProbeSlots, SourceCallBudget, EvidenceWriter,
 source policies and SourceRequest are shared within a run. SRC-23 has two
 registered subcalls with separate immutable attempt receipts. SRC-15 must consume
 the SHA-256-verified sealed SRC-14 mountinfo artifact, not re-read mountinfo as
-an unrelated acquisition. O1 targets are restricted to verified current-run D0
-inventory and still require one-run, source/target/operation-specific consent;
+an unrelated acquisition. O1 requests may contain multiple distinct devices only up to each registered
+source limit (e.g., multiple SRC-13 disks; SRC-21 remains one GPU per run).
+O1 targets are restricted to verified current-run D0 inventory and still require
+one-run, source/target/operation-specific consent;
 a caller-supplied trusted_targets set cannot bypass D0 evidence. Unknown
 collectors, non-O1 override requests and unselected sources fail before dispatch.
 Imports do not probe host devices.
@@ -85,3 +87,19 @@ not be misrepresented as public/canonical results.
 **Open work:** real sudo helper/process lifecycle, collector result envelope,
 benchmark launcher cutover, canonical status/schema, full hardware authorization
 tests, verified package distribution and owner gate acceptance.
+
+## Developer-only Bodhi live verification
+
+After checkout of this G5-03 branch at the intended verified commit,
+from repository root, run:
+
+    python3 -m lbt_g5.host_smoke --output-root /tmp/lbt-g5-03-host-evidence
+
+This starts one unprivileged run and attempts the registered collectors using
+G5-02 safety ceilings. No O1 consent is provided, so SRC-13, SRC-18 and SRC-21
+are denied and receive private refusal receipts; no privileged device query is
+executed. D0/D1 collectors attempt their approved bounded passive/local probes.
+The script verifies SHA-256 for all actually captured original artifacts and
+prints transport dispositions and counts, not collected private data.
+One local test is NOT whole-project release/host acceptance; inspect partial,
+unavailable and denied outcomes before asserting source coverage.
