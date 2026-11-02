@@ -16,7 +16,7 @@ import time
 
 from .privilege_contract import (
     PROTOCOL_VERSION, MAX_HEALTH_BYTES, MAX_HEALTH_SECONDS,
-    MAX_RESPONSE_BYTES, HealthSessionContract,
+    MAX_RESPONSE_BYTES, HealthSessionContract, PrivilegeContractError,
 )
 from .runtime import TransportCapture
 
@@ -148,8 +148,8 @@ class PrivilegedHealthSession:
                       max_bytes=min(plan.max_bytes, MAX_HEALTH_BYTES),
                       max_seconds=float(min(seconds, MAX_HEALTH_SECONDS)))
         encoded = json.dumps(params,sort_keys=True,separators=(",",":")).encode()
-        self.contract.accept(encoded)
         try:
+            self.contract.accept(encoded)
             self.proc.stdin.write(encoded+b"\n")
             self.proc.stdin.flush()
             response = self._read_frame(params["max_seconds"]+8.0)
@@ -182,7 +182,8 @@ class PrivilegedHealthSession:
                 response["timed_out"],response["exceeded_limit"],
                 response["stdout_omitted_at_least"],
                 response["stderr_omitted_at_least"])
-        except (OSError, ValueError, binascii.Error, PrivilegedSessionError) as exc:
+        except (OSError, ValueError, binascii.Error,
+                PrivilegeContractError, PrivilegedSessionError) as exc:
             self.close()
             raise PrivilegedSessionError("privileged request failed") from exc
 
