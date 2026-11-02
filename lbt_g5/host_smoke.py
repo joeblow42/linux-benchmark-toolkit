@@ -28,6 +28,8 @@ def main(argv=None):
                         help="existing private directory, or new local directory")
     parser.add_argument("--collectors", default="all",
                         help="comma-separated approved owner IDs, or all")
+    parser.add_argument("--canonicalize", action="store_true",
+                        help="write and verify G5-04 private raw-fallback canonical session")
     parser.add_argument("--sudo", action="store_true",
                         help="authenticate once via installed root-owned helper")
     parser.add_argument("--device-health", action="append", default=[],
@@ -158,6 +160,12 @@ def main(argv=None):
                 collector.collector_id, metadata["source_id"],
                 state, reason, len(originals)), flush=True)
 
+    if opts.canonicalize:
+        from .canonical_session import build_canonical
+        manifest = build_canonical(folder, run)
+        print("G5-04 CANONICAL INTEGRITY: PASS", flush=True)
+        print("G5-04 canonical observations:", manifest["observation_count"], flush=True)
+        print("G5-04 completion:", manifest["completion_state"], flush=True)
     print("INTEGRITY: PASS", flush=True)
     print("Source families:", len(sources), flush=True)
     print("Attempt receipts:", run.source_attempt_count, flush=True)
