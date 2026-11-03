@@ -28,7 +28,7 @@ class G504CanonicalSession(unittest.TestCase):
         self.writer = EvidenceWriter(str(self.folder), RUN)
         self.policies = {p.source_id: p for p in initial_source_policies()}
 
-    def recorded(self, sid="SRC-02", raw=b"NAME=TestOS\n", *, outcome="CAPTURED",
+    def recorded(self, sid="SRC-02", raw=b"ID=testos\nNAME=TestOS\n", *, outcome="CAPTURED",
                  reason="BYTES_PRESERVED", attempt="01", fail=False):
         policy = self.policies[sid]
         evidence = ()
@@ -53,19 +53,22 @@ class G504CanonicalSession(unittest.TestCase):
     def test_text_original_and_provenance_committed_and_revalidated(self):
         x = self.recorded()
         manifest = build_canonical(self.folder, self.run_for(x))
-        self.assertEqual(manifest["observation_count"], 1)
-        self.assertEqual(manifest["original_byte_count"], len(b"NAME=TestOS\n"))
+        self.assertEqual(manifest["observation_count"], 3)
+        self.assertEqual(manifest["original_byte_count"], len(b"ID=testos\nNAME=TestOS\n"))
         self.assertEqual(manifest["completion_state"], "INCOMPLETE")
         self.assertFalse(manifest["semantic_normalization_complete"])
         system = json.loads((self.folder / "private/system.json").read_text())
         obs = system["observations"][0]
         self.assertEqual(obs["value_type"], "STRING")
-        self.assertEqual(obs["observed_value"], "NAME=TestOS\n")
+        self.assertEqual(obs["observed_value"], "ID=testos\nNAME=TestOS\n")
         self.assertIsNone(obs["normalized_value"])
         self.assertEqual(len(obs["evidence_refs"]), 1)
         statuses = json.loads((self.folder / "private/status_records.json").read_text())
         self.assertEqual(statuses["status_records"][0]["reason_code"],
-                         "PARSE_FAILED")
+                         "OK")
+        typed = {v["datum_path"]: v for v in system["observations"][1:]}
+        self.assertEqual(typed["os.release.ID"]["normalized_value"], "testos")
+        self.assertEqual(typed["os.release.NAME"]["normalized_value"], "TestOS")
         self.assertEqual(validate_canonical(self.folder), manifest)
 
     def test_binary_original_kept_without_mutation(self):
