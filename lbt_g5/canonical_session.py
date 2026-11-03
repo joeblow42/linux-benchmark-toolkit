@@ -24,6 +24,7 @@ from .canonical_contract import (
     new_status, validate_status_record,
 )
 from .catalog import initial_catalog
+from .normalization import normalize_sealed_source, parser_available, SourceParseError
 from .safety import initial_source_policies, valid_run_id
 
 PRIVATE_FILES = ("system.json", "source_attempts.json", "status_records.json")
@@ -136,12 +137,21 @@ def _artifacts(recorded):
     return tuple(getattr(outcome, "artifacts", ()) or ())
 
 
-def _status_for(receipt, artifacts):
+def _status_for(receipt, artifacts, *, parser_state="NOT_RUN"):
+    """A status needs actual factual source and parser evidence.
+
+    A captured source without a parser cannot be finalized as acquisition
+    COMPLETE, PARTIAL/PARSE_FAILED or SOURCE_INCOMPLETE. Fail closed.
+    """
+    if parser_state not in ("NOT_RUN", "OK", "FAILED"):
+        raise CanonicalContractError("invalid parser disposition")
     state, reason = receipt["outcome"], receipt["reason"]
     if state == "CAPTURED":
-        # A sealed stream is not yet a parsed/semantically normalized datum.
-        return (("PARTIAL", "PARSE_FAILED") if artifacts else
-                ("PARTIAL", "SOURCE_INCOMPLETE"))
+        if not artifacts or parser_state == "NOT_RUN":
+            raise CanonicalContractError("captured source has no supported parser result")
+        if parser_state == "FAILED":
+            return "PARTIAL", "PARSE_FAILED"
+        return "COMPLETE", "OK"
     if state == "PARTIAL":
         if receipt["capture_limited"] or reason in ("CAPTURE_LIMIT", "TIME_BUDGET_EXCEEDED"):
             return "PARTIAL", "CAPTURE_LIMIT"
@@ -163,12 +173,12 @@ def _status_for(receipt, artifacts):
             return "FAILED", "EVIDENCE_PERSIST_FAILED"
         if reason == "TIME_BUDGET_EXCEEDED":
             return "FAILED", "TIME_BUDGET_EXCEEDED"
-    # Unknown source transport reason is retained verbatim in the private
-    # attempt; it MUST NOT be reclassified as a fabricated success.
-    return "FAILED", "ACQUISITION_ERROR"
+    # Unknown source transport reasons do not prove a failure category.
+    raise CanonicalContractError("unclassified source outcome/reason; refuse final status")
 
 
-def _observation(artifact, raw, attempt_id):
+def _observation(artifact, raw, attempt_id, *, status_record_id,
+                 parser_findings=None, limitations=None):
     try:
         if len(raw) > MAX_LITERAL_TEXT:
             raise UnicodeDecodeError("utf-8", raw, 0, 1, "literal size bound")
@@ -178,6 +188,7 @@ def _observation(artifact, raw, attempt_id):
     return {
         "observation_id": "obs:" + artifact.evidence_id,
         "collector_id": artifact.collector_id,
+        "status_record_id": status_record_id,
         "datum_path": "unclassified.source." + artifact.source_id + "." + artifact.artifact,
         "instance_key": artifact.evidence_id,
         "ordinal": 0,
@@ -190,8 +201,33 @@ def _observation(artifact, raw, attempt_id):
         "transformation_ids": [],
         "acquired_utc": None,
         "capture_limit_ids": [],
-        "parser_findings": ["UNPARSED_SOURCE_ARTIFACT"],
-        "limitations": ["Source-specific semantic normalization not yet implemented"],
+        "parser_findings": list(parser_findings if parser_findings is not None
+                                else ("UNPARSED_SOURCE_ARTIFACT",)),
+        "limitations": list(limitations if limitations is not None
+                            else ("Source-specific semantic normalization not yet implemented",)),
+    }
+
+
+def _semantic_observation(artifact, attempt_id, datum, index, parser_id):
+    """One typed observation derived from a precisely identified sealed original."""
+    return {
+        "observation_id": "obs:" + artifact.evidence_id + ":sem:" + str(index),
+        "collector_id": artifact.collector_id,
+        "status_record_id": "st:" + attempt_id,
+        "datum_path": datum.datum_path,
+        "instance_key": artifact.evidence_id,
+        "ordinal": index,
+        "observed_value": datum.observed_value,
+        "normalized_value": datum.normalized_value,
+        "value_type": datum.value_type,
+        "unit": datum.unit,
+        "evidence_refs": [artifact.evidence_id],
+        "source_attempt_ids": [attempt_id],
+        "transformation_ids": [parser_id],
+        "acquired_utc": None,
+        "capture_limit_ids": [],
+        "parser_findings": ["SOURCE_PARSER_SUCCEEDED"],
+        "limitations": [],
     }
 
 
@@ -219,6 +255,7 @@ def build_canonical(run_directory, engine_run):
     all_attempt_ids = set()
     source_ids = set()
     all_original_bytes = 0
+    semantic_field_count = 0
     all_attempts = [item for collector in engine_run.collectors
                     for item in collector.source_attempts]
     for item in all_attempts:
@@ -248,6 +285,8 @@ def build_canonical(run_directory, engine_run):
         if metadata.get("acquired_bytes") != sum(x.byte_count for x in artifacts):
             raise CanonicalContractError("receipt byte count mismatch")
         linked = []
+        parser_executions = 0
+        parser_failures = []
         for artifact in artifacts:
             eid = artifact.evidence_id
             if (eid in evidence or artifact.run_id != run_id
@@ -276,9 +315,40 @@ def build_canonical(run_directory, engine_run):
                 "limit_applied": artifact.limit_applied,
                 "omitted_at_least": artifact.omitted_at_least,
             }
-            observations.append(_observation(artifact, raw, attempt_id))
+            # Invoke a registered parser ONLY on already sealed, hash-checked bytes.
+            # Unknown families remain original evidence, but their captured data
+            # cannot masquerade as a finalized canonical acquisition status.
+            parsed = None
+            error = None
+            if metadata["outcome"] in ("CAPTURED", "PARTIAL") and parser_available(source_id):
+                parser_executions += 1
+                try:
+                    parsed = normalize_sealed_source(source_id, raw)
+                except SourceParseError as exc:
+                    error = str(exc)[:128]
+                    parser_failures.append(error)
+            if parsed is not None:
+                observations.append(_observation(
+                    artifact, raw, attempt_id, status_record_id="st:" + attempt_id,
+                    parser_findings=("ORIGINAL_PRESERVED", "SOURCE_PARSER_SUCCEEDED"),
+                    limitations=()))
+                for index, datum in enumerate(parsed.values):
+                    observations.append(_semantic_observation(
+                        artifact, attempt_id, datum, index, parsed.parser_id))
+                    semantic_field_count += 1
+            else:
+                observations.append(_observation(
+                    artifact, raw, attempt_id, status_record_id="st:" + attempt_id,
+                    parser_findings=(("PARSER_FAILED:" + error,) if error else
+                                     ("PARSER_NOT_AVAILABLE",)),
+                    limitations=(("SOURCE_PARSER_ERROR:" + error,) if error else
+                                 ("Semantic parser not implemented for source",))))
             linked.append(eid)
-        status, reason = _status_for(metadata, artifacts)
+        if parser_executions:
+            parser_state = "FAILED" if parser_failures else "OK"
+        else:
+            parser_state = "NOT_RUN"
+        status, reason = _status_for(metadata, artifacts, parser_state=parser_state)
         status_id = "st:" + attempt_id
         if (metadata.get("capture_limited") or any(x.limit_applied for x in artifacts)):
             limit_id = "limit:" + attempt_id
@@ -298,7 +368,10 @@ def build_canonical(run_directory, engine_run):
             component_id=policy.collector_id, subject_id=source_id,
             status=status, reason_code=reason,
             detail=("transport=" + str(metadata["outcome"]) +
-                    "/" + str(metadata["reason"]))[:1024],
+                    "/" + str(metadata["reason"]) +
+                    (("; parser_errors=" + ",".join(parser_failures))
+                     if parser_failures else ("; parser=verified" if parser_executions else
+                                              "; parser=not-run")))[:1024],
             evidence_refs=linked, source_attempt_ids=[attempt_id],
             limit_record_ids=([limit_id] if limit_id else [])))
         attempts.append({
@@ -333,12 +406,13 @@ def build_canonical(run_directory, engine_run):
         "schema_version": CANONICAL_SCHEMA_VERSION,
         "run_id": run_id,
         "platform_scope": "Linux-AMD64",
-        "normalization_state": "RAW_FALLBACK_ONLY",
+        "normalization_state": ("PARTIAL_SEMANTIC_NORMALIZATION"
+                                if semantic_field_count else "RAW_FALLBACK_ONLY"),
         "observations": observations,
         "capture_limits": limits,
-        "limitations": ["All source evidence preserved as raw fallback; "
-                        "semantic parsers not yet integrated",
-                        "Zero observations is permitted; no measurements inferred"],
+        "limitations": ["Canonical schema/integrity completion pending CP-04",
+                        "Semantic source coverage is restricted to SRC-02 and SRC-08..SRC-10",
+                        "Zero observations permitted; no benchmark measurements inferred"],
     }
     outputs = {
         "system.json": system,
