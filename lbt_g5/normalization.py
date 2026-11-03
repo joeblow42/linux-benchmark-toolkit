@@ -87,6 +87,8 @@ def _parse_meminfo(raw):
         if key in keys:
             raise SourceParseError("MEMINFO_DUPLICATE_KEY")
         keys.add(key)
+        if len(number) > 24:
+            raise SourceParseError("MEMINFO_NUMERIC_BOUND")
         raw_count = int(number)
         result.append(ParsedDatum(
             "memory.meminfo." + key, number if unit is None else number + " kB",
@@ -111,6 +113,9 @@ def _parse_swaps(raw):
         if len(cells) != 5:
             raise SourceParseError("SWAPS_INVALID_ENTRY")
         path, kind, size, used, priority = cells
+        if any(len(value.lstrip("+-")) > 24
+               for value in (size, used, priority)):
+            raise SourceParseError("SWAPS_NUMERIC_BOUND")
         try:
             size_kib, used_kib, priority = int(size), int(used), int(priority)
         except ValueError as exc:
@@ -148,6 +153,8 @@ def _parse_memory_pressure(raw):
             if name not in _PRESSURE_METRICS or name in seen:
                 raise SourceParseError("PRESSURE_INVALID_METRIC")
             seen.add(name)
+            if len(value) > 48:
+                raise SourceParseError("PRESSURE_NUMERIC_BOUND")
             try:
                 normalized = int(value) if name == "total" else float(value)
             except ValueError as exc:
