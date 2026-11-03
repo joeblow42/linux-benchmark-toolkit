@@ -147,6 +147,8 @@ def _status_for(receipt, artifacts, *, parser_state="NOT_RUN"):
         raise CanonicalContractError("invalid parser disposition")
     state, reason = receipt["outcome"], receipt["reason"]
     if state == "CAPTURED":
+        if reason != "BYTES_PRESERVED":
+            raise CanonicalContractError("captured source has unapproved reason")
         if not artifacts or parser_state == "NOT_RUN":
             raise CanonicalContractError("captured source has no supported parser result")
         if parser_state == "FAILED":
@@ -157,22 +159,29 @@ def _status_for(receipt, artifacts, *, parser_state="NOT_RUN"):
             return "PARTIAL", "CAPTURE_LIMIT"
         if reason == "EVIDENCE_PERSIST_FAILED":
             return "PARTIAL", "EVIDENCE_INCOMPLETE"
-        return "PARTIAL", "SOURCE_INCOMPLETE"
+        if reason == "SOURCE_INCOMPLETE":
+            return "PARTIAL", "SOURCE_INCOMPLETE"
+        raise CanonicalContractError("unclassified partial-source reason")
     if state == "DENIED" and reason == "OPERATOR_AUTH_REQUIRED":
         return "UNAUTHORIZED", "OPERATOR_AUTH_REQUIRED"
     if state == "DENIED" and reason == "ACCESS_DENIED":
         return "PERMISSION_DENIED", "ACCESS_DENIED"
     if state == "UNAVAILABLE":
-        if reason in ("TOOL_MISSING", "EXECUTABLE_NOT_FOUND"):
+        if reason in ("TOOL_MISSING", "EXECUTABLE_NOT_FOUND",
+                      "PYTHON3_NOT_FOUND"):
             return "TOOL_MISSING", "EXECUTABLE_NOT_FOUND"
         if reason in ("NO_RELEVANT_DEVICE", "NOT_APPLICABLE"):
             return "NOT_APPLICABLE", "NO_RELEVANT_DEVICE"
-        return "UNAVAILABLE", "SOURCE_ABSENT"
+        if reason == "SOURCE_ABSENT":
+            return "UNAVAILABLE", "SOURCE_ABSENT"
+        raise CanonicalContractError("unclassified unavailable-source reason")
     if state == "FAILED":
         if reason == "EVIDENCE_PERSIST_FAILED":
             return "FAILED", "EVIDENCE_PERSIST_FAILED"
         if reason == "TIME_BUDGET_EXCEEDED":
             return "FAILED", "TIME_BUDGET_EXCEEDED"
+        if reason == "ACQUISITION_ERROR":
+            return "FAILED", "ACQUISITION_ERROR"
     # Unknown source transport reasons do not prove a failure category.
     raise CanonicalContractError("unclassified source outcome/reason; refuse final status")
 
