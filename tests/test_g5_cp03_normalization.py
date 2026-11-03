@@ -96,6 +96,20 @@ class G504CP03PureParserTests(unittest.TestCase):
             _status_for({"outcome": "FAILED", "reason": "UNRECOGNIZED_TRANSPORT"},
                         [])
 
+    def test_unknown_partial_and_unavailable_reasons_fail_closed(self):
+        with self.assertRaises(CanonicalContractError):
+            _status_for({"outcome": "PARTIAL",
+                         "reason": "UNRECOGNIZED_REASON",
+                         "capture_limited": False}, [object()],
+                        parser_state="OK")
+        with self.assertRaises(CanonicalContractError):
+            _status_for({"outcome": "UNAVAILABLE",
+                         "reason": "WORKER_NOT_FOUND"}, [])
+        self.assertEqual(
+            _status_for({"outcome": "UNAVAILABLE",
+                         "reason": "EXECUTABLE_NOT_FOUND"}, []),
+            ("TOOL_MISSING", "EXECUTABLE_NOT_FOUND"))
+
     def test_proved_parser_error_not_the_same_as_parser_absent(self):
         receipt = {"outcome": "CAPTURED", "reason": "BYTES_PRESERVED"}
         self.assertEqual(_status_for(receipt, [object()], parser_state="FAILED"),
