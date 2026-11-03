@@ -86,6 +86,18 @@ class G504CP03PureParserTests(unittest.TestCase):
             with self.subTest(raw=invalid), self.assertRaises(SourceParseError):
                 normalize_sealed_source("SRC-10", invalid)
 
+    def test_excessive_numeric_inputs_produce_bounded_parser_error(self):
+        cases = (
+            ("SRC-08", b"MemTotal: " + b"9" * 5000 + b" kB\n"),
+            ("SRC-09", b"Filename Type Size Used Priority\n/swap file " +
+             b"9" * 5000 + b" 0 1\n"),
+            ("SRC-10", b"some avg10=0 avg60=0 avg300=0 total=" +
+             b"9" * 5000 + b"\n"),
+        )
+        for source, raw in cases:
+            with self.subTest(source=source), self.assertRaises(SourceParseError):
+                normalize_sealed_source(source, raw)
+
     def test_unknown_source_fails_closed_and_never_fakes_parser_failure(self):
         self.assertFalse(parser_available("SRC-03"))
         self.assertIsNone(normalize_sealed_source("SRC-03", b"arbitrary host bytes"))
