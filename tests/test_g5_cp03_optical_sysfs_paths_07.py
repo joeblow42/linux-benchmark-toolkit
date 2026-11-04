@@ -64,7 +64,7 @@ class OpticalSysfsOracles(unittest.TestCase):
         self.assertEqual(ROOTS["SRC-17"], ROOT.rstrip("/"))
         self.assertEqual(ATTRS["SRC-17"], OPTICAL_FIELDS)
         self.assertTrue(parser_available("SRC-17"))
-        self.assertFalse(parser_available("SRC-25"))
+        self.assertFalse(parser_available("SRC-26"))
 
     def test_optical_identity_preserves_each_sealed_original(self):
         paths = tuple(ROOT + "sr0/" + x for x in OPTICAL_FIELDS)
