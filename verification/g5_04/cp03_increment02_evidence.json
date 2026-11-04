@@ -1,0 +1,54 @@
+{
+  "record": "G5-04 CP-03 Increment 02",
+  "date_utc": "2026-11-04",
+  "authority": "D-01..D-05 approved; CP-02 CT-02/CT-03/CT-09; Requirements Rev 1.6",
+  "base": "56ad6f70c949fb7546b06084a37be0c94b22c968",
+  "source_families_added": [
+    "SRC-01",
+    "SRC-03",
+    "SRC-27"
+  ],
+  "source_families_supported_total": [
+    "SRC-01",
+    "SRC-02",
+    "SRC-03",
+    "SRC-08",
+    "SRC-09",
+    "SRC-10",
+    "SRC-27"
+  ],
+  "total_registered_source_families": 28,
+  "verification": {
+    "run": 429,
+    "url": "https://github.com/joeblow42/linux-benchmark-toolkit/actions/runs/41794624234",
+    "commit": "088932d0b74d78e14060ca5fe97c66f28fff5ede",
+    "conclusion": "SUCCESS",
+    "test_file": "tests/test_g5_cp03_platform_02.py",
+    "new_test_methods": 8,
+    "notes": "First CI failures came from legacy unsupported-source fixtures still referencing SRC-03; updated these to SRC-04 and reran full CI."
+  },
+  "traceability": {
+    "total_ids": 283,
+    "rows_touched": 5,
+    "requirements_declared_verified": 0,
+    "source_file": "verification/g5_04/requirements_traceability_rev1_6.csv"
+  },
+  "controls": [
+    "No new host acquisition, sudo operation, public report, or privileged worker",
+    "Pure registered parsers consume hash-verified originally acquired bytes",
+    "Absent semantic parsers are not treated as parser failures",
+    "Unknown acquired data retained as immutable original; status not fabricated",
+    "Original stored bytes and source attempt receipts not edited",
+    "No formal gate acceptance or merge"
+  ],
+  "checkpoint_state": "IN_PROGRESS",
+  "remaining_source_families": 21,
+  "open_findings": [
+    "F-02 timing",
+    "F-04 bounds",
+    "F-05 completeness",
+    "F-06 exact D-02 contract",
+    "F-07 manifest completeness",
+    "F-08 remaining 21 source normalizers"
+  ]
+}
