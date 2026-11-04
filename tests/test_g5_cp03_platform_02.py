@@ -86,7 +86,7 @@ class PlatformParserTests(unittest.TestCase):
     def test_parser_registration_is_bounded_to_declared_sources(self):
         for sid in ("SRC-01", "SRC-03", "SRC-27"):
             self.assertTrue(parser_available(sid))
-        for sid in ("SRC-11", "SRC-13", "SRC-14", "SRC-28"):
+        for sid in ("SRC-13", "SRC-14", "SRC-15", "SRC-28"):
             self.assertFalse(parser_available(sid))
 
 
