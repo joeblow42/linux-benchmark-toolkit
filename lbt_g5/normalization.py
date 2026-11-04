@@ -233,16 +233,143 @@ def _parse_tool_resolver(raw):
     if type(name) is not str or name not in _TOOLS:
         raise SourceParseError("TOOL_UNKNOWN_NAME")
     if path is not None:
-        if (type(path) is not str or len(path) > 512
-                or "\x00" in path or not path.startswith("/")
-                or not path.startswith(("/usr/bin/", "/bin/",
-                                         "/usr/sbin/", "/sbin/"))
-                or not path.endswith("/" + name)):
+        # The G5-02 worker calls which() against a fixed PATH. Reject
+        # traversal or nested paths even when an allowed prefix matches.
+        roots = ("/usr/bin", "/bin", "/usr/sbin", "/sbin")
+        if type(path) is not str or path not in tuple(
+                directory + "/" + name for directory in roots):
             raise SourceParseError("TOOL_INVALID_RESOLVED_PATH")
     return ParseResult("linux-tool-resolver-v1", (
         ParsedDatum("tools.resolution." + name, item,
                     {"available": path is not None, "resolved_path": path},
                     "OBJECT"),
+    ))
+
+
+
+# CP-03 increment 03: typed CPU/optical metadata from sealed static files.
+_CPU_KEY = re.compile(r"[A-Za-z0-9_ .(),/#-]{1,96}\Z")
+_DEVICE_NAME = re.compile(r"[A-Za-z0-9_.:-]{1,64}\Z")
+
+
+def _parse_cpuinfo(raw):
+    processors, current = [], {}
+    record_fields = 0
+
+    def flush():
+        if not current:
+            return
+        if "processor" not in current:
+            raise SourceParseError("CPUINFO_MISSING_PROCESSOR_ID")
+        ident = current["processor"]
+        if not ident.isdecimal() or len(ident) > 8 or int(ident) > 1048575:
+            raise SourceParseError("CPUINFO_INVALID_PROCESSOR_ID")
+        if any(p["processor"] == int(ident) for p in processors):
+            raise SourceParseError("CPUINFO_DUPLICATE_PROCESSOR_ID")
+        normalized = {"processor": int(ident)}
+        for name, target in (
+            ("vendor_id", "vendor"),
+            ("model name", "model_name"),
+            ("physical id", "physical_package_id"),
+            ("core id", "core_id"),
+            ("cpu cores", "cpu_cores"),
+            ("siblings", "siblings"),
+        ):
+            if name not in current:
+                continue
+            value = current[name]
+            if target in ("physical_package_id", "core_id", "cpu_cores", "siblings"):
+                if not value.isdecimal() or len(value) > 8:
+                    raise SourceParseError("CPUINFO_INVALID_COUNT")
+                normalized[target] = int(value)
+            else:
+                normalized[target] = value
+        if "cpu MHz" in current:
+            value = current["cpu MHz"]
+            if len(value) > 32:
+                raise SourceParseError("CPUINFO_INVALID_FREQ")
+            try:
+                mhz = float(value)
+            except ValueError as exc:
+                raise SourceParseError("CPUINFO_INVALID_FREQ") from exc
+            if not math.isfinite(mhz) or not 0 < mhz < 1e9:
+                raise SourceParseError("CPUINFO_INVALID_FREQ")
+            normalized["frequency_mhz"] = mhz
+        if "flags" in current:
+            flags = current["flags"].split()
+            if len(flags) > 512:
+                raise SourceParseError("CPUINFO_EXCESSIVE_FLAGS")
+            normalized["flags"] = flags
+        processors.append({"processor": int(ident), "original": dict(current),
+                           "normalized": normalized})
+        if len(processors) > 1024:
+            raise SourceParseError("CPUINFO_EXCESSIVE_PROCESSORS")
+        current.clear()
+
+    for line in _text(raw).splitlines():
+        if not line.strip():
+            flush()
+            continue
+        if ":" not in line:
+            raise SourceParseError("CPUINFO_MALFORMED_LINE")
+        key, value = (part.strip() for part in line.split(":", 1))
+        if (not _CPU_KEY.fullmatch(key) or key in current
+                or len(value) > 8192 or "\x00" in value):
+            raise SourceParseError("CPUINFO_INVALID_OR_DUPLICATE_FIELD")
+        current[key] = value
+        record_fields += 1
+        if record_fields > 20000:
+            raise SourceParseError("CPUINFO_EXCESSIVE_FIELDS")
+    flush()
+    if not processors:
+        raise SourceParseError("CPUINFO_EMPTY")
+    return ParseResult("linux-proc-cpuinfo-v1", tuple(
+        ParsedDatum("cpu.logical_processor." + str(p["processor"]),
+                    p["original"], p["normalized"], "OBJECT")
+        for p in processors))
+
+
+def _parse_cdrom_info(raw):
+    rows = {}
+    for line in _text(raw).splitlines():
+        if not line.strip():
+            continue
+        if ":" not in line:
+            raise SourceParseError("CDROM_INFO_MALFORMED_LINE")
+        key, value = (part.strip() for part in line.split(":", 1))
+        if (not _CPU_KEY.fullmatch(key) or key in rows or len(value) > 8192
+                or "\x00" in value):
+            # Metadata keys are controlled by the Linux cdrom driver.
+            raise SourceParseError("CDROM_INFO_INVALID_OR_DUPLICATE_ROW")
+        rows[key] = value
+        if len(rows) > 128:
+            raise SourceParseError("CDROM_INFO_EXCESSIVE_ROWS")
+    if "drive name" not in rows:
+        raise SourceParseError("CDROM_INFO_MISSING_DRIVE_NAME_ROW")
+    names = rows["drive name"].split()
+    if (len(names) > 128 or len(names) != len(set(names))
+            or any(not _DEVICE_NAME.fullmatch(n) for n in names)):
+        raise SourceParseError("CDROM_INFO_INVALID_DRIVE_NAMES")
+    drives = [{"name": n, "capabilities": {}} for n in names]
+    for key, value in rows.items():
+        if key in ("drive name", "CD-ROM information, Id"):
+            continue
+        tokens = value.split()
+        if len(tokens) != len(names):
+            raise SourceParseError("CDROM_INFO_COLUMN_MISMATCH")
+        for drive, token in zip(drives, tokens):
+            if len(token) > 32:
+                raise SourceParseError("CDROM_INFO_VALUE_BOUND")
+            if token.isdecimal() and len(token) <= 16:
+                number = int(token)
+                drive["capabilities"][key] = (
+                    bool(number) if (key.startswith(("Can ", "Reports "))
+                                     and number in (0, 1)) else number)
+            else:
+                drive["capabilities"][key] = token
+    return ParseResult("linux-proc-cdrom-info-v1", (
+        ParsedDatum("optical.cdrom.drives", rows,
+                    {"device_count": len(drives), "drives": drives}, "OBJECT"),
     ))
 
 
@@ -252,6 +379,8 @@ PARSERS = {
     "SRC-01": _parse_platform_api,
     "SRC-02": _parse_os_release,
     "SRC-03": _parse_efi_presence,
+    "SRC-06": _parse_cpuinfo,
+    "SRC-16": _parse_cdrom_info,
     "SRC-27": _parse_tool_resolver,
     "SRC-08": _parse_meminfo,
     "SRC-09": _parse_swaps,

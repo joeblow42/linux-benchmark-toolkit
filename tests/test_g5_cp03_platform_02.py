@@ -71,6 +71,9 @@ class PlatformParserTests(unittest.TestCase):
         for raw in (
             b'{"tool":"curl","path":"/usr/bin/curl"}',
             b'{"tool":"lscpu","path":"/tmp/lscpu"}',
+            b'{"tool":"lscpu","path":"/usr/bin/../bin/lscpu"}',
+            b'{"tool":"lscpu","path":"/usr/bin/nested/lscpu"}',
+            b'{"tool":"lscpu","path":"/usr/bin//lscpu"}',
             b'{"tool":"lscpu","path":"../../etc/passwd"}',
             b'{"tool":"lsblk","path":"/usr/bin/lscpu"}',
             b'{"tool":"nvme","path":false}',
@@ -83,7 +86,7 @@ class PlatformParserTests(unittest.TestCase):
     def test_parser_registration_is_bounded_to_declared_sources(self):
         for sid in ("SRC-01", "SRC-03", "SRC-27"):
             self.assertTrue(parser_available(sid))
-        for sid in ("SRC-04", "SRC-05", "SRC-06", "SRC-16"):
+        for sid in ("SRC-04", "SRC-05", "SRC-07", "SRC-17"):
             self.assertFalse(parser_available(sid))
 
 
