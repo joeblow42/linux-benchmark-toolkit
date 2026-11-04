@@ -599,9 +599,67 @@ def _parse_block_sysfs(raw, *, source_path):
     ))
 
 
+
+# SRC-17 registered optical identity only. The G5-03 passive worker enumerates
+# srN lexical directory names and the fixed attribute tuple below; it does not
+# open /dev/srN or test inserted media. No host reads occur in normalization.
+_OPTICAL_SYSFS_ROOT = "/sys/class/block/"
+_OPTICAL_SYSFS_DEVICE = re.compile(r"sr[0-9]+\Z")
+_OPTICAL_SYSFS_ATTRS = (
+    "removable", "device/type", "device/vendor", "device/model",
+)
+
+
+def optical_sysfs_path_identity(source_path):
+    """Exact approved optical source identity + G5 worker sort order."""
+    if (type(source_path) is not str
+            or not source_path.startswith(_OPTICAL_SYSFS_ROOT)):
+        return None
+    relative = source_path[len(_OPTICAL_SYSFS_ROOT):]
+    parts = relative.split("/", 1)
+    if len(parts) != 2:
+        return None
+    name, attr = parts
+    if (_OPTICAL_SYSFS_DEVICE.fullmatch(name) is None
+            or attr not in _OPTICAL_SYSFS_ATTRS):
+        return None
+    return ("optical.sysfs." + name + "." + attr.replace("/", "."),
+            (name, _OPTICAL_SYSFS_ATTRS.index(attr)), attr)
+
+
+def _parse_optical_sysfs(raw, *, source_path):
+    identity = optical_sysfs_path_identity(source_path)
+    if identity is None:
+        raise SourceParseError("OPTICAL_SYSFS_SOURCE_PATH_NOT_APPROVED")
+    datum_path, _, attr = identity
+    observed = _text(raw)
+    if (not observed or len(observed) > 4096
+            or "\x00" in observed or "\r" in observed
+            or observed.count("\n") > 1
+            or ("\n" in observed and not observed.endswith("\n"))):
+        raise SourceParseError("OPTICAL_SYSFS_INVALID_SCALAR_OR_BOUND")
+    value = observed.removesuffix("\n")
+    if attr == "removable":
+        if value not in ("0", "1"):
+            raise SourceParseError("OPTICAL_SYSFS_INVALID_REMOVABLE")
+        normalized, value_type = value == "1", "BOOLEAN"
+    elif attr == "device/type":
+        if (not value or len(value) > 20
+                or _BLOCK_SYSFS_NUMBER.fullmatch(value) is None
+                or int(value) > 18446744073709551615):
+            raise SourceParseError("OPTICAL_SYSFS_INVALID_PERIPHERAL_TYPE")
+        normalized, value_type = int(value), "INTEGER"
+    else:
+        normalized, value_type = value.strip(" \t"), "STRING"
+    return ParseResult("linux-sysfs-optical-identity-v1", (
+        ParsedDatum(datum_path, observed, normalized, value_type),
+    ))
+
+
 # Intentional bounded list. Unsupported source families are not normalized
 # by interpreting raw bytes as arbitrary meaningful inventory fields.
 PARSERS = {
+    "SRC-17": _parse_optical_sysfs,
     "SRC-12": _parse_block_sysfs,
     "SRC-07": _parse_cpu_sysfs,
     "SRC-04": _parse_dmi_public,
@@ -626,7 +684,7 @@ def normalize_sealed_source(source_id, raw, *, source_path=None):
     parser = PARSERS.get(source_id)
     if parser is None:
         return None
-    if source_id in ("SRC-04", "SRC-07", "SRC-12"):
+    if source_id in ("SRC-04", "SRC-07", "SRC-12", "SRC-17"):
         return parser(raw, source_path=source_path)
     if source_path is not None:
         raise SourceParseError("SOURCE_PATH_NOT_APPLICABLE")
