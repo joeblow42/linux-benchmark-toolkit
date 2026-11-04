@@ -1,0 +1,47 @@
+{
+  "record_id": "LBT-G504-CP03-INC06-CI-20261104",
+  "record_type": "verification_evidence",
+  "version": "1.0",
+  "state": "SCOPED_CI_PASSED_NOT_GATE_ACCEPTED",
+  "owner_authority": "G4-07 SRC-12; CP-01 D-01..D-05; AI-assisted engineering standard v1.0",
+  "base_pr": 28,
+  "pr": 29,
+  "source": "SRC-12",
+  "verified_commit": "6db49cf1451397d9a96636758cc57460feec7899",
+  "ci": {
+    "run_id": 41908136685,
+    "run_number": 494,
+    "conclusion": "success",
+    "url": "https://github.com/joeblow42/linux-benchmark-toolkit/actions/runs/41908136685",
+    "head_sha": "6db49cf1451397d9a96636758cc57460feec7899",
+    "steps_passed": [
+      "SRC-04 DMI path and negative oracles",
+      "SRC-07 CPU sysfs path and negative oracles",
+      "SRC-12 block sysfs path and negative oracles",
+      "CP-02 specification tests",
+      "Unified Full validation"
+    ]
+  },
+  "scope": {
+    "parsers": "12/28 registered",
+    "requirements_verification": "all 283 NOT_VERIFIED",
+    "original_requirement_columns": "20 unchanged",
+    "original_evidence": "separate, unmodified",
+    "bounded_parser": "no host reads/privilege changes"
+  },
+  "nonconformance_history": "Earlier intermediate runs failed obsolete unsupported-source assertions and static parser-count assertion; resolved without changing approved product requirements; final exact-head CI passed.",
+  "independent_oracle": "Contract-first source-fidelity and negative-test review by same agent; no independent human or separately briefed agent review.",
+  "open": [
+    "16 source families remain",
+    "CP-04 persistence integrity",
+    "CP-05 integrated verification/39 CP02 cases",
+    "CP-06 Bodhi host",
+    "CP-07 owner acceptance"
+  ],
+  "change_history": [
+    {
+      "date": "2026-11-04",
+      "kind": "record observed successful GitHub CI run #494"
+    }
+  ]
+}

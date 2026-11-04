@@ -1,0 +1,77 @@
+{
+  "record_id": "LBT-G504-CP03-INC07-CI-20261104",
+  "record_type": "verification_evidence",
+  "revision": "1.0",
+  "state": "SCOPED_CI_PASS_ONLY",
+  "date": "2026-11-04",
+  "authority": {
+    "methodology": "AI-Assisted Software Engineering Governance Standard v1.0",
+    "requirements": "LBT Rev 1.6 SHA-256 04849cd13ecc75c803839ab7c59a1015c5b92d1f05bf31422b54406c188e2702",
+    "accepted_design": "CP-01 D-01..D-05; canonical schema 1.0.0; status schema 1.0",
+    "source": "G4-07 SRC-17 and accepted G5-03 worker path ordering"
+  },
+  "implementation": {
+    "pr": 30,
+    "base_pr": 29,
+    "commit": "15badecaa7fe93ccae1da766bc1af549fd687ba6",
+    "source_family": "SRC-17",
+    "scope": "only optical identity under original read-only sysfs snapshots; no physical media verification"
+  },
+  "execution": {
+    "url": "https://github.com/joeblow42/linux-benchmark-toolkit/actions/runs/41908867843",
+    "run_number": 508,
+    "run_id": 41908867843,
+    "conclusion": "success",
+    "head_sha": "15badecaa7fe93ccae1da766bc1af549fd687ba6",
+    "job_conclusion": "success",
+    "successful_steps": [
+      "shell/Python syntax",
+      "G5-04 CP-02 contract specification tests",
+      "G5-04 canonical session/integrity tests",
+      "SRC-04 DMI negative and provenance fixtures",
+      "SRC-07 CPU sysfs negative and provenance fixtures",
+      "SRC-12 block sysfs negative and provenance fixtures",
+      "SRC-17 optical sysfs absence/negative/provenance fixtures",
+      "Unified Full validation"
+    ]
+  },
+  "test_oracle": {
+    "source": "verification/g5_04/cp03_optical_sysfs_oracle_07.json",
+    "independence": "Contract-first separate reasoning pass by same implementing AI; no independent human or separate-agent signoff",
+    "test_limit": "Synthetic fixtures and CI environment only, no Bodhi host verification"
+  },
+  "requirements": {
+    "working_rtm": "verification/g5_04/requirements_traceability_rev1_6.csv",
+    "rows": 283,
+    "verification_states": "all NOT_VERIFIED",
+    "original_baseline": "20 source columns unchanged",
+    "new_implementation_refs": [
+      "LBT-FR-168",
+      "LBT-NFR-068",
+      "LBT-NFR-070"
+    ],
+    "full_conformance": "NOT ESTABLISHED"
+  },
+  "coverage": {
+    "candidate_parsers": "13/28",
+    "remaining_unimplemented": 15,
+    "cp03_state": "IN_PROGRESS",
+    "cp04_state": "PENDING",
+    "cp05_state": "PENDING",
+    "cp06_state": "PENDING",
+    "cp07_state": "OWNER APPROVAL REQUIRED"
+  },
+  "limitations": [
+    "Source path authenticity ultimately relies on approved G5-03 trusted receipt path sequence; this increment does not attest physical kernel origin against receipt writer compromise",
+    "No inserted-media detection or device read; capability/identity != media verified",
+    "F-02..F-07 and broader F-08 full source coverage remain open",
+    "39 CP-02 cases remain individually unverified as execution records",
+    "No formal gate approval or release/merge"
+  ],
+  "history": [
+    {
+      "date": "2026-11-04",
+      "detail": "Record scoped CI #508 success for exact Increment07 code/trace commit"
+    }
+  ]
+}
