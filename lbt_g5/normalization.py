@@ -796,9 +796,54 @@ def _parse_thermal_sysfs(raw, *, source_path):
     ))
 
 
+
+# SRC-25: hwmon chip/channel observations. Devices and filenames are sorted
+# lexically by the accepted G5-03 worker. Do not infer hardware-specific units
+# from attr names; some temp*_input drivers represent non-temperature values.
+_HWMON_ROOT = "/sys/class/hwmon/"
+_HWMON_DEVICE = re.compile(r"hwmon[0-9]+\Z")
+_HWMON_ATTR = re.compile(r"(?:(?:temp|fan|in|power)[0-9]+_(?:input|label)|name)\Z")
+_HWMON_SIGNED = re.compile(r"-?[0-9]{1,19}\Z")
+
+
+def hwmon_sysfs_path_identity(source_path):
+    if type(source_path) is not str or not source_path.startswith(_HWMON_ROOT):
+        return None
+    fields = source_path[len(_HWMON_ROOT):].split("/", 1)
+    if len(fields) != 2 or not _HWMON_DEVICE.fullmatch(fields[0]):
+        return None
+    chip, attr = fields
+    if not _HWMON_ATTR.fullmatch(attr):
+        return None
+    return ("thermal.hwmon." + chip + "." + attr, (chip, attr), attr)
+
+
+def _parse_hwmon_sysfs(raw, *, source_path):
+    identity = hwmon_sysfs_path_identity(source_path)
+    if identity is None:
+        raise SourceParseError("HWMON_SOURCE_PATH_NOT_APPROVED")
+    observed, value = _block_scalar_text(raw)
+    attr = identity[2]
+    if attr == "name" or attr.endswith("_label"):
+        norm, typ = value.strip(" \t"), "STRING"
+    else:
+        if not _HWMON_SIGNED.fullmatch(value):
+            raise SourceParseError("HWMON_INVALID_RAW_DECIMAL")
+        norm = int(value)
+        if not -(1 << 63) <= norm < (1 << 63):
+            raise SourceParseError("HWMON_INTEGER_OUT_OF_RANGE")
+        typ = "INTEGER"
+    # Preserve the unconverted driver-reported value; unit inference requires
+    # chip/channel evidence not present in SRC-25's bounded source contract.
+    return ParseResult("linux-sysfs-hwmon-raw-v1", (
+        ParsedDatum(identity[0], observed, norm, typ),
+    ))
+
+
 # Intentional bounded list. Unsupported source families are not normalized
 # by interpreting raw bytes as arbitrary meaningful inventory fields.
 PARSERS = {
+    "SRC-25": _parse_hwmon_sysfs,
     "SRC-24": _parse_thermal_sysfs,
     "SRC-22": _parse_net_sysfs,
     "SRC-19": _parse_drm_sysfs,
@@ -827,7 +872,7 @@ def normalize_sealed_source(source_id, raw, *, source_path=None):
     parser = PARSERS.get(source_id)
     if parser is None:
         return None
-    if source_id in ("SRC-04", "SRC-07", "SRC-12", "SRC-17", "SRC-19", "SRC-22", "SRC-24"):
+    if source_id in ("SRC-04", "SRC-07", "SRC-12", "SRC-17", "SRC-19", "SRC-22", "SRC-24", "SRC-25"):
         return parser(raw, source_path=source_path)
     if source_path is not None:
         raise SourceParseError("SOURCE_PATH_NOT_APPLICABLE")
