@@ -248,7 +248,7 @@ def _parse_tool_resolver(raw):
 
 
 # CP-03 increment 03: typed CPU/optical metadata from sealed static files.
-_CPU_KEY = re.compile(r"[A-Za-z0-9_ .()/-]{1,96}\Z")
+_CPU_KEY = re.compile(r"[A-Za-z0-9_ .(),/#-]{1,96}\Z")
 _DEVICE_NAME = re.compile(r"[A-Za-z0-9_.:-]{1,64}\Z")
 
 
