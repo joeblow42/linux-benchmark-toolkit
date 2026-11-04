@@ -51,6 +51,8 @@ jobs:
         run: python3 -m unittest discover -s tests -p 'test_g5_cp03_platform_02.py' -v
       - name: G5-04 CP-03 CPU and optical capabilities normalization fixtures
         run: python3 -m unittest discover -s tests -p 'test_g5_cp03_cpu_optical_03.py' -v
+      - name: G5-04 CP-03 SRC-04 DMI provenance and adversarial path oracles
+        run: python3 -m unittest discover -s tests -p 'test_g5_cp03_sysfs_paths_04.py' -v
       - name: Unified Full validation (unit and acceptance once)
         run: python3 -m validation.suites full --output validation-results/ci
       - name: Upload unified validation report
