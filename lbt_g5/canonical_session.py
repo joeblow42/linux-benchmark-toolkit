@@ -325,6 +325,17 @@ def _status_for(receipt, artifacts, *, parser_state="NOT_RUN"):
             return "PARTIAL", "EVIDENCE_INCOMPLETE"
         if reason == "SOURCE_INCOMPLETE":
             return "PARTIAL", "SOURCE_INCOMPLETE"
+        # Owner approved Alternative A, 2026-11-04. A nonzero D1 exit is
+        # acquisition incompleteness, not proof of a parser failure. Require
+        # the actual recorded exit and at least one preserved original.
+        if reason == "EXIT_NONZERO":
+            code = receipt.get("exit_code")
+            if (receipt.get("authorization_class") != "D1"
+                    or not artifacts or type(code) is not int
+                    or code == 0 or abs(code) > 65535
+                    or receipt.get("timed_out") or receipt.get("capture_limited")):
+                raise CanonicalContractError("unsubstantiated D1 nonzero exit")
+            return "PARTIAL", "SOURCE_INCOMPLETE"
         raise CanonicalContractError("unclassified partial-source reason")
     if state == "DENIED" and reason == "OPERATOR_AUTH_REQUIRED":
         return "UNAUTHORIZED", "OPERATOR_AUTH_REQUIRED"
@@ -579,6 +590,9 @@ def build_canonical(run_directory, engine_run):
             status=status, reason_code=reason,
             detail=("transport=" + str(metadata["outcome"]) +
                     "/" + str(metadata["reason"]) +
+                    (("; exit_code=" + str(metadata["exit_code"]))
+                     if metadata["outcome"] == "PARTIAL" and
+                        metadata["reason"] == "EXIT_NONZERO" else "") +
                     (("; parser_errors=" + ",".join(parser_failures))
                      if parser_failures else ("; parser=verified" if parser_executions else
                                               "; parser=not-run")))[:1024],
