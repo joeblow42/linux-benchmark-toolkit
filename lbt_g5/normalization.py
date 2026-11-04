@@ -522,9 +522,87 @@ def _parse_cpu_sysfs(raw, *, source_path):
     ))
 
 
+
+# SRC-12 contract derives from the G5-03 D0 passive worker. Attribute order
+# is fixed by that worker, NOT sorted alphabetically. Device entry names are
+# sorted lexically. No device nodes, sysfs, or private host files are opened.
+_BLOCK_SYSFS_ROOT = "/sys/class/block/"
+_BLOCK_SYSFS_ATTRS = (
+    "size", "ro", "removable", "queue/logical_block_size",
+    "queue/physical_block_size", "device/vendor", "device/model",
+    "device/rev",
+)
+_BLOCK_SYSFS_DEVICE = re.compile(r"[A-Za-z0-9_.:-]+\Z")
+_BLOCK_SYSFS_NUMBER = re.compile(r"[0-9]+\Z")
+
+
+def block_sysfs_path_identity(source_path):
+    """Registered SRC-12 identity and worker-order sort key, if unambiguous."""
+    if (type(source_path) is not str
+            or not source_path.startswith(_BLOCK_SYSFS_ROOT)):
+        return None
+    relative = source_path[len(_BLOCK_SYSFS_ROOT):]
+    parts = relative.split("/", 1)
+    if len(parts) != 2:
+        return None
+    name, attr = parts
+    if (not name or name.startswith(".")
+            or _BLOCK_SYSFS_DEVICE.fullmatch(name) is None
+            or attr not in _BLOCK_SYSFS_ATTRS):
+        return None
+    return ("storage.block." + name + "." + attr.replace("/", "."),
+            (name, _BLOCK_SYSFS_ATTRS.index(attr)), attr)
+
+
+def _block_scalar_text(raw):
+    observed = _text(raw)
+    if (not observed or len(observed) > 4096
+            or "\x00" in observed or "\r" in observed
+            or observed.count("\n") > 1
+            or ("\n" in observed and not observed.endswith("\n"))):
+        raise SourceParseError("BLOCK_SYSFS_INVALID_SCALAR_OR_BOUND")
+    return observed, observed.removesuffix("\n")
+
+
+def _block_nonnegative_decimal(value):
+    if (not value or len(value) > 20 or
+            _BLOCK_SYSFS_NUMBER.fullmatch(value) is None):
+        raise SourceParseError("BLOCK_SYSFS_INVALID_DECIMAL")
+    number = int(value)
+    if number > 18446744073709551615:
+        raise SourceParseError("BLOCK_SYSFS_INTEGER_OUT_OF_RANGE")
+    return number
+
+
+def _parse_block_sysfs(raw, *, source_path):
+    identity = block_sysfs_path_identity(source_path)
+    if identity is None:
+        raise SourceParseError("BLOCK_SYSFS_SOURCE_PATH_NOT_APPROVED")
+    path, _, attr = identity
+    observed, value = _block_scalar_text(raw)
+    if attr in ("ro", "removable"):
+        if value not in ("0", "1"):
+            raise SourceParseError("BLOCK_SYSFS_INVALID_FLAG")
+        normalized, value_type, unit = value == "1", "BOOLEAN", None
+    elif attr == "size":
+        normalized, value_type, unit = (
+            _block_nonnegative_decimal(value), "INTEGER", "512-byte-sectors")
+    elif attr in ("queue/logical_block_size", "queue/physical_block_size"):
+        normalized = _block_nonnegative_decimal(value)
+        if normalized == 0:
+            raise SourceParseError("BLOCK_SYSFS_INVALID_BLOCK_SIZE")
+        value_type, unit = "INTEGER", "bytes"
+    else:
+        normalized, value_type, unit = value.strip(" \t"), "STRING", None
+    return ParseResult("linux-sysfs-block-v1", (
+        ParsedDatum(path, observed, normalized, value_type, unit),
+    ))
+
+
 # Intentional bounded list. Unsupported source families are not normalized
 # by interpreting raw bytes as arbitrary meaningful inventory fields.
 PARSERS = {
+    "SRC-12": _parse_block_sysfs,
     "SRC-07": _parse_cpu_sysfs,
     "SRC-04": _parse_dmi_public,
     "SRC-01": _parse_platform_api,
@@ -548,7 +626,7 @@ def normalize_sealed_source(source_id, raw, *, source_path=None):
     parser = PARSERS.get(source_id)
     if parser is None:
         return None
-    if source_id in ("SRC-04", "SRC-07"):
+    if source_id in ("SRC-04", "SRC-07", "SRC-12"):
         return parser(raw, source_path=source_path)
     if source_path is not None:
         raise SourceParseError("SOURCE_PATH_NOT_APPLICABLE")

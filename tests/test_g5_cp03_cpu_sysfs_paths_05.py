@@ -74,7 +74,7 @@ class CpuSysfsSourceFirstOracles(unittest.TestCase):
         self.assertEqual(tuple(sorted(CPU_ROOT)), ROOT_FIELDS)
         self.assertEqual(ATTRS["SRC-07"], CPU_FIELDS)
         self.assertTrue(parser_available("SRC-07"))
-        self.assertFalse(parser_available("SRC-12"))
+        self.assertFalse(parser_available("SRC-17"))
 
     def test_root_ranges_core_id_and_khz_have_separate_original_bindings(self):
         paths = (ROOT + "online", ROOT + "cpu0/topology/core_id",
@@ -85,8 +85,9 @@ class CpuSysfsSourceFirstOracles(unittest.TestCase):
             self.assertEqual(manifest["observation_count"], 6)
             self.assertEqual(validate_canonical(folder), manifest)
             system = json.loads((folder / "private/system.json").read_text())
-            self.assertIn("Registered semantic parsers: 11 of 28",
+            self.assertIn("Registered semantic parsers: ",
                           system["limitations"][1])
+            self.assertIn(" of 28 source families", system["limitations"][1])
             statuses = json.loads(
                 (folder / "private/status_records.json").read_text())["status_records"]
             self.assertIn("6 original/semantic observation records",

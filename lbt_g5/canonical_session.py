@@ -26,7 +26,7 @@ from .canonical_contract import (
 from .catalog import initial_catalog
 from .normalization import (normalize_sealed_source, parser_available,
                             SourceParseError, dmi_field_from_source_path,
-                            cpu_sysfs_path_identity)
+                            cpu_sysfs_path_identity, block_sysfs_path_identity)
 from .safety import initial_source_policies, valid_run_id
 
 PRIVATE_FILES = ("system.json", "source_attempts.json", "status_records.json")
@@ -194,6 +194,34 @@ def _verified_cpu_sysfs_paths(metadata, artifacts, policy):
     return tuple(paths)
 
 
+
+def _verified_block_sysfs_paths(metadata, artifacts, policy):
+    """Bind SRC-12 original byte item ordinals to exact G5-03 worker paths.
+
+    Device directory entries are visited lexically and each device's attribute
+    tuple in a fixed *nonalphabetical* sequence. Optional unavailability yields
+    no source-path or evidence item. Reject mismatched/ambiguous provenance
+    before emitting any canonical session manifest.
+    """
+    paths = metadata.get("source_paths")
+    if type(paths) is not list or len(paths) != len(artifacts):
+        raise CanonicalContractError("block sysfs path/artifact counts disagree")
+    if len(paths) > policy.max_entries:
+        raise CanonicalContractError("block sysfs source entry bound exceeded")
+    previous_order = None
+    for index, (path, artifact) in enumerate(zip(paths, artifacts), 1):
+        if artifact.artifact != "item" + format(index, "04d"):
+            raise CanonicalContractError("block sysfs evidence item ordinal mismatch")
+        identity = block_sysfs_path_identity(path)
+        if identity is None:
+            raise CanonicalContractError("block sysfs path is not registered")
+        order = identity[1]
+        if previous_order is not None and order <= previous_order:
+            raise CanonicalContractError("block sysfs duplicate or wrong worker order")
+        previous_order = order
+    return tuple(paths)
+
+
 def _status_for(receipt, artifacts, *, parser_state="NOT_RUN"):
     """A status needs actual factual source and parser evidence.
 
@@ -353,7 +381,9 @@ def build_canonical(run_directory, engine_run):
         sysfs_paths = (_verified_dmi_paths(metadata, artifacts, policy)
                        if source_id == "SRC-04" else
                        _verified_cpu_sysfs_paths(metadata, artifacts, policy)
-                       if source_id == "SRC-07" else ())
+                       if source_id == "SRC-07" else
+                       _verified_block_sysfs_paths(metadata, artifacts, policy)
+                       if source_id == "SRC-12" else ())
         linked = []
         parser_executions = 0
         parser_failures = []
@@ -396,7 +426,7 @@ def build_canonical(run_directory, engine_run):
                     parsed = normalize_sealed_source(
                         source_id, raw,
                         source_path=(sysfs_paths[artifact_index - 1]
-                                     if source_id in ("SRC-04", "SRC-07") else None))
+                                     if source_id in ("SRC-04", "SRC-07", "SRC-12") else None))
                 except SourceParseError as exc:
                     error = str(exc)[:128]
                     parser_failures.append(error)
