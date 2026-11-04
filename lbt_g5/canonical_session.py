@@ -25,7 +25,8 @@ from .canonical_contract import (
 )
 from .catalog import initial_catalog
 from .normalization import (normalize_sealed_source, parser_available,
-                            SourceParseError, dmi_field_from_source_path)
+                            SourceParseError, dmi_field_from_source_path,
+                            cpu_sysfs_path_identity)
 from .safety import initial_source_policies, valid_run_id
 
 PRIVATE_FILES = ("system.json", "source_attempts.json", "status_records.json")
@@ -162,6 +163,34 @@ def _verified_dmi_paths(metadata, artifacts, policy):
         fields.append(field)
     if fields != sorted(set(fields)):
         raise CanonicalContractError("DMI source path duplicate or ambiguous order")
+    return tuple(paths)
+
+
+
+def _verified_cpu_sysfs_paths(metadata, artifacts, policy):
+    """One-to-one attribution in the G5-03 SRC-07 worker's actual order.
+
+    The worker emits root CPU sets in sorted-name order, CPU directory names
+    lexically, and each CPU's attributes in its fixed worker tuple order.
+    Optional unavailable files create no sealed item or successful path.
+    Never infer a path from a value or read the host during normalization.
+    """
+    paths = metadata.get("source_paths")
+    if type(paths) is not list or len(paths) != len(artifacts):
+        raise CanonicalContractError("CPU sysfs path and artifact counts disagree")
+    if len(paths) > policy.max_entries:
+        raise CanonicalContractError("CPU sysfs source path count exceeds approved bound")
+    previous_order = None
+    for index, (path, artifact) in enumerate(zip(paths, artifacts), 1):
+        if artifact.artifact != "item" + format(index, "04d"):
+            raise CanonicalContractError("CPU sysfs sealed artifact ordinal mismatch")
+        identity = cpu_sysfs_path_identity(path)
+        if identity is None:
+            raise CanonicalContractError("CPU sysfs source path not approved")
+        order = identity[1]
+        if previous_order is not None and order <= previous_order:
+            raise CanonicalContractError("CPU sysfs source path order or identity ambiguous")
+        previous_order = order
     return tuple(paths)
 
 
@@ -321,8 +350,10 @@ def build_canonical(run_directory, engine_run):
             raise CanonicalContractError("receipt and engine evidence disagree")
         if metadata.get("acquired_bytes") != sum(x.byte_count for x in artifacts):
             raise CanonicalContractError("receipt byte count mismatch")
-        dmi_paths = (_verified_dmi_paths(metadata, artifacts, policy)
-                     if source_id == "SRC-04" else ())
+        sysfs_paths = (_verified_dmi_paths(metadata, artifacts, policy)
+                       if source_id == "SRC-04" else
+                       _verified_cpu_sysfs_paths(metadata, artifacts, policy)
+                       if source_id == "SRC-07" else ())
         linked = []
         parser_executions = 0
         parser_failures = []
@@ -364,8 +395,8 @@ def build_canonical(run_directory, engine_run):
                 try:
                     parsed = normalize_sealed_source(
                         source_id, raw,
-                        source_path=(dmi_paths[artifact_index - 1]
-                                     if source_id == "SRC-04" else None))
+                        source_path=(sysfs_paths[artifact_index - 1]
+                                     if source_id in ("SRC-04", "SRC-07") else None))
                 except SourceParseError as exc:
                     error = str(exc)[:128]
                     parser_failures.append(error)
@@ -441,7 +472,7 @@ def build_canonical(run_directory, engine_run):
         component_id="SES-CANONICAL", subject_id=run_id,
         status=orchestrated_state, reason_code=orchestrated_reason,
         detail=("Raw originals validated; semantic normalization incomplete; " +
-                str(len(observations)) + " raw observations; " +
+                str(len(observations)) + " original/semantic observation records; " +
                 str(len(attempts)) + " source attempts")[:1024],
         evidence_refs=[], source_attempt_ids=sorted(all_attempt_ids)))
     system = {
@@ -453,7 +484,10 @@ def build_canonical(run_directory, engine_run):
         "observations": observations,
         "capture_limits": limits,
         "limitations": ["Canonical schema/integrity completion pending CP-04",
-                        "Semantic source coverage is restricted to SRC-02 and SRC-08..SRC-10",
+                        ("Registered semantic parsers: " +
+                         str(sum(1 for source in policies if parser_available(source))) +
+                         " of " + str(len(policies)) + " source families; " +
+                         "this is not complete acquisition or validation"),
                         "Zero observations permitted; no benchmark measurements inferred"],
     }
     outputs = {
