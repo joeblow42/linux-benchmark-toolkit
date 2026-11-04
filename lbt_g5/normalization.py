@@ -917,9 +917,93 @@ def _parse_lscpu_stdout(raw):
     ))
 
 
+
+# SRC-11 lsblk: fixed G5-03 D1 --json --bytes plan. Keep the tree and
+# private MODEL/SERIAL as recorded; no host disk probing or size aggregation.
+_LSBLK_RECORD_FIELDS = frozenset((
+    "name", "kname", "type", "size", "ro", "rm", "model", "serial", "tran",
+))
+_LSBLK_DEPTH_LIMIT = 16
+
+
+def _lsblk_unique_object(pairs):
+    data = {}
+    for key, value in pairs:
+        if key in data:
+            raise SourceParseError("LSBLK_DUPLICATE_JSON_KEY")
+        data[key] = value
+    return data
+
+
+def _lsblk_reject_constant(value):
+    raise SourceParseError("LSBLK_NONFINITE_JSON_CONSTANT")
+
+
+def _parse_lsblk_stdout(raw):
+    try:
+        data = json.loads(_text(raw), object_pairs_hook=_lsblk_unique_object,
+                          parse_constant=_lsblk_reject_constant)
+    except SourceParseError:
+        raise
+    except (ValueError, RecursionError) as exc:
+        raise SourceParseError("LSBLK_INVALID_JSON") from exc
+    if type(data) is not dict or set(data) != {"blockdevices"}:
+        raise SourceParseError("LSBLK_UNEXPECTED_JSON_ROOT")
+    devices = data["blockdevices"]
+    if type(devices) is not list or len(devices) > MAX_FIELDS:
+        raise SourceParseError("LSBLK_INVALID_DEVICE_ARRAY")
+    total = [0]
+
+    def validate(node, depth):
+        if depth > _LSBLK_DEPTH_LIMIT or type(node) is not dict:
+            raise SourceParseError("LSBLK_INVALID_DEVICE_DEPTH_OR_TYPE")
+        total[0] += 1
+        if total[0] > MAX_FIELDS:
+            raise SourceParseError("LSBLK_EXCESSIVE_NODES")
+        if not set(node).issubset(_LSBLK_RECORD_FIELDS | {"children"}):
+            raise SourceParseError("LSBLK_UNAUTHORIZED_DEVICE_KEY")
+        # NAME is explicitly selected and required for device identity;
+        # no assumption that the remaining selected columns are populated.
+        if type(node.get("name")) is not str or not node["name"]:
+            raise SourceParseError("LSBLK_MISSING_DEVICE_NAME")
+        result = {}
+        for key, value in node.items():
+            if key == "children":
+                if type(value) is not list or len(value) > MAX_FIELDS:
+                    raise SourceParseError("LSBLK_INVALID_CHILDREN")
+                result[key] = [validate(child, depth + 1) for child in value]
+            elif value is None:
+                result[key] = None
+            elif type(value) is str:
+                if (len(value) > 8192 or "\x00" in value or
+                        "\n" in value or "\r" in value):
+                    raise SourceParseError("LSBLK_INVALID_STRING_FIELD")
+                result[key] = value
+            elif type(value) is bool:
+                if key not in ("ro", "rm"):
+                    raise SourceParseError("LSBLK_INVALID_BOOLEAN_FIELD")
+                result[key] = value
+            elif type(value) is int:
+                if (key not in ("size", "ro", "rm") or value < 0 or
+                        value > 18446744073709551615 or
+                        (key in ("ro", "rm") and value not in (0, 1))):
+                    raise SourceParseError("LSBLK_INVALID_INTEGER_FIELD")
+                result[key] = value
+            else:
+                raise SourceParseError("LSBLK_UNSUPPORTED_JSON_VALUE")
+        return result
+
+    normalized = [validate(node, 1) for node in devices]
+    return ParseResult("linux-lsblk-bounded-json-v1", (
+        ParsedDatum("storage.lsblk.blockdevices",
+                    "LSBLK_DEVICE_HIERARCHY", normalized, "ARRAY"),
+    ))
+
+
 # Intentional bounded list. Unsupported source families are not normalized
 # by interpreting raw bytes as arbitrary meaningful inventory fields.
 PARSERS = {
+    "SRC-11": _parse_lsblk_stdout,
     "SRC-05": _parse_lscpu_stdout,
     "SRC-26": _parse_power_sysfs,
     "SRC-25": _parse_hwmon_sysfs,
@@ -952,9 +1036,9 @@ def normalize_sealed_source(source_id, raw, *, source_path=None,
     parser = PARSERS.get(source_id)
     if parser is None:
         return None
-    if source_id == "SRC-05":
+    if source_id in ("SRC-05", "SRC-11"):
         if source_path is not None or source_stream != "stdout":
-            raise SourceParseError("LSCPU_UNVERIFIED_DATA_STREAM")
+            raise SourceParseError("D1_UNVERIFIED_DATA_STREAM")
         return parser(raw)
     if source_stream is not None:
         raise SourceParseError("SOURCE_STREAM_NOT_APPLICABLE")
