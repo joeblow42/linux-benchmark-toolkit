@@ -28,7 +28,8 @@ from .normalization import (normalize_sealed_source, parser_available,
                             SourceParseError, dmi_field_from_source_path,
                             cpu_sysfs_path_identity, block_sysfs_path_identity,
                             optical_sysfs_path_identity,
-                            drm_sysfs_path_identity, net_sysfs_path_identity)
+                            drm_sysfs_path_identity, net_sysfs_path_identity,
+                            thermal_sysfs_path_identity)
 from .safety import initial_source_policies, valid_run_id
 
 PRIVATE_FILES = ("system.json", "source_attempts.json", "status_records.json")
@@ -445,7 +446,10 @@ def build_canonical(run_directory, engine_run):
                        if source_id == "SRC-19" else
                        _verified_lexical_sysfs_paths(metadata, artifacts, policy,
                            identity_fn=net_sysfs_path_identity, label="NET")
-                       if source_id == "SRC-22" else ())
+                       if source_id == "SRC-22" else
+                       _verified_lexical_sysfs_paths(metadata, artifacts, policy,
+                           identity_fn=thermal_sysfs_path_identity, label="THERM")
+                       if source_id == "SRC-24" else ())
         linked = []
         parser_executions = 0
         parser_failures = []
@@ -488,7 +492,7 @@ def build_canonical(run_directory, engine_run):
                     parsed = normalize_sealed_source(
                         source_id, raw,
                         source_path=(sysfs_paths[artifact_index - 1]
-                                     if source_id in ("SRC-04", "SRC-07", "SRC-12", "SRC-17", "SRC-19", "SRC-22") else None))
+                                     if source_id in ("SRC-04", "SRC-07", "SRC-12", "SRC-17", "SRC-19", "SRC-22", "SRC-24") else None))
                 except SourceParseError as exc:
                     error = str(exc)[:128]
                     parser_failures.append(error)

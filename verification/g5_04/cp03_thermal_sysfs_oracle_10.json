@@ -1,0 +1,70 @@
+{
+  "record_id": "LBT-G504-CP03-INC10-ORACLE-SRC24",
+  "revision": "1.0",
+  "state": "SPECIFIED_BEFORE_IMPLEMENTATION",
+  "date": "2026-11-04",
+  "authority": {
+    "requirements": "Rev 1.6",
+    "schema": "canonical 1.0.0 and 14-field status 1.0",
+    "process": "AI-Assisted Software Engineering Governance Standard v1.0",
+    "sources": [
+      "G4-07 source-authorization SRC-24, COL-THERM D0 read-only thermal zone attrs, 8 MiB, <=2048 entries, 4s, no trip/cooling policy writes",
+      "G4-02/06 Source Evidence Map SRC-24 deterministic original artifact identities",
+      "Accepted G5-03 passive_worker.py SRC-24 ROOTS, ATTRS, source_paths and item ordinal mapping",
+      "G5-04 owner-approved CP-01 D01..D05"
+    ]
+  },
+  "path_contract": {
+    "root": "/sys/class/thermal",
+    "zones": "thermal_zone[0-9]+ (not cooling_device), lexical directory sort",
+    "attributes": [
+      "type",
+      "temp"
+    ],
+    "within_zone_order": "The worker's fixed ATTRS tuple, type then temp (NOT alphabetical sorted)",
+    "source_paths": "Only successfully sealed file paths, mapped ordinally to item0001..itemNNNN; missing optional values reported unavailable_fields and not fabricated."
+  },
+  "unit_semantics": {
+    "type": "bounded single-line UTF-8 thermal zone type label; unknown labels preserved text, no inferred sensor class",
+    "temp": "signed decimal integer reported in millidegrees Celsius (m°C). Preserve recorded integer, do not divide by 1000 or fabricate calibrated Celsius."
+  },
+  "cases": [
+    {
+      "id": "S24-P01",
+      "expected": "two sealed thermal_zone0 type/temp originals mapped to distinct typed private fields; correct unit millidegrees Celsius; manifest and SHA validate"
+    },
+    {
+      "id": "S24-P02",
+      "expected": "thermal_zone10 listed lexically before thermal_zone2; separate originals never conflated"
+    },
+    {
+      "id": "S24-P03",
+      "expected": "missing temp optional field is reported unavailable without invented temperature; no zones reported means zero observations"
+    },
+    {
+      "id": "S24-N01",
+      "expected": "receipt path count, duplicate/reordered attrs or zones, mismatched ordinal all reject before manifest"
+    },
+    {
+      "id": "S24-N02",
+      "expected": "/sys/class/thermal/cooling_device0, trip_point_0_temp, wrong root, traversal, fake thermal_zoneX reject without host access"
+    },
+    {
+      "id": "S24-N03",
+      "expected": "cross-run or modified original evidence never normalized as verified"
+    },
+    {
+      "id": "S24-N04",
+      "expected": "malformed decimal, out-of-range integer, embedded NUL, invalid UTF-8, multi-line source -> actual parser failure with lossless raw fallback"
+    },
+    {
+      "id": "S24-B01",
+      "expected": "legitimate negative or zero millidegree value remains signed integer, not assumed Celsius or normal operating temperature"
+    },
+    {
+      "id": "S24-B02",
+      "expected": "unfamiliar type label retained as original text; no thermal health recommendation or limits inferred"
+    }
+  ],
+  "limitations": "Source-first oracle specified independently of parser code but by SAME AI; no independent human signoff. Scope excludes cooling writes, power management, reporting, privacy mask, host validation and requirements-wide verification."
+}

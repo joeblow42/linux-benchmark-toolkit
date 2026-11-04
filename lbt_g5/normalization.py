@@ -756,9 +756,50 @@ def _parse_net_sysfs(raw, *, source_path):
     ))
 
 
+
+# SRC-24 accepted G5-03 passive worker. Only thermal_zoneN {type,temp}
+# originals are read, never cooling/trip controls or thermal policy writes.
+_THERMAL_SYSFS_ROOT = "/sys/class/thermal/"
+_THERMAL_SYSFS_ZONE = re.compile(r"thermal_zone[0-9]+\Z")
+_THERMAL_SYSFS_ATTRS = ("type", "temp")
+
+
+def thermal_sysfs_path_identity(source_path):
+    """SRC-24 allowed zone attribute and G5-03 original ordering key."""
+    if type(source_path) is not str or not source_path.startswith(_THERMAL_SYSFS_ROOT):
+        return None
+    parts = source_path[len(_THERMAL_SYSFS_ROOT):].split("/", 1)
+    if len(parts) != 2:
+        return None
+    zone, attr = parts
+    if _THERMAL_SYSFS_ZONE.fullmatch(zone) is None or attr not in _THERMAL_SYSFS_ATTRS:
+        return None
+    return ("thermal.sysfs." + zone + "." + attr,
+            (zone, _THERMAL_SYSFS_ATTRS.index(attr)), attr)
+
+
+def _parse_thermal_sysfs(raw, *, source_path):
+    identity = thermal_sysfs_path_identity(source_path)
+    if identity is None:
+        raise SourceParseError("THERMAL_SYSFS_SOURCE_PATH_NOT_APPROVED")
+    observed, value = _block_scalar_text(raw)
+    attr = identity[2]
+    if attr == "temp":
+        # Linux thermal_zone temp is in millidegrees Celsius. Do NOT
+        # divide by 1000 or infer an operating limit or thermal failure.
+        norm = _cpu_sysfs_integer(value, signed=True)
+        typ, unit = "INTEGER", "millidegrees Celsius"
+    else:
+        norm, typ, unit = value.strip(" \t"), "STRING", None
+    return ParseResult("linux-sysfs-thermal-zone-v1", (
+        ParsedDatum(identity[0], observed, norm, typ, unit),
+    ))
+
+
 # Intentional bounded list. Unsupported source families are not normalized
 # by interpreting raw bytes as arbitrary meaningful inventory fields.
 PARSERS = {
+    "SRC-24": _parse_thermal_sysfs,
     "SRC-22": _parse_net_sysfs,
     "SRC-19": _parse_drm_sysfs,
     "SRC-17": _parse_optical_sysfs,
@@ -786,7 +827,7 @@ def normalize_sealed_source(source_id, raw, *, source_path=None):
     parser = PARSERS.get(source_id)
     if parser is None:
         return None
-    if source_id in ("SRC-04", "SRC-07", "SRC-12", "SRC-17", "SRC-19", "SRC-22"):
+    if source_id in ("SRC-04", "SRC-07", "SRC-12", "SRC-17", "SRC-19", "SRC-22", "SRC-24"):
         return parser(raw, source_path=source_path)
     if source_path is not None:
         raise SourceParseError("SOURCE_PATH_NOT_APPLICABLE")

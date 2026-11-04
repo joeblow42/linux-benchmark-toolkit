@@ -1,0 +1,85 @@
+{
+  "record_id": "LBT-G504-CP03-INC08-10-CI-20261104",
+  "schema_version": "1.0",
+  "record_type": "scoped_ci_execution_evidence",
+  "date": "2026-11-04",
+  "status": "THREE_INCREMENT_CI_PASSED_CP03_OPEN",
+  "authority": {
+    "owner_instruction": "Proceed with next three CP-03 increments, stop if needed",
+    "governing_standard": "AI-Assisted Software Engineering Governance Standard v1.0",
+    "requirements_rev": "1.6",
+    "requirements_sha256": "04849cd13ecc75c803839ab7c59a1015c5b92d1f05bf31422b54406c188e2702",
+    "canonical_schema": "1.0.0",
+    "status_schema": "1.0",
+    "source_authorizations": [
+      "G4-07 SRC-19 COL-GPU D0",
+      "G4-07 SRC-22 COL-NET D0",
+      "G4-07 SRC-24 COL-THERM D0"
+    ]
+  },
+  "runs": [
+    {
+      "increment": "08",
+      "source": "SRC-19",
+      "pr": 31,
+      "branch": "g5/cp03-drm-sysfs-provenance-08",
+      "head": "4183b747907f095eb33263b270f34d08fc06416e",
+      "run_id": 41914762941,
+      "run_number": 526,
+      "conclusion": "success",
+      "url": "https://github.com/joeblow42/linux-benchmark-toolkit/actions/runs/41914762941",
+      "specified_oracle": "verification/g5_04/cp03_drm_sysfs_oracle_08.json",
+      "implemented_test": "tests/test_g5_cp03_drm_sysfs_paths_08.py"
+    },
+    {
+      "increment": "09",
+      "source": "SRC-22",
+      "pr": 32,
+      "branch": "g5/cp03-net-sysfs-provenance-09",
+      "head": "e17adf9deb6573bf9ca2a6277646c6ecaf73f20d",
+      "run_id": 41915365051,
+      "run_number": 540,
+      "conclusion": "success",
+      "url": "https://github.com/joeblow42/linux-benchmark-toolkit/actions/runs/41915365051",
+      "specified_oracle": "verification/g5_04/cp03_net_sysfs_oracle_09.json",
+      "implemented_test": "tests/test_g5_cp03_net_sysfs_paths_09.py"
+    },
+    {
+      "increment": "10",
+      "source": "SRC-24",
+      "pr": 33,
+      "branch": "g5/cp03-thermal-sysfs-provenance-10",
+      "head": "d3e11b2b152b77ddd44c9edbbc703bd018177962",
+      "run_id": 41915921972,
+      "run_number": 556,
+      "conclusion": "success",
+      "url": "https://github.com/joeblow42/linux-benchmark-toolkit/actions/runs/41915921972",
+      "specified_oracle": "verification/g5_04/cp03_thermal_sysfs_oracle_10.json",
+      "implemented_test": "tests/test_g5_cp03_thermal_sysfs_paths_10.py"
+    }
+  ],
+  "verification_scope": [
+    "Each specific SRC-19/22/24 source-first suite completed successfully",
+    "Unified Full validation completed successfully at each listed exact GitHub head commit",
+    "Prior registered source regressions and canonical integrity suites passed"
+  ],
+  "assurance_limits": [
+    "All three PRs remain DRAFT and UNMERGED, stacked on PR #30; no merge or owner gate approval",
+    "Independent oracle sources were specified before code, but reviewed by SAME AI; no human/second-agent independent approval",
+    "CI fixtures are synthetic; target Bodhi 7 CP-06 verification not done",
+    "12/28 registered source-family parsers still missing; CP-03 F-08 incomplete",
+    "CP-04 F-02..F-07, strict complete canonical contract and cross-file integrity not closed",
+    "39 CP-02 independent acceptance cases not individually executed and traced to full verification",
+    "All 283 requirements remain NOT_VERIFIED, 20 original Rev1.6 source columns preserved; no CP-07 acceptance",
+    "SRC-22 link addresses remain PRIVATE until owner-approved YAML privacy masking in later gates"
+  ],
+  "implementation_claim": "Source-family parser registration 16/28 after Increment 10; no attempt to declare source-complete operation",
+  "audit_record": "CI is evidence only for defined test fixtures and execution result; no requirements-wide conformance was inferred",
+  "change_history": [
+    {
+      "date": "2026-11-04",
+      "revision": "1.0",
+      "note": "Recorded GitHub Actions #526, #540 and #556 at exact immutable source commits"
+    }
+  ]
+}
