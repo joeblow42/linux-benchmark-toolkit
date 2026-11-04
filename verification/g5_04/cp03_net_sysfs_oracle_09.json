@@ -1,0 +1,76 @@
+{
+  "record_id": "LBT-G504-CP03-INC09-ORACLE-SRC22",
+  "version": "1.0",
+  "state": "PREIMPLEMENTATION_SOURCE_FIRST",
+  "date": "2026-11-04",
+  "owner_direction": "CP-03 three sequential increments: #08 SRC-19, #09 SRC-22, #10 SRC-24; no CP-04/05",
+  "authority": [
+    "G4-07 SRC-22 COL-NET, D0 read only 16MiB, 2048 entries, 4s; local interface sysfs only; no packets/writes/credentials",
+    "G4-02/06 SRC-22 original source evidence and identities",
+    "Accepted G5-03 passive_worker.py SRC-22 ROOTS/ATTRS, source_paths ordinal binding",
+    "Owner-approved CP-01 D01..D05; canonical 1.0.0 and status 1.0; Rev1.6",
+    "AI-assisted software engineering standard v1.0"
+  ],
+  "path": {
+    "root": "/sys/class/net",
+    "interface_name": "[a-zA-Z0-9_.:-]+, not hidden/dot; lexical sorted directory names",
+    "attrs_order": [
+      "address",
+      "operstate",
+      "carrier",
+      "mtu",
+      "speed",
+      "type",
+      "duplex",
+      "ifindex"
+    ],
+    "source_paths": "Only successful reads in the exact worker path and fixed attribute order. Missing optional attrs reported separately. itemNNNN binds to source_paths index, then SHA-256 original bytes."
+  },
+  "private_data": "The link-layer address may be identifying information; private canonical only, to be processed through later owner-approved G5-05 per-datum privacy.yaml and G5-06 publication masking. Do NOT display paths/addresses from original evidence in generated public reports.",
+  "interpretation": {
+    "address": "bounded single-line textual link-layer address, preserve original and normalized trimmed text, do NOT assert a MAC type or reveal publicly",
+    "operstate": "bounded single-line link state label as text, preserve novel labels, no live connectivity/packet assertions",
+    "carrier": "strict 0/1 boolean if present; expected optional absence supported by G5-03 worker",
+    "mtu": "positive decimal integer bytes",
+    "speed": "positive/nonnegative numeric Mb/s; -1 (Linux unknown sentinel) -> explicit object {known:false,reported_code:-1}, not a measured link speed",
+    "type": "nonnegative decimal ARPHRD link type numeric code only, no interface kind inference",
+    "duplex": "bounded single-line full/half/unknown string; never infer throughput",
+    "ifindex": "positive decimal integer, interface index not a global stable identifier"
+  },
+  "tests": [
+    {
+      "id": "S22-P01",
+      "oracle": "two synthetic interfaces valid worker lexical order; sealed 1:1 original evidence, true booleans, MTU bytes and ifindex"
+    },
+    {
+      "id": "S22-P02",
+      "oracle": "speed 1000 yields integer Mb/s; -1 yields an explicit unknown sentinel OBJECT, not a measured negative throughput"
+    },
+    {
+      "id": "S22-P03",
+      "oracle": "optional carrier/speed/duplex unavailable fields not fabricated; source absent doesn't invent interfaces"
+    },
+    {
+      "id": "S22-N01",
+      "oracle": "path count mismatch, duplicate, scrambled attr order or name sort, forged item ordinal all reject before manifest"
+    },
+    {
+      "id": "S22-N02",
+      "oracle": "path traversal, wrong root, hidden dot name, unregistered interface attribute like wireless or statistics, malicious credential path reject"
+    },
+    {
+      "id": "S22-N03",
+      "oracle": "cross-run original, mismatched sealed SHA256, abnormal type and malformed UTF-8 fall back or reject without original edits"
+    },
+    {
+      "id": "S22-N04",
+      "oracle": "invalid numeric/boolean/negative speed other than -1, multiline, oversized scalar -> actual parser failure + original evidence"
+    },
+    {
+      "id": "S22-B01",
+      "oracle": "new/unfamiliar operstate and non-ethernet link-layer address preserved as string without falsely asserting connectivity or MAC type"
+    }
+  ],
+  "provenance": "Test oracle derived from approved G4/G5 worker/source contracts before parser code. Same AI does separate pass; NOT independent human review. Current CI tests are synthetic fixtures; no host packet capture.",
+  "completion_limits": "Scoped CI success only, no full CP03 completion/CP04 closure/CP05 acceptance/CP06 Bodhi or gate CP07 acceptance."
+}
