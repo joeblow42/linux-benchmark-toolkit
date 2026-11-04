@@ -74,7 +74,7 @@ class CpuSysfsSourceFirstOracles(unittest.TestCase):
         self.assertEqual(tuple(sorted(CPU_ROOT)), ROOT_FIELDS)
         self.assertEqual(ATTRS["SRC-07"], CPU_FIELDS)
         self.assertTrue(parser_available("SRC-07"))
-        self.assertFalse(parser_available("SRC-25"))
+        self.assertFalse(parser_available("SRC-26"))
 
     def test_root_ranges_core_id_and_khz_have_separate_original_bindings(self):
         paths = (ROOT + "online", ROOT + "cpu0/topology/core_id",
