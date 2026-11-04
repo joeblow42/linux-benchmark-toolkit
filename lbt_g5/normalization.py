@@ -695,9 +695,71 @@ def _parse_drm_sysfs(raw, *, source_path):
     ))
 
 
+
+# SRC-22: existing G5-03 passive worker local net sysfs only. Exact
+# link/address STATE, not a packet observation, MAC-type assertion or credential.
+_NET_SYSFS_ROOT = "/sys/class/net/"
+_NET_SYSFS_NAME = re.compile(r"[A-Za-z0-9_.:-]+\Z")
+_NET_SYSFS_ATTRS = (
+    "address", "operstate", "carrier", "mtu",
+    "speed", "type", "duplex", "ifindex",
+)
+_NET_SIGNED = re.compile(r"-?[0-9]+\Z")
+
+
+def net_sysfs_path_identity(source_path):
+    """Registered per-interface SRC-22 field and worker-order key."""
+    if type(source_path) is not str or not source_path.startswith(_NET_SYSFS_ROOT):
+        return None
+    parts = source_path[len(_NET_SYSFS_ROOT):].split("/", 1)
+    if len(parts) != 2:
+        return None
+    name, attr = parts
+    if (name.startswith(".") or _NET_SYSFS_NAME.fullmatch(name) is None
+            or attr not in _NET_SYSFS_ATTRS):
+        return None
+    return ("network.link." + name + "." + attr,
+            (name, _NET_SYSFS_ATTRS.index(attr)), attr)
+
+
+def _parse_net_sysfs(raw, *, source_path):
+    identity = net_sysfs_path_identity(source_path)
+    if identity is None:
+        raise SourceParseError("NET_SYSFS_SOURCE_PATH_NOT_APPROVED")
+    observed, value = _block_scalar_text(raw)
+    path, _, attr = identity
+    if attr == "carrier":
+        if value not in ("0", "1"):
+            raise SourceParseError("NET_SYSFS_INVALID_CARRIER")
+        norm, typ, unit = (value == "1"), "BOOLEAN", None
+    elif attr in ("mtu", "type", "ifindex"):
+        norm = _block_nonnegative_decimal(value)
+        if norm > 4294967295 or (attr in ("mtu", "ifindex") and norm == 0):
+            raise SourceParseError("NET_SYSFS_INVALID_NUMERIC_RANGE")
+        typ = "INTEGER"
+        unit = "bytes" if attr == "mtu" else None
+    elif attr == "speed":
+        if not value or len(value) > 20 or _NET_SIGNED.fullmatch(value) is None:
+            raise SourceParseError("NET_SYSFS_INVALID_SPEED")
+        number = int(value)
+        if number == -1:
+            norm, typ, unit = {"known": False, "reported_code": -1}, "OBJECT", None
+        elif 0 <= number <= 4294967295:
+            norm, typ, unit = number, "INTEGER", "Mb/s"
+        else:
+            raise SourceParseError("NET_SYSFS_INVALID_SPEED_RANGE")
+    else:
+        # Address may not be Ethernet; unknown state labels remain source text.
+        norm, typ, unit = value.strip(" \t"), "STRING", None
+    return ParseResult("linux-sysfs-net-link-v1", (
+        ParsedDatum(path, observed, norm, typ, unit),
+    ))
+
+
 # Intentional bounded list. Unsupported source families are not normalized
 # by interpreting raw bytes as arbitrary meaningful inventory fields.
 PARSERS = {
+    "SRC-22": _parse_net_sysfs,
     "SRC-19": _parse_drm_sysfs,
     "SRC-17": _parse_optical_sysfs,
     "SRC-12": _parse_block_sysfs,
@@ -724,7 +786,7 @@ def normalize_sealed_source(source_id, raw, *, source_path=None):
     parser = PARSERS.get(source_id)
     if parser is None:
         return None
-    if source_id in ("SRC-04", "SRC-07", "SRC-12", "SRC-17", "SRC-19"):
+    if source_id in ("SRC-04", "SRC-07", "SRC-12", "SRC-17", "SRC-19", "SRC-22"):
         return parser(raw, source_path=source_path)
     if source_path is not None:
         raise SourceParseError("SOURCE_PATH_NOT_APPLICABLE")
