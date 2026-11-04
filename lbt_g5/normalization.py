@@ -840,9 +840,61 @@ def _parse_hwmon_sysfs(raw, *, source_path):
     ))
 
 
+
+# SRC-26 original G5-03 passive power-supply captures. In particular,
+# serial_number is PRIVATE; source acquisition does not grant public release.
+_POWER_SYSFS_ROOT = "/sys/class/power_supply/"
+_POWER_SYSFS_DEVICE = re.compile(r"[A-Za-z0-9_.:-]+\Z")
+_POWER_SYSFS_ATTRS = (
+    "type", "status", "capacity", "voltage_now", "current_now",
+    "power_now", "energy_now", "energy_full", "energy_full_design",
+    "charge_now", "charge_full", "charge_full_design", "manufacturer",
+    "model_name", "serial_number", "technology", "cycle_count",
+)
+_POWER_SYSFS_TEXT = frozenset((
+    "type", "status", "manufacturer", "model_name", "serial_number", "technology",
+))
+
+
+def power_sysfs_path_identity(source_path):
+    if type(source_path) is not str or not source_path.startswith(_POWER_SYSFS_ROOT):
+        return None
+    parts = source_path[len(_POWER_SYSFS_ROOT):].split("/", 1)
+    if len(parts) != 2:
+        return None
+    name, attr = parts
+    if (name.startswith(".") or _POWER_SYSFS_DEVICE.fullmatch(name) is None
+            or attr not in _POWER_SYSFS_ATTRS):
+        return None
+    return ("power.supply." + name + "." + attr,
+            (name, _POWER_SYSFS_ATTRS.index(attr)), attr)
+
+
+def _parse_power_sysfs(raw, *, source_path):
+    identity = power_sysfs_path_identity(source_path)
+    if identity is None:
+        raise SourceParseError("POWER_SYSFS_SOURCE_PATH_NOT_APPROVED")
+    observed, value = _block_scalar_text(raw)
+    attr = identity[2]
+    if attr in _POWER_SYSFS_TEXT:
+        normalized, kind = value.strip(" \t"), "STRING"
+    else:
+        if _HWMON_SIGNED.fullmatch(value) is None:
+            raise SourceParseError("POWER_SYSFS_INVALID_RAW_DECIMAL")
+        normalized = int(value)
+        if not -(1 << 63) <= normalized < (1 << 63):
+            raise SourceParseError("POWER_SYSFS_INTEGER_OUT_OF_RANGE")
+        kind = "INTEGER"
+    # Keep native raw integer, without inferring battery health or units.
+    return ParseResult("linux-sysfs-power-raw-v1", (
+        ParsedDatum(identity[0], observed, normalized, kind),
+    ))
+
+
 # Intentional bounded list. Unsupported source families are not normalized
 # by interpreting raw bytes as arbitrary meaningful inventory fields.
 PARSERS = {
+    "SRC-26": _parse_power_sysfs,
     "SRC-25": _parse_hwmon_sysfs,
     "SRC-24": _parse_thermal_sysfs,
     "SRC-22": _parse_net_sysfs,
@@ -872,7 +924,7 @@ def normalize_sealed_source(source_id, raw, *, source_path=None):
     parser = PARSERS.get(source_id)
     if parser is None:
         return None
-    if source_id in ("SRC-04", "SRC-07", "SRC-12", "SRC-17", "SRC-19", "SRC-22", "SRC-24", "SRC-25"):
+    if source_id in ("SRC-04", "SRC-07", "SRC-12", "SRC-17", "SRC-19", "SRC-22", "SRC-24", "SRC-25", "SRC-26"):
         return parser(raw, source_path=source_path)
     if source_path is not None:
         raise SourceParseError("SOURCE_PATH_NOT_APPLICABLE")
