@@ -233,11 +233,11 @@ def _parse_tool_resolver(raw):
     if type(name) is not str or name not in _TOOLS:
         raise SourceParseError("TOOL_UNKNOWN_NAME")
     if path is not None:
-        if (type(path) is not str or len(path) > 512
-                or "\x00" in path or not path.startswith("/")
-                or not path.startswith(("/usr/bin/", "/bin/",
-                                         "/usr/sbin/", "/sbin/"))
-                or not path.endswith("/" + name)):
+        # The G5-02 worker calls which() against a fixed PATH. Reject
+        # traversal or nested paths even when an allowed prefix matches.
+        roots = ("/usr/bin", "/bin", "/usr/sbin", "/sbin")
+        if type(path) is not str or path not in tuple(
+                directory + "/" + name for directory in roots):
             raise SourceParseError("TOOL_INVALID_RESOLVED_PATH")
     return ParseResult("linux-tool-resolver-v1", (
         ParsedDatum("tools.resolution." + name, item,
