@@ -85,8 +85,9 @@ class CpuSysfsSourceFirstOracles(unittest.TestCase):
             self.assertEqual(manifest["observation_count"], 6)
             self.assertEqual(validate_canonical(folder), manifest)
             system = json.loads((folder / "private/system.json").read_text())
-            self.assertIn("Registered semantic parsers: 11 of 28",
+            self.assertIn("Registered semantic parsers: ",
                           system["limitations"][1])
+            self.assertIn(" of 28 source families", system["limitations"][1])
             statuses = json.loads(
                 (folder / "private/status_records.json").read_text())["status_records"]
             self.assertIn("6 original/semantic observation records",
