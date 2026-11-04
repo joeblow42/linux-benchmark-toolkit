@@ -373,9 +373,52 @@ def _parse_cdrom_info(raw):
     ))
 
 
+
+# G4-07 SRC-04 exposes selected readable public DMI attributes only.
+# This fixed allowlist is deliberately independent of acquired VALUE bytes.
+# Cross-module contract tests must also compare it to the accepted G5-03
+# worker's DMI allowlist. No dmidecode or host reads occur here.
+_DMI_PREFIX = "/sys/class/dmi/id/"
+_DMI_PUBLIC_FIELDS = frozenset((
+    "sys_vendor", "product_name", "product_version", "product_family",
+    "board_vendor", "board_name", "board_version",
+    "bios_vendor", "bios_version", "bios_date",
+    "chassis_type", "chassis_vendor", "chassis_version",
+))
+
+
+def dmi_field_from_source_path(source_path):
+    """Return the exact approved SRC-04 field, never an inferred path."""
+    if type(source_path) is not str or not source_path.startswith(_DMI_PREFIX):
+        return None
+    field = source_path[len(_DMI_PREFIX):]
+    if field not in _DMI_PUBLIC_FIELDS or source_path != _DMI_PREFIX + field:
+        return None
+    return field
+
+
+def _parse_dmi_public(raw, *, source_path):
+    field = dmi_field_from_source_path(source_path)
+    if field is None:
+        raise SourceParseError("DMI_SOURCE_PATH_NOT_APPROVED")
+    observed = _text(raw)
+    # Sysfs DMI attributes are bounded single-line text with optional LF.
+    # Unexpected binary/multiline content is preserved in original evidence,
+    # but is not silently converted into a trusted semantic field.
+    if (len(observed) > 4096 or "\x00" in observed or "\r" in observed
+            or observed.count("\n") > 1
+            or ("\n" in observed and not observed.endswith("\n"))):
+        raise SourceParseError("DMI_INVALID_TEXT_OR_BOUND")
+    return ParseResult("linux-sysfs-dmi-public-v1", (
+        ParsedDatum("platform.dmi." + field, observed,
+                    observed.rstrip("\n").strip(" \t"), "STRING"),
+    ))
+
+
 # Intentional bounded list. Unsupported source families are not normalized
 # by interpreting raw bytes as arbitrary meaningful inventory fields.
 PARSERS = {
+    "SRC-04": _parse_dmi_public,
     "SRC-01": _parse_platform_api,
     "SRC-02": _parse_os_release,
     "SRC-03": _parse_efi_presence,
@@ -392,9 +435,13 @@ def parser_available(source_id):
     return source_id in PARSERS
 
 
-def normalize_sealed_source(source_id, raw):
-    """Return None if no parser exists; ParseResult or attributed exception otherwise."""
+def normalize_sealed_source(source_id, raw, *, source_path=None):
+    """Normalize sealed bytes; SRC-04 additionally requires verified source path."""
     parser = PARSERS.get(source_id)
     if parser is None:
         return None
+    if source_id == "SRC-04":
+        return parser(raw, source_path=source_path)
+    if source_path is not None:
+        raise SourceParseError("SOURCE_PATH_NOT_APPLICABLE")
     return parser(raw)

@@ -1,0 +1,46 @@
+{
+  "record_id": "LBT-GOV-ADOPT-20261104-01",
+  "revision": "1.0",
+  "record_type": "authority_decision",
+  "authority_level": "project_owner",
+  "status": "APPROVED",
+  "effective_from": "2026-11-04",
+  "last_updated": "2026-11-04",
+  "responsible_role": "project_owner",
+  "source_reference": "Project conversation, owner approval message of 2026-11-04 (chat evidence not a durable externally resolvable URL)",
+  "change_history": [
+    {
+      "revision": "1.0",
+      "action": "initial owner methodology adoption",
+      "date": "2026-11-04"
+    }
+  ],
+  "exact_owner_approval": "I approve adopting AI-Assisted Software Engineering Governance Standard v1.0 as the governing development methodology for LBT, including an initial conformance-gap reconciliation before further CP-03 implementation",
+  "execution_authorization": "Owner subsequent instruction: register governance approval in durable project records; reconcile applicable authority metadata; resume CP-03 path-aware sysfs normalization using independently reviewed provenance and negative-test expectations",
+  "governing_standard": {
+    "title": "AI-Assisted Software Engineering Development, Verification, Validation, and Governance Standard",
+    "version": "1.0",
+    "date": "2026-11-04",
+    "sha256": "1d79be3e0f12410f8e64bdbf4441780c5216722c5cae3307ae677d00e67dfc5a",
+    "source_artifact": "AI_Assisted_Software_Engineering_Governance_Standard_v1_0.odt",
+    "source_bytes_in_repository": false,
+    "source_recovery_note": "Retain exact ODT by SHA-256 in owner project recovery package; repository contains pointer/authority record, not the 59-KB standard itself"
+  },
+  "applicability": {
+    "engineering_process": "Mandatory prospectively for LBT; initial conformance-gap reconciliation of prior work",
+    "existing_product_requirements": "Requirements Rev 1.6, SHA-256 04849cd13ecc75c803839ab7c59a1015c5b92d1f05bf31422b54406c188e2702; unchanged",
+    "architecture": "Candidate C unified IC-02 engine; IC-01..IC-07 remain active",
+    "gate_map": "G5-04 CP-01..CP-07 preserved; generic methodology gates mapped to existing LBT gates; not a competing approval system",
+    "schema_versions": {
+      "canonical": "1.0.0",
+      "status": "1.0"
+    },
+    "acceptance": "Formal G5-04 CP-07 and all material contract, privacy, security and requirements changes remain owner-controlled"
+  },
+  "next_checkpoint": "CP-03 path-aware sysfs provenance using separately reviewed contract-derived oracles",
+  "unknowns": [
+    "Full G2-D primary acceptance artifacts reside in separately retained historical archives",
+    "Standard ODT bytes are not in Git source; recoverability needs accompanying package"
+  ],
+  "record_limit": "Approval is process authority, not acceptance of incomplete G5-04 software, all test cases, or candidate design semantics"
+}
