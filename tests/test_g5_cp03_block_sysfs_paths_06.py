@@ -69,7 +69,7 @@ class BlockSysfsOracles(unittest.TestCase):
         self.assertEqual(ROOTS["SRC-12"], ROOT.rstrip("/"))
         self.assertEqual(ATTRS["SRC-12"], ATTRIBUTES)
         self.assertTrue(parser_available("SRC-12"))
-        self.assertFalse(parser_available("SRC-11"))
+        self.assertFalse(parser_available("SRC-13"))
 
     def test_geometry_readonly_and_original_evidence_are_attributed(self):
         paths = (

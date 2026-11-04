@@ -66,7 +66,7 @@ class DRMSourceFirstOracles(unittest.TestCase):
         self.assertEqual(ROOTS["SRC-19"], ROOT.rstrip("/"))
         self.assertEqual(ATTRS["SRC-19"], ATTRIBUTES)
         self.assertTrue(parser_available("SRC-19"))
-        self.assertFalse(parser_available("SRC-11"))
+        self.assertFalse(parser_available("SRC-13"))
 
     def test_sealed_identity_and_observation_provenance(self):
         paths = (ROOT + "card0/device/vendor", ROOT + "card0/device/device",

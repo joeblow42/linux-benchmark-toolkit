@@ -66,7 +66,7 @@ class PowerSysfsOracles(unittest.TestCase):
         self.assertEqual(ROOTS["SRC-26"], ROOT.rstrip("/"))
         self.assertEqual(ATTRS["SRC-26"], FIELDS)
         self.assertTrue(parser_available("SRC-26"))
-        self.assertFalse(parser_available("SRC-11"))
+        self.assertFalse(parser_available("SRC-13"))
 
     def test_private_identity_and_signed_numeric_originals(self):
         attrs = ("type", "status", "capacity", "current_now",
