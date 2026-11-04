@@ -1,0 +1,64 @@
+{
+  "record": "G5-04 CP-03 Increment 03",
+  "date_utc": "2026-11-04",
+  "approved_authority": [
+    "D-01 through D-05",
+    "Status schema 1.0 and canonical 1.0.0",
+    "Requirements Rev 1.6",
+    "CP-02 independent test specification"
+  ],
+  "prior_increment": "g5/cp03-platform-optical-normalization-02",
+  "added_source_families": [
+    "SRC-06",
+    "SRC-16"
+  ],
+  "supported_source_families": [
+    "SRC-01",
+    "SRC-02",
+    "SRC-03",
+    "SRC-06",
+    "SRC-08",
+    "SRC-09",
+    "SRC-10",
+    "SRC-16",
+    "SRC-27"
+  ],
+  "total_source_families": 28,
+  "unsupported_source_families": 19,
+  "implementation": [
+    "lbt_g5/normalization.py",
+    "tests/test_g5_cp03_cpu_optical_03.py"
+  ],
+  "acceptance_evidence": {
+    "CI_run": 438,
+    "CI_url": "https://github.com/joeblow42/linux-benchmark-toolkit/actions/runs/41795123860",
+    "CI_commit": "c54ede09845271c78ec715f5e26e7b96dc19e852",
+    "result": "SUCCESS",
+    "new_tests": 9,
+    "verification_scope": "independent synthetic source fixtures and canonical sealed-evidence integration; no Bodhi host execution"
+  },
+  "scope_limits": [
+    "SRC-06 parser preserves unknown CPU keys inside observed original maps, but the typed normalized object includes a bounded recognized subset. Full semantic inventory coverage is not yet demonstrated.",
+    "SRC-16 parses Linux CD-ROM info capability rows only; optical device model and tested physical media capability require separate SRC-17 and host evidence.",
+    "Unknown source families continue to fail closed rather than fabricating a parser status; original source bytes remain sealed and unmodified.",
+    "These parsers do not execute host reads, subprocesses, device queries or privileged commands.",
+    "No evidence of all-source completeness, no production launcher cutover, no automatic G5-04 acceptance."
+  ],
+  "traceability": {
+    "requirements_total": 283,
+    "rows_updated": 6,
+    "requirements_fully_verified": 0,
+    "unassessed_scope_unchanged": true
+  },
+  "open_findings": [
+    "F-02 truthful source timing",
+    "F-04 time/byte capture limit correctness",
+    "F-05 validity vs completion",
+    "F-06 strict canonical D-02 schema",
+    "F-07 exhaustive cross-file manifest validation",
+    "F-08 19 remaining semantic source families"
+  ],
+  "checkpoint_status": "CP-03 IN PROGRESS",
+  "next_increment": "Path-bound passive sysfs typed parsers must be based on exact sealed source path/receipt pairing; do not guess attribute identity from artifact bytes.",
+  "gate": "G5-04 OPEN — owner acceptance reserved for CP-07"
+}
