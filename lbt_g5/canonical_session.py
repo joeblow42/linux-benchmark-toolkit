@@ -279,26 +279,37 @@ def _verified_lexical_sysfs_paths(metadata, artifacts, policy, *, identity_fn,
 
 
 
-def _verified_lscpu_streams(metadata, artifacts):
-    """Bind D1 lscpu originals by registered *stream*, not file-path guess.
+def _verified_d1_single_call_streams(metadata, artifacts, *, invocation, label):
+    """Strict G5-03 one-subcall D1 source-stream original and receipt binding.
 
-    The G5-03 command adapter seals only nonempty stdout/stderr as
-    call0001-stdout/call0001-stderr in this sequence; D1 source_paths is [].
-    Do not parse stderr as lscpu data or infer missing stdout.
+    G5-03 seals only nonempty stdout/stderr as call0001-* in that order.
+    The invocation is exactly the approved fixed command, never operator argv.
     """
     if metadata.get("source_paths") != []:
-        raise CanonicalContractError("lscpu cannot have sysfs source paths")
-    if artifacts and metadata.get("invocation") != "lscpu":
-        raise CanonicalContractError("lscpu command invocation mismatch")
+        raise CanonicalContractError(label + " cannot have sysfs source paths")
+    if artifacts and metadata.get("invocation") != invocation:
+        raise CanonicalContractError(label + " invocation mismatch")
     names = [a.artifact for a in artifacts]
     expected = ["call0001-stdout", "call0001-stderr"]
     if len(names) != len(set(names)) or len(names) > 2:
-        raise CanonicalContractError("lscpu duplicate/too many stream originals")
+        raise CanonicalContractError(label + " duplicate/too many originals")
     if any(n not in expected for n in names):
-        raise CanonicalContractError("lscpu unapproved subcall/stream original")
+        raise CanonicalContractError(label + " unapproved subcall/stream original")
     if names != sorted(names, key=expected.index):
-        raise CanonicalContractError("lscpu original stream order mismatch")
+        raise CanonicalContractError(label + " original stream order mismatch")
     return tuple(n.split("-")[-1] for n in names)
+
+
+def _verified_lscpu_streams(metadata, artifacts):
+    return _verified_d1_single_call_streams(
+        metadata, artifacts, invocation="lscpu", label="lscpu")
+
+
+def _verified_lsblk_streams(metadata, artifacts):
+    return _verified_d1_single_call_streams(
+        metadata, artifacts, invocation=(
+            "lsblk --bytes --json --output "
+            "NAME,KNAME,TYPE,SIZE,RO,RM,MODEL,SERIAL,TRAN"), label="lsblk")
 
 
 def _status_for(receipt, artifacts, *, parser_state="NOT_RUN"):
@@ -491,8 +502,10 @@ def build_canonical(run_directory, engine_run):
                        _verified_lexical_sysfs_paths(metadata, artifacts, policy,
                            identity_fn=power_sysfs_path_identity, label="POWER")
                        if source_id == "SRC-26" else ())
-        lscpu_streams = (_verified_lscpu_streams(metadata, artifacts)
-                         if source_id == "SRC-05" else ())
+        command_streams = (_verified_lscpu_streams(metadata, artifacts)
+                           if source_id == "SRC-05" else
+                           _verified_lsblk_streams(metadata, artifacts)
+                           if source_id == "SRC-11" else ())
         linked = []
         parser_executions = 0
         parser_failures = []
@@ -529,9 +542,10 @@ def build_canonical(run_directory, engine_run):
             # cannot masquerade as a finalized canonical acquisition status.
             parsed = None
             error = None
-            source_stream = (lscpu_streams[artifact_index - 1]
-                             if source_id == "SRC-05" else None)
-            diagnostic_only = source_id == "SRC-05" and source_stream == "stderr"
+            source_stream = (command_streams[artifact_index - 1]
+                             if source_id in ("SRC-05", "SRC-11") else None)
+            diagnostic_only = (source_id in ("SRC-05", "SRC-11")
+                               and source_stream == "stderr")
             if (metadata["outcome"] in ("CAPTURED", "PARTIAL")
                     and parser_available(source_id) and not diagnostic_only):
                 parser_executions += 1
