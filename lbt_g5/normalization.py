@@ -891,9 +891,36 @@ def _parse_power_sysfs(raw, *, source_path):
     ))
 
 
+
+# SRC-05 lscpu: D1 original command stream, not a source path. Locale-specific
+# labels are kept as strings; no numeric CPU claim without field assurance.
+def _parse_lscpu_stdout(raw):
+    lines = _text(raw).splitlines()
+    if not lines or len(lines) > MAX_FIELDS:
+        raise SourceParseError("LSCPU_MISSING_OR_EXCESSIVE_ROWS")
+    fields = []
+    for line in lines:
+        if not line.strip():
+            continue
+        if ":" not in line:
+            raise SourceParseError("LSCPU_NON_KEYVALUE_LINE")
+        label, value = line.split(":", 1)
+        label, value = label.strip(), value.strip()
+        if (not label or len(label) > 256 or len(value) > 8192
+                or "\x00" in line or "\r" in line):
+            raise SourceParseError("LSCPU_UNBOUNDED_OR_INVALID_ROW")
+        fields.append({"label": label, "value": value})
+    if not fields:
+        raise SourceParseError("LSCPU_NO_DATA_ROWS")
+    return ParseResult("linux-lscpu-opaque-rows-v1", (
+        ParsedDatum("cpu.lscpu.rows", "LSCPU_KEY_VALUE_ROWS", fields, "ARRAY"),
+    ))
+
+
 # Intentional bounded list. Unsupported source families are not normalized
 # by interpreting raw bytes as arbitrary meaningful inventory fields.
 PARSERS = {
+    "SRC-05": _parse_lscpu_stdout,
     "SRC-26": _parse_power_sysfs,
     "SRC-25": _parse_hwmon_sysfs,
     "SRC-24": _parse_thermal_sysfs,
@@ -919,11 +946,18 @@ def parser_available(source_id):
     return source_id in PARSERS
 
 
-def normalize_sealed_source(source_id, raw, *, source_path=None):
-    """Normalize sealed bytes; SRC-04 additionally requires verified source path."""
+def normalize_sealed_source(source_id, raw, *, source_path=None,
+                            source_stream=None):
+    """Normalize sealed source bytes only with their approved attribution."""
     parser = PARSERS.get(source_id)
     if parser is None:
         return None
+    if source_id == "SRC-05":
+        if source_path is not None or source_stream != "stdout":
+            raise SourceParseError("LSCPU_UNVERIFIED_DATA_STREAM")
+        return parser(raw)
+    if source_stream is not None:
+        raise SourceParseError("SOURCE_STREAM_NOT_APPLICABLE")
     if source_id in ("SRC-04", "SRC-07", "SRC-12", "SRC-17", "SRC-19", "SRC-22", "SRC-24", "SRC-25", "SRC-26"):
         return parser(raw, source_path=source_path)
     if source_path is not None:
