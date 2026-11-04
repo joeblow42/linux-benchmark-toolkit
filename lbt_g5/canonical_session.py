@@ -24,7 +24,8 @@ from .canonical_contract import (
     new_status, validate_status_record,
 )
 from .catalog import initial_catalog
-from .normalization import normalize_sealed_source, parser_available, SourceParseError
+from .normalization import (normalize_sealed_source, parser_available,
+                            SourceParseError, dmi_field_from_source_path)
 from .safety import initial_source_policies, valid_run_id
 
 PRIVATE_FILES = ("system.json", "source_attempts.json", "status_records.json")
@@ -135,6 +136,33 @@ def _artifacts(recorded):
     if hasattr(outcome, "stdout"):
         return tuple(x for x in (outcome.stdout, outcome.stderr) if x is not None)
     return tuple(getattr(outcome, "artifacts", ()) or ())
+
+
+
+def _verified_dmi_paths(metadata, artifacts, policy):
+    """Bind each sealed SRC-04 item to the *recorded* worker source-path slot.
+
+    G5-03 stores successful worker source_paths in receipt order, while the
+    evidence writer seals successful items as item0001..itemNNNN. Missing
+    optional attributes do not create evidence items. Fail closed if the
+    receipt cannot prove an unambiguous monotonic mapping. No host probing.
+    """
+    paths = metadata.get("source_paths")
+    if type(paths) is not list or len(paths) != len(artifacts):
+        raise CanonicalContractError("DMI path and artifact counts disagree")
+    if len(paths) > policy.max_entries:
+        raise CanonicalContractError("DMI source path count exceeds approved bound")
+    fields = []
+    for index, (path, artifact) in enumerate(zip(paths, artifacts), 1):
+        if artifact.artifact != "item" + format(index, "04d"):
+            raise CanonicalContractError("DMI sealed artifact ordinal mismatch")
+        field = dmi_field_from_source_path(path)
+        if field is None:
+            raise CanonicalContractError("DMI source path not approved")
+        fields.append(field)
+    if fields != sorted(set(fields)):
+        raise CanonicalContractError("DMI source path duplicate or ambiguous order")
+    return tuple(paths)
 
 
 def _status_for(receipt, artifacts, *, parser_state="NOT_RUN"):
@@ -293,10 +321,12 @@ def build_canonical(run_directory, engine_run):
             raise CanonicalContractError("receipt and engine evidence disagree")
         if metadata.get("acquired_bytes") != sum(x.byte_count for x in artifacts):
             raise CanonicalContractError("receipt byte count mismatch")
+        dmi_paths = (_verified_dmi_paths(metadata, artifacts, policy)
+                     if source_id == "SRC-04" else ())
         linked = []
         parser_executions = 0
         parser_failures = []
-        for artifact in artifacts:
+        for artifact_index, artifact in enumerate(artifacts, 1):
             eid = artifact.evidence_id
             if (eid in evidence or artifact.run_id != run_id
                     or artifact.source_id != source_id
@@ -332,7 +362,10 @@ def build_canonical(run_directory, engine_run):
             if metadata["outcome"] in ("CAPTURED", "PARTIAL") and parser_available(source_id):
                 parser_executions += 1
                 try:
-                    parsed = normalize_sealed_source(source_id, raw)
+                    parsed = normalize_sealed_source(
+                        source_id, raw,
+                        source_path=(dmi_paths[artifact_index - 1]
+                                     if source_id == "SRC-04" else None))
                 except SourceParseError as exc:
                     error = str(exc)[:128]
                     parser_failures.append(error)
