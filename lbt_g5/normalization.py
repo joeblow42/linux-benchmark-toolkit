@@ -415,9 +415,117 @@ def _parse_dmi_public(raw, *, source_path):
     ))
 
 
+
+# Accepted G5-03 SRC-07 passive worker: CPU directory names are lexically
+# sorted, then attributes are visited in THIS order. Do not sort by CPU index
+# or alphabetize per-CPU attributes: either would misbind preserved originals.
+_CPU_SYSFS_ROOT = "/sys/devices/system/cpu/"
+_CPU_SYSFS_ROOT_ATTRS = ("online", "possible", "present")
+_CPU_SYSFS_ITEM_ATTRS = (
+    "topology/core_id", "topology/physical_package_id",
+    "topology/thread_siblings_list", "topology/core_siblings_list",
+    "online", "cpufreq/scaling_cur_freq", "cpufreq/cpuinfo_max_freq",
+    "cpufreq/scaling_min_freq", "cpufreq/scaling_max_freq",
+)
+_CPU_SYSFS_CPU_NAME = re.compile(r"cpu[0-9]+\Z")
+_CPU_SYSFS_INT = re.compile(r"-?[0-9]+\Z")
+_CPU_SYSFS_NAT = re.compile(r"[0-9]+\Z")
+_CPU_SYSFS_RANGE = re.compile(r"([0-9]+)(?:-([0-9]+))?\Z")
+
+
+def cpu_sysfs_path_identity(source_path):
+    """Approved SRC-07 datum, expected worker ordering key, semantic attribute.
+
+    Returns None for unapproved or ambiguous original paths. The caller
+    validates entire receipt order before dereferencing sealed original bytes.
+    """
+    if (type(source_path) is not str
+            or not source_path.startswith(_CPU_SYSFS_ROOT)):
+        return None
+    relative = source_path[len(_CPU_SYSFS_ROOT):]
+    if relative in _CPU_SYSFS_ROOT_ATTRS:
+        return ("cpu.sysfs.global." + relative,
+                (0, _CPU_SYSFS_ROOT_ATTRS.index(relative)), relative)
+    parts = relative.split("/", 1)
+    if len(parts) != 2 or not _CPU_SYSFS_CPU_NAME.fullmatch(parts[0]):
+        return None
+    name, attribute = parts
+    if attribute not in _CPU_SYSFS_ITEM_ATTRS:
+        return None
+    return ("cpu.sysfs." + name + "." + attribute.replace("/", "."),
+            (1, name, _CPU_SYSFS_ITEM_ATTRS.index(attribute)), attribute)
+
+
+def _cpu_sysfs_cpu_ranges(value):
+    """Parse Linux CPU-list ranges without expanding very large ranges."""
+    if not value or len(value) > 4096:
+        raise SourceParseError("CPU_SYSFS_CPU_LIST_EMPTY_OR_BOUND")
+    ranges = []
+    previous_last = -1
+    for token in value.split(","):
+        match = _CPU_SYSFS_RANGE.fullmatch(token)
+        if match is None or len(ranges) >= 1024:
+            raise SourceParseError("CPU_SYSFS_CPU_LIST_MALFORMED")
+        first = int(match.group(1))
+        last = int(match.group(2)) if match.group(2) is not None else first
+        if first > last or first <= previous_last or last > 2147483647:
+            raise SourceParseError("CPU_SYSFS_CPU_LIST_INVALID_ORDER_OR_BOUND")
+        ranges.append([first, last])
+        previous_last = last
+    return {"ranges": ranges}
+
+
+def _cpu_sysfs_integer(value, *, signed):
+    if len(value) > 12 or not (_CPU_SYSFS_INT if signed else _CPU_SYSFS_NAT).fullmatch(value):
+        raise SourceParseError("CPU_SYSFS_INVALID_DECIMAL")
+    number = int(value)
+    if signed and not (-2147483648 <= number <= 2147483647):
+        raise SourceParseError("CPU_SYSFS_DECIMAL_OUT_OF_RANGE")
+    if not signed and number > 1000000000:
+        raise SourceParseError("CPU_SYSFS_DECIMAL_OUT_OF_RANGE")
+    return number
+
+
+def _parse_cpu_sysfs(raw, *, source_path):
+    identity = cpu_sysfs_path_identity(source_path)
+    if identity is None:
+        raise SourceParseError("CPU_SYSFS_SOURCE_PATH_NOT_APPROVED")
+    datum_path, _, attribute = identity
+    observed = _text(raw)
+    if (not observed or len(observed) > 4096
+            or "\x00" in observed or "\r" in observed
+            or observed.count("\n") > 1
+            or ("\n" in observed and not observed.endswith("\n"))):
+        raise SourceParseError("CPU_SYSFS_INVALID_SCALAR_OR_BOUND")
+    value = observed.removesuffix("\n")
+    if not value:
+        raise SourceParseError("CPU_SYSFS_EMPTY_SCALAR")
+    if attribute in ("possible", "present", "topology/thread_siblings_list",
+                     "topology/core_siblings_list") or datum_path == "cpu.sysfs.global.online":
+        normalized = _cpu_sysfs_cpu_ranges(value)
+        value_type, unit = "OBJECT", "logical_cpu_id"
+    elif attribute in ("topology/core_id", "topology/physical_package_id"):
+        normalized = _cpu_sysfs_integer(value, signed=True)
+        value_type, unit = "INTEGER", None
+    elif attribute == "online":
+        if value not in ("0", "1"):
+            raise SourceParseError("CPU_SYSFS_INVALID_ONLINE_FLAG")
+        normalized = value == "1"
+        value_type, unit = "BOOLEAN", None
+    elif attribute.startswith("cpufreq/"):
+        normalized = _cpu_sysfs_integer(value, signed=False)
+        value_type, unit = "INTEGER", "kHz"
+    else:
+        raise SourceParseError("CPU_SYSFS_UNSUPPORTED_ATTRIBUTE")
+    return ParseResult("linux-sysfs-cpu-v1", (
+        ParsedDatum(datum_path, observed, normalized, value_type, unit),
+    ))
+
+
 # Intentional bounded list. Unsupported source families are not normalized
 # by interpreting raw bytes as arbitrary meaningful inventory fields.
 PARSERS = {
+    "SRC-07": _parse_cpu_sysfs,
     "SRC-04": _parse_dmi_public,
     "SRC-01": _parse_platform_api,
     "SRC-02": _parse_os_release,
@@ -440,7 +548,7 @@ def normalize_sealed_source(source_id, raw, *, source_path=None):
     parser = PARSERS.get(source_id)
     if parser is None:
         return None
-    if source_id == "SRC-04":
+    if source_id in ("SRC-04", "SRC-07"):
         return parser(raw, source_path=source_path)
     if source_path is not None:
         raise SourceParseError("SOURCE_PATH_NOT_APPLICABLE")
