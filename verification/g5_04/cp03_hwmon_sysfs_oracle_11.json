@@ -1,0 +1,61 @@
+{
+  "record_id": "LBT-G504-CP03-INC11-SRC25-ORACLE",
+  "date": "2026-11-04",
+  "status": "PREIMPLEMENTATION_SPECIFICATION",
+  "source": "SRC-25",
+  "collector": "COL-THERM",
+  "authority": [
+    "G4-07 SRC-25 COL-THERM D0 HWMON_SYSFS 16 MiB <=4096 entries 5 s, no pwm/fan/threshold writes",
+    "G4-02/06 Source Evidence Map SRC-25",
+    "Approved G5-03 passive_worker.py SRC-25, ROOTS/HWMON regex, original source_paths item ordinal",
+    "CP-01 owner D01..D05; canonical 1.0.0 and 14-field status 1.0; requirements Rev1.6; AI engineering governance v1.0"
+  ],
+  "path_contract": {
+    "root": "/sys/class/hwmon",
+    "device": "hwmon[0-9]+; lexical directory order; no hidden files",
+    "attribute_pattern": "name OR (temp|fan|in|power)[0-9]+_(input|label)",
+    "attribute_order": "For each device, sorted(os.listdir(hwmonN)) lexically filtered by accepted worker HWMON regex, not a predefined tuple",
+    "evidence": "successful original path per itemNNNN, receipt source_paths count/order must match, SHA256 and same-run evidence"
+  },
+  "semantics": {
+    "name": "bounded single-line UTF-8 sensor chip name, string",
+    "label": "bounded single-line UTF-8 channel label, string",
+    "input": "bounded signed 64-bit decimal integer, unit UNCLASSIFIED (null) until hardware/chip-specific unit interpretation is separately substantiated. In particular temp*_input can represent an electrical value for some device/sensor types; no unconditional temperature, voltage, fan speed or power unit/health assertion."
+  },
+  "cases": [
+    {
+      "id": "P01",
+      "expected": "name, temp1_input, temp1_label, fan1_input, in0_input, power1_input exact private path/typed value evidence and original SHA"
+    },
+    {
+      "id": "P02",
+      "expected": "hwmon10 before hwmon2 lexical ordering; within hwmon0 sorted accepted attrs only; unit null for all input values"
+    },
+    {
+      "id": "P03",
+      "expected": "optional missing data preserved as unavailable_fields, no synthesized sensor or channel"
+    },
+    {
+      "id": "N01",
+      "expected": "wrong receipt count/duplicate path/unsorted device or per-device attrs/forged item ordinal reject"
+    },
+    {
+      "id": "N02",
+      "expected": "pwm, temp1_max, fan1_target, traversal, unknown hwmon dir, absolute /dev, extra suffix reject"
+    },
+    {
+      "id": "N03",
+      "expected": "cross-run artifact binding rejects; corrupted originals fail integrity"
+    },
+    {
+      "id": "N04",
+      "expected": "invalid signed decimal, NUL, invalid UTF8, multiline or oversized input -> actual parse failure plus sealed raw fallback"
+    },
+    {
+      "id": "B01",
+      "expected": "unknown chip name/type and negative/unusual raw reading preserved without inferred sensor meaning"
+    }
+  ],
+  "risk": "Unit ambiguity is resolved conservatively by withholding numeric units and recording the observation exactly. No additional owner-controlled contract or privileged command authorized.",
+  "review": "Independent source-first oracle formulation by same AI implementing agent. NOT independently human-approved. Requirements and CP-03 remain NOT_VERIFIED/OPEN."
+}
