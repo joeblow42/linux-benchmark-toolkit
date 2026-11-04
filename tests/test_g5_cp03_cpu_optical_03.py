@@ -99,7 +99,7 @@ class CpuOpticalParsers(unittest.TestCase):
     def test_registration_is_explicit_and_bounded(self):
         for source in ("SRC-06", "SRC-16"):
             self.assertTrue(parser_available(source))
-        for source in ("SRC-04", "SRC-05", "SRC-07", "SRC-17"):
+        for source in ("SRC-05", "SRC-07", "SRC-12", "SRC-17"):
             self.assertFalse(parser_available(source))
 
 
