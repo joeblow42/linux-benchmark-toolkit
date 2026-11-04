@@ -1,0 +1,43 @@
+{
+  "record_id": "LBT-G504-CP03-OWNER-DECISION-D1-EXIT-NONZERO",
+  "revision": "0.1",
+  "status": "OPEN_OWNER_DECISION",
+  "date": "2026-11-04",
+  "checkpoint": "CP-03 Increment 13, before next D1 source normalization",
+  "problem": "Accepted G5-03 runtime executes fixed unprivileged D1 probes. On nonzero exit with successfully sealed stdout/stderr, execute_source_command emits outcome PARTIAL and reason EXIT_NONZERO. G5-04 canonical_session._status_for currently rejects PARTIAL/EXIT_NONZERO as unclassified; no approved exact mapping was found in G4-02/06 status-pair register or CP-01 D-03 approval record. Without a decision, incomplete captured D1 sessions fail to finalize in the private canonical path.",
+  "authority": {
+    "transport_source": "lbt_g5/runtime.py execute_source_command",
+    "status_source": "lbt_g5/canonical_session.py _status_for",
+    "status_pairs": "G4-02/06 accepted 14-field status domain/acquisition including PARTIAL/SOURCE_INCOMPLETE",
+    "owner_decision": "CP-01 D-03: classify only with recorded capture facts and actual parser outcomes; no synthetic parse failure"
+  },
+  "options": [
+    {
+      "option": "A",
+      "description": "For D1 source attempt with original receipt outcome PARTIAL / EXIT_NONZERO, map to acquisition PARTIAL / SOURCE_INCOMPLETE. Preserve numeric exit_code, original stdout/stderr artifacts, and transport=PARTIAL/EXIT_NONZERO in private status detail and limitations. Do not assert parser success when only stderr exists.",
+      "advantages": "Truthful bounded partial canonical status without new vocabulary; supports all registered D1 source families.",
+      "risk": "Broadens exact status interpretation; owner should approve before implementation."
+    },
+    {
+      "option": "B",
+      "description": "Continue failing closed on PARTIAL / EXIT_NONZERO and never commit a private canonical manifest for an affected session until source status policy is resolved or the source is retried under authorized conditions.",
+      "advantages": "No interpretation beyond existing implemented mapping.",
+      "risk": "Partially captured command data may block canonical finalization even when original receipts are valid and preserved."
+    }
+  ],
+  "recommendation": "A: approved status vocabulary already contains PARTIAL/SOURCE_INCOMPLETE and nonzero exit is direct capture evidence. Require negative tests demonstrating no false COMPLETE/OK or PARSE_FAILED, same-run exit_code and original preservation. Do not change approved status schema/version.",
+  "authorization": "Owner must choose A or B; current code remains on option B fail-closed pending explicit decision.",
+  "implementation_impact": [
+    "SRC-05 lscpu",
+    "SRC-11 lsblk",
+    "SRC-20 lspci",
+    "SRC-23 ip local"
+  ],
+  "nonimpacts": [
+    "No privilege or acquisition-command argv changes",
+    "No new status reason/domain pair",
+    "No public export or privacy policy change",
+    "No owner acceptance of CP-03/G5-04"
+  ],
+  "checkpoint_notes": "Increment 13 scoped D1 stdout parsing is CI tested for zero exit. Remaining nonzero exit policy is separately open; do not proceed to next D1 increment until owner decision."
+}
