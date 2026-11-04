@@ -8,6 +8,7 @@ evidence; a source with no parser has NOT failed parsing.
 """
 from dataclasses import dataclass
 import math
+import json
 import re
 import shlex
 
@@ -173,10 +174,85 @@ def _parse_memory_pressure(raw):
     return ParseResult("linux-psi-memory-v1", tuple(fields))
 
 
+
+# CP-03 increment 02: deterministic, sealed D0 platform and tool snapshots.
+# Parsers use no host access; these formats are emitted by passive_worker.py.
+_TOOLS = frozenset(("lscpu", "lsblk", "lspci", "ip", "smartctl", "nvme",
+                    "vainfo", "python3", "dpkg-query", "rpm"))
+_PRINTABLE = re.compile(r"[\x20-\x7e]{1,256}\Z")
+
+
+def _strict_json_object(raw, source):
+    def unique_pairs(pairs):
+        obj = {}
+        for key, value in pairs:
+            if key in obj:
+                raise SourceParseError(source + "_DUPLICATE_JSON_KEY")
+            obj[key] = value
+        return obj
+    try:
+        value = json.loads(_text(raw), object_pairs_hook=unique_pairs,
+                           parse_constant=lambda _: (_ for _ in ()).throw(
+                               SourceParseError(source + "_NONFINITE_JSON")))
+    except (ValueError, TypeError) as exc:
+        if isinstance(exc, SourceParseError):
+            raise
+        raise SourceParseError(source + "_INVALID_JSON") from exc
+    if type(value) is not dict:
+        raise SourceParseError(source + "_EXPECTED_OBJECT")
+    return value
+
+
+def _parse_platform_api(raw):
+    data = _strict_json_object(raw, "PLATFORM")
+    if set(data) != {"system", "machine", "release"}:
+        raise SourceParseError("PLATFORM_UNEXPECTED_FIELDS")
+    if (any(type(v) is not str or not _PRINTABLE.fullmatch(v)
+            for v in data.values()) or data["system"] != "Linux"):
+        raise SourceParseError("PLATFORM_INVALID_LINUX_IDENTITY")
+    return ParseResult("linux-platform-api-v1", tuple(
+        ParsedDatum("os.kernel." + key, data[key], data[key], "STRING")
+        for key in ("system", "machine", "release")))
+
+
+def _parse_efi_presence(raw):
+    if raw not in (b"present\n", b"absent\n"):
+        raise SourceParseError("EFI_INVALID_PRESENCE_MARKER")
+    marker = raw == b"present\n"
+    return ParseResult("linux-efi-presence-v1", (
+        ParsedDatum("firmware.efi.present", "present" if marker else "absent",
+                    marker, "BOOLEAN"),
+    ))
+
+
+def _parse_tool_resolver(raw):
+    item = _strict_json_object(raw, "TOOL")
+    if set(item) != {"tool", "path"}:
+        raise SourceParseError("TOOL_UNEXPECTED_FIELDS")
+    name, path = item["tool"], item["path"]
+    if type(name) is not str or name not in _TOOLS:
+        raise SourceParseError("TOOL_UNKNOWN_NAME")
+    if path is not None:
+        if (type(path) is not str or len(path) > 512
+                or "\x00" in path or not path.startswith("/")
+                or not path.startswith(("/usr/bin/", "/bin/",
+                                         "/usr/sbin/", "/sbin/"))
+                or not path.endswith("/" + name)):
+            raise SourceParseError("TOOL_INVALID_RESOLVED_PATH")
+    return ParseResult("linux-tool-resolver-v1", (
+        ParsedDatum("tools.resolution." + name, item,
+                    {"available": path is not None, "resolved_path": path},
+                    "OBJECT"),
+    ))
+
+
 # Intentional bounded list. Unsupported source families are not normalized
 # by interpreting raw bytes as arbitrary meaningful inventory fields.
 PARSERS = {
+    "SRC-01": _parse_platform_api,
     "SRC-02": _parse_os_release,
+    "SRC-03": _parse_efi_presence,
+    "SRC-27": _parse_tool_resolver,
     "SRC-08": _parse_meminfo,
     "SRC-09": _parse_swaps,
     "SRC-10": _parse_memory_pressure,
