@@ -656,9 +656,49 @@ def _parse_optical_sysfs(raw, *, source_path):
     ))
 
 
+
+# SRC-19 accepted passive worker: cardN lexical names, fixed PCI identity
+# attribute order, no DRM render nodes, GPU workload or control writes.
+_DRM_ROOT = "/sys/class/drm/"
+_DRM_CARD = re.compile(r"card[0-9]+\Z")
+_DRM_PCI_ATTRS = (
+    "device/vendor", "device/device", "device/subsystem_vendor",
+    "device/subsystem_device", "device/revision",
+)
+_DRM_PCI_VALUE = re.compile(r"0x[0-9a-fA-F]{2,8}\Z")
+
+
+def drm_sysfs_path_identity(source_path):
+    """Exact SRC-19 identity and original-worker path ordering key."""
+    if type(source_path) is not str or not source_path.startswith(_DRM_ROOT):
+        return None
+    parts = source_path[len(_DRM_ROOT):].split("/", 1)
+    if len(parts) != 2:
+        return None
+    card, attr = parts
+    if _DRM_CARD.fullmatch(card) is None or attr not in _DRM_PCI_ATTRS:
+        return None
+    return ("gpu.drm." + card + ".pci." + attr.split("/", 1)[1],
+            (card, _DRM_PCI_ATTRS.index(attr)), attr)
+
+
+def _parse_drm_sysfs(raw, *, source_path):
+    identity = drm_sysfs_path_identity(source_path)
+    if identity is None:
+        raise SourceParseError("DRM_SOURCE_PATH_NOT_APPROVED")
+    observed, value = _block_scalar_text(raw)
+    if not _DRM_PCI_VALUE.fullmatch(value):
+        raise SourceParseError("DRM_INVALID_PCI_ID")
+    # Identifier, not a device-name lookup or inferred GPU capability.
+    return ParseResult("linux-sysfs-drm-pci-id-v1", (
+        ParsedDatum(identity[0], observed, value.lower(), "STRING"),
+    ))
+
+
 # Intentional bounded list. Unsupported source families are not normalized
 # by interpreting raw bytes as arbitrary meaningful inventory fields.
 PARSERS = {
+    "SRC-19": _parse_drm_sysfs,
     "SRC-17": _parse_optical_sysfs,
     "SRC-12": _parse_block_sysfs,
     "SRC-07": _parse_cpu_sysfs,
@@ -684,7 +724,7 @@ def normalize_sealed_source(source_id, raw, *, source_path=None):
     parser = PARSERS.get(source_id)
     if parser is None:
         return None
-    if source_id in ("SRC-04", "SRC-07", "SRC-12", "SRC-17"):
+    if source_id in ("SRC-04", "SRC-07", "SRC-12", "SRC-17", "SRC-19"):
         return parser(raw, source_path=source_path)
     if source_path is not None:
         raise SourceParseError("SOURCE_PATH_NOT_APPLICABLE")

@@ -64,7 +64,7 @@ class OpticalSysfsOracles(unittest.TestCase):
         self.assertEqual(ROOTS["SRC-17"], ROOT.rstrip("/"))
         self.assertEqual(ATTRS["SRC-17"], OPTICAL_FIELDS)
         self.assertTrue(parser_available("SRC-17"))
-        self.assertFalse(parser_available("SRC-19"))
+        self.assertFalse(parser_available("SRC-22"))
 
     def test_optical_identity_preserves_each_sealed_original(self):
         paths = tuple(ROOT + "sr0/" + x for x in OPTICAL_FIELDS)
@@ -74,7 +74,8 @@ class OpticalSysfsOracles(unittest.TestCase):
             self.assertEqual(manifest["observation_count"], 8)
             self.assertEqual(validate_canonical(directory), manifest)
             sys = json.loads((directory / "private/system.json").read_text())
-            self.assertIn("Registered semantic parsers: 13 of 28", sys["limitations"][1])
+            self.assertIn("Registered semantic parsers: ", sys["limitations"][1])
+            self.assertIn(" of 28 source families", sys["limitations"][1])
             sem = [o for o in sys["observations"] if o["transformation_ids"]]
             self.assertEqual([o["datum_path"] for o in sem], [
                 "optical.sysfs.sr0.removable",
