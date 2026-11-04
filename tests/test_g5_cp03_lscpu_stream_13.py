@@ -117,7 +117,6 @@ class LscpuD1SourceFirstOracles(unittest.TestCase):
         valid = b"Architecture: x86_64\n"
         bad = [
             (("call0001-stderr", b"warning\n"), ("call0001-stdout", valid)),
-            (("call0001-stdout", valid), ("call0001-stdout", valid)),
             (("call0002-stdout", valid),),
         ]
         for items in bad:
@@ -134,6 +133,22 @@ class LscpuD1SourceFirstOracles(unittest.TestCase):
                          source_paths=("/proc/cpuinfo",)) as (folder, run, _):
             with self.assertRaises(CanonicalContractError):
                 build_canonical(folder, run)
+
+    def test_writer_refuses_duplicate_original_artifact_name(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / RUN
+            folder.mkdir(mode=0o700)
+            pol = {x.source_id:x for x in initial_source_policies()}["SRC-05"]
+            writer = EvidenceWriter(str(folder), RUN)
+            first = writer.seal_chunks(
+                pol, "01", "call0001-stdout",
+                (b"Architecture: x86_64\n",))
+            self.assertIsNotNone(first.receipt)
+            duplicate = writer.seal_chunks(
+                pol, "01", "call0001-stdout",
+                (b"Architecture: x86_64\n",))
+            self.assertIsNone(duplicate.receipt)
+            self.assertIsNotNone(duplicate.failure)
 
     def test_malformed_stdout_fails_real_parser_not_stderr(self):
         for raw in (b"not key value\n", b"\xff\n", b": missing label\n",
