@@ -71,6 +71,9 @@ class PlatformParserTests(unittest.TestCase):
         for raw in (
             b'{"tool":"curl","path":"/usr/bin/curl"}',
             b'{"tool":"lscpu","path":"/tmp/lscpu"}',
+            b'{"tool":"lscpu","path":"/usr/bin/../bin/lscpu"}',
+            b'{"tool":"lscpu","path":"/usr/bin/nested/lscpu"}',
+            b'{"tool":"lscpu","path":"/usr/bin//lscpu"}',
             b'{"tool":"lscpu","path":"../../etc/passwd"}',
             b'{"tool":"lsblk","path":"/usr/bin/lscpu"}',
             b'{"tool":"nvme","path":false}',
