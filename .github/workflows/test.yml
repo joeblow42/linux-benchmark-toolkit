@@ -73,6 +73,8 @@ jobs:
         run: python3 -m unittest discover -s tests -p 'test_g5_cp03_lscpu_stream_13.py' -v
       - name: G5-04 CP-03 owner-approved D1 nonzero exit source-incomplete oracles
         run: python3 -m unittest discover -s tests -p 'test_g5_cp03_d1_nonzero_owner_14.py' -v
+      - name: G5-04 CP-03 SRC-11 lsblk bounded JSON and D1 original stream oracles
+        run: python3 -m unittest discover -s tests -p 'test_g5_cp03_lsblk_stream_15.py' -v
       - name: Unified Full validation (unit and acceptance once)
         run: python3 -m validation.suites full --output validation-results/ci
       - name: Upload unified validation report
