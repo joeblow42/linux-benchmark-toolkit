@@ -278,6 +278,29 @@ def _verified_lexical_sysfs_paths(metadata, artifacts, policy, *, identity_fn,
     return tuple(paths)
 
 
+
+def _verified_lscpu_streams(metadata, artifacts):
+    """Bind D1 lscpu originals by registered *stream*, not file-path guess.
+
+    The G5-03 command adapter seals only nonempty stdout/stderr as
+    call0001-stdout/call0001-stderr in this sequence; D1 source_paths is [].
+    Do not parse stderr as lscpu data or infer missing stdout.
+    """
+    if metadata.get("source_paths") != []:
+        raise CanonicalContractError("lscpu cannot have sysfs source paths")
+    if artifacts and metadata.get("invocation") != "lscpu":
+        raise CanonicalContractError("lscpu command invocation mismatch")
+    names = [a.artifact for a in artifacts]
+    expected = ["call0001-stdout", "call0001-stderr"]
+    if len(names) != len(set(names)) or len(names) > 2:
+        raise CanonicalContractError("lscpu duplicate/too many stream originals")
+    if any(n not in expected for n in names):
+        raise CanonicalContractError("lscpu unapproved subcall/stream original")
+    if names != sorted(names, key=expected.index):
+        raise CanonicalContractError("lscpu original stream order mismatch")
+    return tuple(n.split("-")[-1] for n in names)
+
+
 def _status_for(receipt, artifacts, *, parser_state="NOT_RUN"):
     """A status needs actual factual source and parser evidence.
 
@@ -457,6 +480,8 @@ def build_canonical(run_directory, engine_run):
                        _verified_lexical_sysfs_paths(metadata, artifacts, policy,
                            identity_fn=power_sysfs_path_identity, label="POWER")
                        if source_id == "SRC-26" else ())
+        lscpu_streams = (_verified_lscpu_streams(metadata, artifacts)
+                         if source_id == "SRC-05" else ())
         linked = []
         parser_executions = 0
         parser_failures = []
@@ -493,13 +518,18 @@ def build_canonical(run_directory, engine_run):
             # cannot masquerade as a finalized canonical acquisition status.
             parsed = None
             error = None
-            if metadata["outcome"] in ("CAPTURED", "PARTIAL") and parser_available(source_id):
+            source_stream = (lscpu_streams[artifact_index - 1]
+                             if source_id == "SRC-05" else None)
+            diagnostic_only = source_id == "SRC-05" and source_stream == "stderr"
+            if (metadata["outcome"] in ("CAPTURED", "PARTIAL")
+                    and parser_available(source_id) and not diagnostic_only):
                 parser_executions += 1
                 try:
                     parsed = normalize_sealed_source(
                         source_id, raw,
                         source_path=(sysfs_paths[artifact_index - 1]
-                                     if source_id in ("SRC-04", "SRC-07", "SRC-12", "SRC-17", "SRC-19", "SRC-22", "SRC-24", "SRC-25", "SRC-26") else None))
+                                     if source_id in ("SRC-04", "SRC-07", "SRC-12", "SRC-17", "SRC-19", "SRC-22", "SRC-24", "SRC-25", "SRC-26") else None),
+                        source_stream=source_stream)
                 except SourceParseError as exc:
                     error = str(exc)[:128]
                     parser_failures.append(error)
@@ -516,8 +546,12 @@ def build_canonical(run_directory, engine_run):
                 observations.append(_observation(
                     artifact, raw, attempt_id, status_record_id="st:" + attempt_id,
                     parser_findings=(("PARSER_FAILED:" + error,) if error else
+                                     ("DIAGNOSTIC_ORIGINAL_PRESERVED",)
+                                     if diagnostic_only else
                                      ("PARSER_NOT_AVAILABLE",)),
                     limitations=(("SOURCE_PARSER_ERROR:" + error,) if error else
+                                 ("STDERR_NOT_SEMANTIC_DATA",)
+                                 if diagnostic_only else
                                  ("Semantic parser not implemented for source",))))
             linked.append(eid)
         if parser_executions:
