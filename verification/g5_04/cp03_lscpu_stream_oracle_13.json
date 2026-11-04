@@ -1,0 +1,55 @@
+{
+  "record_id": "LBT-G504-CP03-INC13-SRC05-ORACLE",
+  "date": "2026-11-04",
+  "state": "PREIMPLEMENTATION_ORACLE",
+  "authority": [
+    "Approved G4-07 SRC-05 COL-CPU D1 lscpu exact read-only argv, 16MiB/1 invocation/6s, stdout 12 MiB stderr 4 MiB, current unprivileged only",
+    "G4-02/06 Source Evidence Map SRC-05: stdout and stderr as distinct preserved artifacts, exit metadata in attempt record",
+    "G5-03 approved runtime.py fixed plan ('lscpu',), stream artifact names call0001-stdout, call0001-stderr",
+    "G5-03 receipt_dispatch.py: source_paths empty for D1 command capture, never infer path from raw bytes",
+    "G5-04 owner-approved D-02/D-03/D-04, canonical schema 1.0.0, status 1.0 and Rev1.6"
+  ],
+  "stream_contract": {
+    "stdout": "Only stream call0001-stdout may be parsed as lscpu data",
+    "stderr": "Original diagnostic artifact call0001-stderr is preserved and attributed, but not passed to lscpu semantic parser, and not counted as a parser failure",
+    "order": "At most one stdout and one stderr, recorded in stdout then stderr order if both present; do not infer missing stdout from stderr text",
+    "command": "Receipt invocation exactly lscpu for a captured attempt; source_paths must be empty. Recorded nonzero/timeout status remains independent of any parse outcome."
+  },
+  "interpretation": "Conservative bounded key: value lscpu output as one ordered ARRAY of {label:string,value:string} fields; no numeric or unit assertions and no requirement to use English/locale-specific labels. Original bytes retained losslessly, stderr remains diagnostic; other stdout formats fail attributed parsing rather than invent data.",
+  "cases": [
+    {
+      "id": "P01",
+      "expected": "valid lscpu Architecture and CPU(s) lines produce one typed ARRAY datum cpu.lscpu.rows from stdout only, plus original; SHA and same-run binding"
+    },
+    {
+      "id": "P02",
+      "expected": "stdout plus nonempty stderr preserves both originals but only stdout normalized; stderr does NOT produce PARSE_FAILED"
+    },
+    {
+      "id": "P03",
+      "expected": "unexpected localized labels accepted as opaque label string, never English CPU count claim"
+    },
+    {
+      "id": "N01",
+      "expected": "duplicated/reordered/forged call stream artifact names and cross-run evidence reject before manifest"
+    },
+    {
+      "id": "N02",
+      "expected": "unapproved command invocation, fake source_paths, call0002-stdout, wrong source receipt reject"
+    },
+    {
+      "id": "N03",
+      "expected": "stderr-only CAPTURED does not fabricate completed acquisition, invalid data fails closed"
+    },
+    {
+      "id": "N04",
+      "expected": "malformed no-colon stdout, invalid UTF-8, too many lines/overlong output yield actual parser error with sealed fallback"
+    },
+    {
+      "id": "B01",
+      "expected": "transport denied or tool missing yields zero parsed bytes and truthful unavailable status"
+    }
+  ],
+  "review": "Source-first interpretation of existing D1 artifact naming and status contracts; same AI agent as implementation, no independent human signoff.",
+  "risk": "No change to G5-03 execution argv, privileges, evidence writer, approved sources or report publication. Does not claim complete numeric lscpu interpretation; deliberately preserves localized value strings."
+}
