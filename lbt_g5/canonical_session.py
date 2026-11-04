@@ -27,7 +27,8 @@ from .catalog import initial_catalog
 from .normalization import (normalize_sealed_source, parser_available,
                             SourceParseError, dmi_field_from_source_path,
                             cpu_sysfs_path_identity, block_sysfs_path_identity,
-                            optical_sysfs_path_identity)
+                            optical_sysfs_path_identity,
+                            drm_sysfs_path_identity)
 from .safety import initial_source_policies, valid_run_id
 
 PRIVATE_FILES = ("system.json", "source_attempts.json", "status_records.json")
@@ -249,6 +250,32 @@ def _verified_optical_sysfs_paths(metadata, artifacts, policy):
     return tuple(paths)
 
 
+
+def _verified_lexical_sysfs_paths(metadata, artifacts, policy, *, identity_fn,
+                                   label):
+    """Validate G5-03 sorted entry/fixed-attribute order and sealed item slots.
+
+    The source-specific identity function is constrained to approved paths,
+    with sort keys constructed from the worker's registered tuple order.
+    """
+    paths = metadata.get("source_paths")
+    if type(paths) is not list or len(paths) != len(artifacts):
+        raise CanonicalContractError(label + " path/artifact count mismatch")
+    if len(paths) > policy.max_entries:
+        raise CanonicalContractError(label + " source entry bound exceeded")
+    previous_order = None
+    for number, (path, artifact) in enumerate(zip(paths, artifacts), 1):
+        if artifact.artifact != "item" + format(number, "04d"):
+            raise CanonicalContractError(label + " item ordinal mismatch")
+        identity = identity_fn(path)
+        if identity is None:
+            raise CanonicalContractError(label + " unapproved source path")
+        if previous_order is not None and identity[1] <= previous_order:
+            raise CanonicalContractError(label + " duplicate/nonworker order")
+        previous_order = identity[1]
+    return tuple(paths)
+
+
 def _status_for(receipt, artifacts, *, parser_state="NOT_RUN"):
     """A status needs actual factual source and parser evidence.
 
@@ -412,7 +439,10 @@ def build_canonical(run_directory, engine_run):
                        _verified_block_sysfs_paths(metadata, artifacts, policy)
                        if source_id == "SRC-12" else
                        _verified_optical_sysfs_paths(metadata, artifacts, policy)
-                       if source_id == "SRC-17" else ())
+                       if source_id == "SRC-17" else
+                       _verified_lexical_sysfs_paths(metadata, artifacts, policy,
+                           identity_fn=drm_sysfs_path_identity, label="DRM")
+                       if source_id == "SRC-19" else ())
         linked = []
         parser_executions = 0
         parser_failures = []
@@ -455,7 +485,7 @@ def build_canonical(run_directory, engine_run):
                     parsed = normalize_sealed_source(
                         source_id, raw,
                         source_path=(sysfs_paths[artifact_index - 1]
-                                     if source_id in ("SRC-04", "SRC-07", "SRC-12", "SRC-17") else None))
+                                     if source_id in ("SRC-04", "SRC-07", "SRC-12", "SRC-17", "SRC-19") else None))
                 except SourceParseError as exc:
                     error = str(exc)[:128]
                     parser_failures.append(error)
