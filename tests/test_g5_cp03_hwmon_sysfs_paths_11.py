@@ -60,7 +60,7 @@ class HwmonOriginalPathOracles(unittest.TestCase):
     def test_source_allowlist_corresponds_to_g5_worker(self):
         self.assertEqual(ROOTS["SRC-25"], ROOT.rstrip("/"))
         self.assertTrue(parser_available("SRC-25"))
-        self.assertFalse(parser_available("SRC-26"))
+        self.assertFalse(parser_available("SRC-05"))
         for field in ("name", "temp1_input", "temp1_label", "fan1_input",
                       "in0_input", "power1_input"):
             self.assertIsNotNone(HWMON.fullmatch(field))

@@ -61,7 +61,7 @@ class NetSysfsSourceOracles(unittest.TestCase):
         self.assertEqual(ROOTS["SRC-22"], ROOT.rstrip("/"))
         self.assertEqual(ATTRS["SRC-22"], ATTRS22)
         self.assertTrue(parser_available("SRC-22"))
-        self.assertFalse(parser_available("SRC-26"))
+        self.assertFalse(parser_available("SRC-05"))
 
     def test_private_link_observations_cite_precise_unmodified_originals(self):
         paths = (

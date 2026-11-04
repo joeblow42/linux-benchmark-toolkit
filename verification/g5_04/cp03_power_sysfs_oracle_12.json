@@ -1,0 +1,103 @@
+{
+  "record_id": "LBT-G504-CP03-INC12-SRC26-ORACLE",
+  "version": "1.0",
+  "date": "2026-11-04",
+  "status": "PREIMPLEMENTATION_ORACLE",
+  "authority": [
+    "Rev 1.6 controlled requirements",
+    "G4-07 SRC-26 COL-POWER D0, 16 MiB 2048 entries 4s, power-supply identification/metrics only; no charging threshold/control writes",
+    "G4-02/06 Source Evidence Map SRC-26",
+    "Approved G5-03 passive_worker.py SRC-26 fixed tuple/lexical device enumeration and sealed source_paths item ordinals",
+    "Owner-approved CP-01 D01..D05: canonical 1.0.0, separate status 1.0; governance standard v1.0"
+  ],
+  "path_contract": {
+    "root": "/sys/class/power_supply",
+    "device": "[a-zA-Z0-9_.:-]+ except hidden, lexical worker order",
+    "fields": [
+      "type",
+      "status",
+      "capacity",
+      "voltage_now",
+      "current_now",
+      "power_now",
+      "energy_now",
+      "energy_full",
+      "energy_full_design",
+      "charge_now",
+      "charge_full",
+      "charge_full_design",
+      "manufacturer",
+      "model_name",
+      "serial_number",
+      "technology",
+      "cycle_count"
+    ],
+    "attribute_order": "Exact worker fixed tuple; no sorting within each device",
+    "source_receipt": "Successful source_paths align with sealed item0001.., optional absence recorded unavailable_fields, duplicates/misorder/forged IDs rejected before manifest"
+  },
+  "type_contract": {
+    "text": [
+      "type",
+      "status",
+      "manufacturer",
+      "model_name",
+      "serial_number",
+      "technology"
+    ],
+    "numeric": [
+      "capacity",
+      "voltage_now",
+      "current_now",
+      "power_now",
+      "energy_now",
+      "energy_full",
+      "energy_full_design",
+      "charge_now",
+      "charge_full",
+      "charge_full_design",
+      "cycle_count"
+    ],
+    "conversion": "Signed 64-bit raw numeric input, NULL unit pending owner-validated driver representation. Do not infer battery health, percent, charge state or convert into SI units from attribute spelling alone.",
+    "privacy": "serial_number, manufacturer, model_name, and raw source evidence are PRIVATE canonical data; do not publish until later owner-controlled masking is applied; no public evidence pointers."
+  },
+  "expected_cases": [
+    {
+      "id": "P01",
+      "oracle": "BAT0 type, status, voltage_now, current_now, serial_number typed original evidence and private datum identity"
+    },
+    {
+      "id": "P02",
+      "oracle": "BAT10 before BAT2 lexical device order with fixed nonalphabetic attribute sequence"
+    },
+    {
+      "id": "P03",
+      "oracle": "optional absent power_now and cycle_count remain unavailable only, no fabricated battery or power measurement"
+    },
+    {
+      "id": "P04",
+      "oracle": "unknown textual status and negative signed current retained without inferred battery state or units"
+    },
+    {
+      "id": "N01",
+      "oracle": "wrong source_paths count, duplicate/scrambled paths, out-of-order source attribute and mismatched itemNNNN ordinal rejected"
+    },
+    {
+      "id": "N02",
+      "oracle": "capacity_level, charge_control_end_threshold, driver overrides, traversal, wrong root, hidden name and file suffix rejected"
+    },
+    {
+      "id": "N03",
+      "oracle": "wrong run, tampered digest, changed original evidence rejected"
+    },
+    {
+      "id": "N04",
+      "oracle": "malformed signed metric, 64bit overflow, invalid UTF-8, multiline text or NUL -> actual parser error, raw fallback preserved"
+    },
+    {
+      "id": "B01",
+      "oracle": "no power supplies yields zero observations and valid unavailable status, without synthetic device"
+    }
+  ],
+  "independence": "Separately specified oracle before code by same AI agent. Independent human validation not claimed.",
+  "approval_boundary": "No schema/privilege/workers/publication changes, no requirement-wide verification, no G5-04 acceptance."
+}
