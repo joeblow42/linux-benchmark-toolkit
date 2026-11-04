@@ -472,7 +472,7 @@ def build_canonical(run_directory, engine_run):
         component_id="SES-CANONICAL", subject_id=run_id,
         status=orchestrated_state, reason_code=orchestrated_reason,
         detail=("Raw originals validated; semantic normalization incomplete; " +
-                str(len(observations)) + " raw observations; " +
+                str(len(observations)) + " original/semantic observation records; " +
                 str(len(attempts)) + " source attempts")[:1024],
         evidence_refs=[], source_attempt_ids=sorted(all_attempt_ids)))
     system = {
@@ -484,7 +484,10 @@ def build_canonical(run_directory, engine_run):
         "observations": observations,
         "capture_limits": limits,
         "limitations": ["Canonical schema/integrity completion pending CP-04",
-                        "Semantic source coverage is restricted to SRC-02 and SRC-08..SRC-10",
+                        ("Registered semantic parsers: " +
+                         str(sum(1 for source in policies if parser_available(source))) +
+                         " of " + str(len(policies)) + " source families; " +
+                         "this is not complete acquisition or validation"),
                         "Zero observations permitted; no benchmark measurements inferred"],
     }
     outputs = {
