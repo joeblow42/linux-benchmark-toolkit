@@ -1,0 +1,125 @@
+{
+  "record_id": "LBT-G504-CP03-SRC12-ORACLE-06",
+  "record_type": "source_first_independent_test_oracles",
+  "revision": "0.1",
+  "date": "2026-11-04",
+  "state": "SPECIFIED_BEFORE_IMPLEMENTATION",
+  "sources": [
+    {
+      "artifact": "02_CORE_AUTHORITY_AND_SCHEMA/LBT_G4_07_Source_Authorization_and_Bounds_Rev0_1.csv",
+      "row": "SRC-12",
+      "constraints": "COL-BLOCK; BLOCK_SYSFS; D0 unprivileged, /sys/class/block geometry/identity allowlist, 32 MiB, <=4096 entries, 5 s; never read /dev/*"
+    },
+    {
+      "artifact": "02_CORE_AUTHORITY_AND_SCHEMA/LBT_G4_02_06_Source_Evidence_Map_Rev0_1.csv",
+      "row": "SRC-12",
+      "constraints": "Per deterministic enumeration or safely read entry; preserve original entry identities"
+    },
+    {
+      "artifact": "lbt_g5/passive_worker.py at PR #28 commit 1078d8a3",
+      "row": "SRC-12",
+      "constraints": "Device names from sorted(os.listdir(/sys/class/block)), skip hidden entries; match [a-zA-Z0-9_.:-]+; per-device attributes in fixed tuple sequence: size,ro,removable,queue/logical_block_size,queue/physical_block_size,device/vendor,device/model,device/rev; only successful paths retained in source_paths aligned item0001..itemNNNN"
+    },
+    {
+      "artifact": "lbt_g5/passive.py; lbt_g5/records.py",
+      "row": "SRC-12",
+      "constraints": "Receipt source_paths stores ONLY successfully sealed original paths (including partial runs); optional absent attributes recorded unavailable_fields, not as evidence items"
+    },
+    {
+      "artifact": "Linux kernel Documentation/ABI/stable/sysfs-block; Documentation/block/queue-sysfs",
+      "row": "read-only size fields",
+      "constraints": "size is 512-byte sector count; logical/physical block sizes are byte quantities; no capacity-in-bytes derivation required"
+    }
+  ],
+  "controlled_versions": {
+    "requirements": "Rev 1.6",
+    "canonical": "1.0.0",
+    "status": "1.0",
+    "methodology": "AI-Assisted Software Engineering Governance Standard v1.0"
+  },
+  "proposed_private_datum_paths": "storage.block.<registered-device-entry>.<attribute path segments joined by dots>",
+  "allowlist": [
+    "size",
+    "ro",
+    "removable",
+    "queue/logical_block_size",
+    "queue/physical_block_size",
+    "device/vendor",
+    "device/model",
+    "device/rev"
+  ],
+  "scalar_oracles": {
+    "size": "decimal nonnegative integer, unit 512-byte-sectors; never multiply by device logical_block_size",
+    "ro": "exact decimal 0 or 1 -> BOOLEAN",
+    "removable": "exact decimal 0 or 1 -> BOOLEAN",
+    "queue/logical_block_size": "positive decimal integer bytes",
+    "queue/physical_block_size": "positive decimal integer bytes",
+    "device/vendor": "bounded single-line UTF-8 string, whitespace-stripped normalized value; retain original text",
+    "device/model": "bounded single-line UTF-8 string, whitespace-stripped normalized value; retain original text",
+    "device/rev": "bounded single-line UTF-8 string, whitespace-stripped normalized value; retain original text"
+  },
+  "cases": [
+    {
+      "id": "S12-P01",
+      "kind": "POSITIVE",
+      "stimulus": "Two devices nvme0n1 and sda, sealed size/ro and queue sizes in exact worker ordering",
+      "expected": "Typed observations use accurate per-device paths, per-original evidence IDs, correct 512-byte sector and byte units; unchanged original digests; manifest validates"
+    },
+    {
+      "id": "S12-P02",
+      "kind": "POSITIVE",
+      "stimulus": "sda and sda1 or device names loop1 and loop10, valid worker lexical order",
+      "expected": "lexical, not numerical, ordering accepted and precisely identified"
+    },
+    {
+      "id": "S12-P03",
+      "kind": "POSITIVE",
+      "stimulus": "Optional /device/vendor and model unavailable, others captured",
+      "expected": "preserve unavailable_fields without fabricating missing semantic observations or device identity"
+    },
+    {
+      "id": "S12-N01",
+      "kind": "NEGATIVE",
+      "stimulus": "source_paths count differs from successful sealed artifact count",
+      "expected": "fail closed before manifest"
+    },
+    {
+      "id": "S12-N02",
+      "kind": "NEGATIVE",
+      "stimulus": "path attribute order swapped, duplicate path or duplicate device identity, lexical device order violated",
+      "expected": "fail closed before manifest"
+    },
+    {
+      "id": "S12-N03",
+      "kind": "NEGATIVE",
+      "stimulus": "wrong /sys root, unsupported /device/serial attribute, /dev node, path traversal, malformed device path, hidden entry",
+      "expected": "reject before parser or canonical manifest; originals remain sealed"
+    },
+    {
+      "id": "S12-N04",
+      "kind": "NEGATIVE",
+      "stimulus": "artifact item ordinal tampered or cross-run evidence ID/receipt mismatch",
+      "expected": "reject before canonical manifest"
+    },
+    {
+      "id": "S12-N05",
+      "kind": "NEGATIVE",
+      "stimulus": "malformed numeric, negative sector size, invalid boolean, invalid UTF-8, multiline or excessive string",
+      "expected": "actual invoked parser failure only, preserve original bytes as lossless fallback; no invented normalized value"
+    },
+    {
+      "id": "S12-B01",
+      "kind": "BOUNDARY",
+      "stimulus": "zero size / empty vendor string / absent optional field",
+      "expected": "no inferred physical capacity or identity; bound input and preserve original; do not claim real drive or media test"
+    },
+    {
+      "id": "S12-B02",
+      "kind": "BOUNDARY",
+      "stimulus": "unparsed source family with no source-path list",
+      "expected": "prior fail-closed behavior unchanged"
+    }
+  ],
+  "verification_separation": "Contract-first oracles reviewed as a separate reasoning step from production implementation by same agent; independent human/second agent review NOT obtained",
+  "implementation_gate": "Do not report CP-03 complete, treat synthetic CI as full contract or move to CP-04; material new semantics or permission changes require owner approval."
+}
