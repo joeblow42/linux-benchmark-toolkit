@@ -49,10 +49,15 @@ class D1NonzeroOwnerDecisionOracles(unittest.TestCase):
             {"authorization_class":"O1"},
             {"authorization_class":None},
             {"timed_out":True},
-            {"capture_limited":True},
         ):
             with self.subTest(attrs=attrs), self.assertRaises(CanonicalContractError):
                 _status_for(self.receipt(**attrs), [object()], parser_state="OK")
+
+    def test_prior_capture_limit_takes_precedence_over_exit_interpretation(self):
+        self.assertEqual(
+            _status_for(self.receipt(capture_limited=True),
+                        [object()], parser_state="OK"),
+            ("PARTIAL", "CAPTURE_LIMIT"))
 
     def test_other_unknown_or_conflicting_outcomes_remain_fail_closed(self):
         for attrs in (
