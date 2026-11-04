@@ -165,12 +165,22 @@ class LscpuD1SourceFirstOracles(unittest.TestCase):
                              b"not key value\n")
             self.assertEqual(validate_canonical(folder), manifest)
 
-    def test_nonzero_command_exit_has_no_invented_status_mapping(self):
+    def test_approved_nonzero_command_exit_is_partial_and_not_complete(self):
         with self.sealed((("call0001-stdout", b"CPU(s): 1\n"),),
                          outcome="PARTIAL", reason="EXIT_NONZERO",
-                         exit_code=2) as (folder, run, _):
-            with self.assertRaises(CanonicalContractError):
-                build_canonical(folder, run)
+                         exit_code=2) as (folder, run, originals):
+            manifest = build_canonical(folder, run)
+            self.assertEqual(validate_canonical(folder), manifest)
+            status = json.loads(
+                (folder/"private/status_records.json").read_text())["status_records"][0]
+            self.assertEqual((status["status"], status["reason_code"]),
+                             ("PARTIAL", "SOURCE_INCOMPLETE"))
+            self.assertIn("transport=PARTIAL/EXIT_NONZERO", status["detail"])
+            self.assertIn("exit_code=2", status["detail"])
+            self.assertNotIn("PARSE_FAILED", status["reason_code"])
+            self.assertEqual(manifest["observation_count"], 2)
+            self.assertEqual((folder / originals[0].private_relative_path).read_bytes(),
+                             b"CPU(s): 1\n")
 
     def test_wrong_run_evidence_rejected(self):
         with self.sealed((("call0001-stdout", b"CPU(s): 4\n"),),

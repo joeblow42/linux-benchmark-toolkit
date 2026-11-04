@@ -1,7 +1,7 @@
 {
   "record_id": "LBT-G504-CP03-OWNER-DECISION-D1-EXIT-NONZERO",
   "revision": "0.1",
-  "status": "OPEN_OWNER_DECISION",
+  "status": "OWNER_APPROVED_ALTERNATIVE_A",
   "date": "2026-11-04",
   "checkpoint": "CP-03 Increment 13, before next D1 source normalization",
   "problem": "Accepted G5-03 runtime executes fixed unprivileged D1 probes. On nonzero exit with successfully sealed stdout/stderr, execute_source_command emits outcome PARTIAL and reason EXIT_NONZERO. G5-04 canonical_session._status_for currently rejects PARTIAL/EXIT_NONZERO as unclassified; no approved exact mapping was found in G4-02/06 status-pair register or CP-01 D-03 approval record. Without a decision, incomplete captured D1 sessions fail to finalize in the private canonical path.",
@@ -26,7 +26,7 @@
     }
   ],
   "recommendation": "A: approved status vocabulary already contains PARTIAL/SOURCE_INCOMPLETE and nonzero exit is direct capture evidence. Require negative tests demonstrating no false COMPLETE/OK or PARSE_FAILED, same-run exit_code and original preservation. Do not change approved status schema/version.",
-  "authorization": "Owner must choose A or B; current code remains on option B fail-closed pending explicit decision.",
+  "authorization": "Owner selected A; implement bounded mapping with adversarial tests, scoped CI and retrospective trace update",
   "implementation_impact": [
     "SRC-05 lscpu",
     "SRC-11 lsblk",
@@ -39,5 +39,21 @@
     "No public export or privacy policy change",
     "No owner acceptance of CP-03/G5-04"
   ],
-  "checkpoint_notes": "Increment 13 scoped D1 stdout parsing is CI tested for zero exit. Remaining nonzero exit policy is separately open; do not proceed to next D1 increment until owner decision."
+  "checkpoint_notes": "Increment 13 scoped D1 stdout parsing is CI tested for zero exit. Remaining nonzero exit policy is separately open; do not proceed to next D1 increment until owner decision.",
+  "owner_decision": "Alternative A",
+  "approval_source": "Owner explicit current conversation message: 'Alternative A'",
+  "approved_date": "2026-11-04",
+  "disposition": "When the actual registered D1 probe has outcome PARTIAL / reason EXIT_NONZERO, nonzero integer exit_code and at least one verified sealed original, emit acquisition PARTIAL / SOURCE_INCOMPLETE. Preserve original transport reason/exit_code in private status detail and unchanged receipt, never claim COMPLETE or PARSE_FAILED on exit code alone. Do not broaden other reason/status pairs.",
+  "implementation_scope": [
+    "lbt_g5/canonical_session.py _status_for",
+    "Private acquisition status detail exit-code notation",
+    "Source-first negative test suite",
+    "Existing SRC-05 nonzero test updated"
+  ],
+  "change_history": [
+    {
+      "date": "2026-11-04",
+      "change": "Owner selected Alternative A; historical options and risk context preserved"
+    }
+  ]
 }
