@@ -66,7 +66,7 @@ class G504DmiSourcePathOracles(unittest.TestCase):
     def test_approved_dmi_allowlist_cross_checks_worker(self):
         self.assertEqual(DMI, APPROVED_DMI)
         self.assertTrue(parser_available("SRC-04"))
-        self.assertFalse(parser_available("SRC-22"))
+        self.assertFalse(parser_available("SRC-24"))
 
     def test_source_path_required_and_values_never_define_field_identity(self):
         path = ROOT + "product_name"
