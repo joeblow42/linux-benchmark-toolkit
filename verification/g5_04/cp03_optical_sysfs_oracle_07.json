@@ -1,0 +1,123 @@
+{
+  "record_id": "LBT-G504-CP03-SRC17-ORACLE-07",
+  "record_type": "source_first_test_oracles",
+  "version": "0.1",
+  "state": "SPECIFIED_BEFORE_IMPLEMENTATION",
+  "date": "2026-11-04",
+  "authority": {
+    "requirements": "Rev 1.6",
+    "canonical_schema": "1.0.0",
+    "status_schema": "1.0",
+    "methodology": "AI-Assisted Software Engineering Governance Standard v1.0",
+    "contracts": [
+      "G4-07 Source Authorization and Bounds Rev 0.1, SRC-17",
+      "G4-02/06 Source Evidence Map Rev 0.1 SRC-17",
+      "Approved G5-03 original passive worker source enumerator",
+      "CP-01 owner approved D-01..D-05"
+    ]
+  },
+  "scope": {
+    "source": "SRC-17",
+    "collector": "COL-OPTICAL",
+    "operation": "OPTICAL_SYSFS",
+    "privilege": "D0 current unprivileged user",
+    "source_root": "/sys/class/block",
+    "device_pattern": "sr[0-9]+",
+    "attribute_order": [
+      "removable",
+      "device/type",
+      "device/vendor",
+      "device/model"
+    ],
+    "source_bounds": {
+      "bytes": "8 MiB",
+      "entries": 128,
+      "time": "3 s"
+    },
+    "explicit_prohibition": "No /dev/sr* reads, no media access or media-verified inference, no writes or sudo"
+  },
+  "path_contract": {
+    "order": "successful device dirs in sorted(os.listdir(root)) lexical order; within each srN directory use exact worker tuple attribute order; only successfully sealed item paths appear in receipt source_paths, and item0001... refer to those paths in the same sequence",
+    "identity": "Private optical.sysfs.<srN>.<attribute components>, from validated receipt path only, never from text bytes",
+    "forbidden": "unsupported attributes, unknown directory name, ambiguous duplicate, traversal, non-lexical order, truncated path, forged cross-run pointer"
+  },
+  "type_oracles": {
+    "removable": "0 or 1 boolean",
+    "device/type": "nonnegative decimal integer SCSI peripheral type code only; do not convert type to claims about inserted media",
+    "device/vendor": "bounded single-line UTF-8 text, preserved verbatim original and normalized trimmed string",
+    "device/model": "bounded single-line UTF-8 text, preserved verbatim original and normalized trimmed string"
+  },
+  "cases": [
+    {
+      "id": "S17-P01",
+      "kind": "POSITIVE",
+      "input": "sr0 removable, device/type, vendor, model in fixed G5 worker order",
+      "expected": "Four original and four corresponding typed records tied to matching sealed bytes and same-run attempts, status COMPLETE/OK if parser ran and all values valid"
+    },
+    {
+      "id": "S17-P02",
+      "kind": "POSITIVE",
+      "input": "sr10 and sr2 paths with lexical ordering, optional fields skipped",
+      "expected": "Do not sort numerically; preserve matching device identity and field provenance"
+    },
+    {
+      "id": "S17-P03",
+      "kind": "POSITIVE",
+      "input": "source absent or optional model unavailable",
+      "expected": "Do not synthesize an optical device or model/media; existing absent-source state remains authoritative"
+    },
+    {
+      "id": "S17-N01",
+      "kind": "NEGATIVE",
+      "input": "receipt path count differs from sealed items or item ordinal corrupted",
+      "expected": "reject before canonical manifest"
+    },
+    {
+      "id": "S17-N02",
+      "kind": "NEGATIVE",
+      "input": "attribute order swapped, duplicate path, device name order swapped",
+      "expected": "reject ambiguity even if byte data appear valid"
+    },
+    {
+      "id": "S17-N03",
+      "kind": "NEGATIVE",
+      "input": "wrong root, /dev/sr0, srX, unauthorized device/serial, traversal, extra path segments",
+      "expected": "reject without host access"
+    },
+    {
+      "id": "S17-N04",
+      "kind": "NEGATIVE",
+      "input": "wrong run evidence ID, source owner mismatched, changed sealed original",
+      "expected": "reject same-run evidence validation"
+    },
+    {
+      "id": "S17-N05",
+      "kind": "NEGATIVE",
+      "input": "malformed device/type, invalid boolean, embedded NUL, invalid UTF8 or multiline",
+      "expected": "record true parser failure with lossless raw fallback; do not label unsupported parser as failed"
+    },
+    {
+      "id": "S17-B01",
+      "kind": "BOUNDARY",
+      "input": "type code 5 or unusual nonnegative code; no successful media read",
+      "expected": "record numeric code only, never media_verified"
+    },
+    {
+      "id": "S17-B02",
+      "kind": "BOUNDARY",
+      "input": "empty padded vendor/model; no device/type",
+      "expected": "value can remain empty without invented product identity; preserve original bytes"
+    }
+  ],
+  "review": {
+    "method": "Separate contract-source-first reasoning before parser edits",
+    "independence_limitation": "Same AI agent; no independent human or separately briefed agent judgment",
+    "no_gate_acceptance": "CI fixture pass cannot close CP-03 or G5-04"
+  },
+  "scope_boundaries": [
+    "Candidate C single acquisition engine unchanged",
+    "Original source evidence never modified",
+    "No public report output or raw-source pointers",
+    "No schema, privilege or external behavior revision"
+  ]
+}
