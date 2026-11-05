@@ -1,0 +1,82 @@
+{
+  "record_id": "LBT-G504-CP03-O1-EXIT-STATUS-OWNER-REVIEW-20261104",
+  "revision": "0.1",
+  "status": "PENDING_OWNER_DECISION",
+  "date": "2026-11-04",
+  "trigger": "First source remaining after SRC-11 (20 of 28 candidate parsers): SRC-13 O1 drive-health acquisition",
+  "confirmed_authority": {
+    "product_baseline": "Requirements Rev1.6, canonical schema_version 1.0.0, distinct 14-field status schema_version 1.0",
+    "methodology": "Owner-approved AI-Assisted Software Engineering Governance Standard 1.0",
+    "source_policy": "G4-07 SRC-13 O1, per-run/target explicit operator consent, bounded reads, permitted target /dev/sd[a-z]+ or /dev/nvme[0-9]+(?:n[0-9]+)?; no new privileges or device actions",
+    "acquisition_implementation": "lbt_g5/o1.py: smartctl -i -H or nvme smart-log; lbt_g5/o1_execution.py: nonzero return code with one or more sealed stdout/stderr originals => PARTIAL/ACQUISITION_ERROR, with exit_code preserved",
+    "canonical_implementation": "lbt_g5/canonical_session.py _status_for currently maps PARTIAL CAPTURE_LIMIT, EVIDENCE_PERSIST_FAILED, SOURCE_INCOMPLETE, and owner-approved D1 EXIT_NONZERO, but not O1 PARTIAL/ACQUISITION_ERROR",
+    "prior_owner_decision": "Alternative A approved 2026-11-04 explicitly applied to D1 PARTIAL/EXIT_NONZERO only; it must not be automatically expanded to O1",
+    "observed_earlier": "G5-02 controlled test SRC-13 smartctl /dev/sda PARTIAL ACQUISITION_ERROR exit 2; this is a known practical path, not just hypothetical"
+  },
+  "external_context": [
+    {
+      "source": "smartmontools smartctl man page",
+      "url": "https://man.archlinux.org/man/smartctl.8.en",
+      "finding": "smartctl uses an exit-bitmask; bit 2 indicates a failed SMART/ATA command or checksum issue and bit 3 can mean SMART detected drive failing; nonzero need not mean all output is absent."
+    },
+    {
+      "source": "nvme-cli manual",
+      "url": "https://manpages.debian.org/unstable/nvme-cli/nvme-smart-log.1.en.html",
+      "finding": "nvme smart-log is a read-only query returning SMART log data; output interpretation and command errors require separate source-specific semantics."
+    }
+  ],
+  "issue": "How must the G5-04 private canonical status engine classify registered O1 capture PARTIAL/ACQUISITION_ERROR with actual nonzero exit_code, original sealed stdout/stderr, and explicit valid operator device consent? Only the owner may authorize expansion to the existing acquisition status pair.",
+  "alternatives": [
+    {
+      "choice": "A",
+      "label": "Conservative approved-status mapping — recommended",
+      "decision": "For registered O1 source attempt with outcome PARTIAL, reason ACQUISITION_ERROR, proven nonzero integer exit_code and >=1 SHA-verified original, emit existing acquisition PARTIAL/SOURCE_INCOMPLETE; require exact source policy/consent/target provenance, preserve recorded exit code, target identity and diagnostic originals in private receipt/status details. Never convert nonzero exit into 'drive failing' or 'healthy' without separate semantic evidence; never imply full acquisition. No new status pair, schema or privilege.",
+      "advantages": [
+        "Allows validated private canonical partial session continuation even with SMART bitmask return",
+        "No false COMPLETE/OK or PARSE_FAILED",
+        "Applies only to O1 registered sources SRC-13/18/21 and does not broaden D1 rule"
+      ],
+      "risks": [
+        "Source result may be reported incomplete even if the nonzero bitmask reflects an actual health finding; raw exit code must remain available for later health analysis.",
+        "Needs negative/positive tests for both SMART and NVMe, and O1 privilege/consent boundaries."
+      ]
+    },
+    {
+      "choice": "B",
+      "label": "Source-specific status interpretation",
+      "decision": "Separate smartctl bitmask and nvme-cli exit semantics at the source adapter before mapping acquisition statuses. This requires an additional bounded design review and potentially changes to accepted G5-03 transport classification. No assumptions from code alone.",
+      "advantages": [
+        "Most accurate distinction between command failure and observed health warnings"
+      ],
+      "risks": [
+        "Material change in approved acquisition status contract and tests, larger implementation"
+      ]
+    },
+    {
+      "choice": "C",
+      "label": "Retain fail closed",
+      "decision": "Keep canonical rejection of PARTIAL/ACQUISITION_ERROR for O1. Preserve original evidence/receipt but block final canonical session when this occurs.",
+      "advantages": [
+        "No expansion of status interpretation"
+      ],
+      "risks": [
+        "Known SRC-13 exit-2 path will continue to block canonical session finalization."
+      ]
+    }
+  ],
+  "recommendation": "A as narrowly bounded to registered O1 source attempts with validated identity, target, nonzero exit and preserved original; defer device-health interpretation to separately verified parser evidence. Require explicit owner approval before implementing.",
+  "tests_on_approval": [
+    "D1 Alternative A unchanged and prior test suite PASS",
+    "Positive O1 source with nonzero code & sealed stdout yields only PARTIAL/SOURCE_INCOMPLETE, no fake drive-health conclusion",
+    "Failure for no evidence, zero/fake/missing exit code, wrong authorization class/source ID, forged target or run, no consent metadata if required",
+    "CAPTURE_LIMIT takes precedence; no accidental COMPLETE on contradictory exit",
+    "Original bytes, status detail, exit-code bitmask and session links all preserved"
+  ],
+  "stop_status": "NO SRC-13 parser code, O1 transport, status mapping or privilege changes authorized until owner selects A/B/C; CP-03 remains OPEN.",
+  "history": [
+    {
+      "date": "2026-11-04",
+      "event": "Opened at verified SRC-11 checkpoint PR #38 CI #652 after owner approved preceding D1 Alternative A."
+    }
+  ]
+}
