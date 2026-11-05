@@ -124,7 +124,8 @@ class SRC13HealthOracles(unittest.TestCase):
                 self.parse(raw)
 
     def canonical(self, *,raw=SMART,partial=False,stderr_only=False,
-                  consent_future_seconds=0):
+                  consent_future_seconds=0,captured_exit=0,
+                  timed_out=False,capture_limited=False):
         temp=tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         folder=Path(temp.name)/RUN
@@ -156,7 +157,9 @@ class SRC13HealthOracles(unittest.TestCase):
             RUN,"SRC-13","01","ALLOW",status,reason,
             evidence=(o1_original,),bytes_count=o1_original.byte_count,
             target="/dev/sda",invocation=" ".join(SRC13_SMART),
-            exit_code=2 if partial else 0,authorization_provenance=witness)
+            exit_code=2 if partial else captured_exit,
+            timed_out=timed_out,capture_limited=capture_limited,
+            authorization_provenance=witness)
         attempt_file=commit_attempt(str(folder),attempt)
         o1_record=RecordedOutcome(
             {"disposition":status,"reason":reason,"receipts":(o1_original,)},
@@ -193,6 +196,15 @@ class SRC13HealthOracles(unittest.TestCase):
         with self.assertRaises(CanonicalContractError):
             build_canonical(folder,run)
         self.assertFalse((folder/"private/session_manifest.json").exists())
+
+    def test_captured_transport_contradictions_refuse_complete(self):
+        for args in ({"captured_exit":2}, {"captured_exit":None},
+                     {"timed_out":True}, {"capture_limited":True}):
+            with self.subTest(args=args):
+                folder,run,_,_=self.canonical(**args)
+                with self.assertRaises(CanonicalContractError):
+                    build_canonical(folder,run)
+                self.assertFalse((folder/"private/session_manifest.json").exists())
 
     def test_diagnostic_only_stderr_cannot_complete_success(self):
         folder,run,_,_=self.canonical(stderr_only=True)
