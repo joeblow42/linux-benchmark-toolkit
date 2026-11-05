@@ -88,7 +88,7 @@ class O1ApprovedOwnerOracles(unittest.TestCase):
         record=dict(run_id=RUN,source_id="SRC-13",operation_id="DEVICE_HEALTH",
                     target=TARGET,consent_run_id=RUN,consent_source_id="SRC-13",
                     consent_operation_id="DEVICE_HEALTH",consent_target=TARGET,
-                    consent_issued_utc="2026-11-04T00:00:00Z",
+                    consent_issued_utc="2026-11-01T12:00:00Z",
                     impact_acknowledged=True,
                     inventory_source_id="SRC-12",
                     inventory_source_path=INVPATH,
