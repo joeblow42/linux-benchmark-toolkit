@@ -646,6 +646,17 @@ def build_canonical(run_directory, engine_run):
                 and metadata["reason"] in ("BYTES_PRESERVED","ACQUISITION_ERROR")):
             o1_verified = _verified_o1_provenance(
                 folder, run_id, metadata, item, all_attempts, artifacts)
+        # G5-03 O1 transport cannot claim captured success with a nonzero
+        # return, timeout, truncation, or non-complete preserved stream.
+        # Never promote such a contradictory receipt to COMPLETE/OK.
+        if source_id == "SRC-13" and metadata["outcome"] == "CAPTURED":
+            if (type(metadata.get("exit_code")) is not int
+                    or metadata["exit_code"] != 0
+                    or metadata.get("timed_out") is not False
+                    or metadata.get("capture_limited") is not False
+                    or any(a.limit_applied or not a.complete for a in artifacts)):
+                raise CanonicalContractError(
+                    "SRC-13 captured transport contradicts original/exit evidence")
         command_streams = (_verified_lscpu_streams(metadata, artifacts)
                            if source_id == "SRC-05" else
                            _verified_lsblk_streams(metadata, artifacts)
