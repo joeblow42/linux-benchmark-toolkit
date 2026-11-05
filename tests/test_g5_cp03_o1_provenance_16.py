@@ -82,7 +82,8 @@ class O1ApprovedOwnerOracles(unittest.TestCase):
                               source_paths=(path,))
         loc=commit_attempt(str(folder),receipt)
         return RecordedOutcome(
-            SimpleNamespace(artifacts=(artifact,)),loc),artifact
+            SimpleNamespace(artifacts=(artifact,),disposition="CAPTURED",
+                            source_paths=(path,)),loc),artifact
 
     def provenance(self,inventory,**overrides):
         record=dict(run_id=RUN,source_id="SRC-13",operation_id="DEVICE_HEALTH",
@@ -99,16 +100,17 @@ class O1ApprovedOwnerOracles(unittest.TestCase):
 
     def canonical_fixture(self,*,o1_changes=None,provenance_changes=None,
                           include_inventory=True,wrong_memory_proof=False,
-                          change_original=False):
+                          change_original=False,original_name="call0001-stdout",
+                          inventory_path=INVPATH):
         self.tmp=tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         folder=Path(self.tmp.name)/RUN
         folder.mkdir(mode=0o700)
         writer=EvidenceWriter(str(folder),RUN)
-        inventory,inv_art=self.inventory(folder,writer)
+        inventory,inv_art=self.inventory(folder,writer,path=inventory_path)
         p13={p.source_id:p for p in initial_source_policies()}["SRC-13"]
         raw=b"SMART data available but exit bits are nonzero\\n"
-        origin=writer.seal_chunks(p13,"01","call0001-stdout",(raw,)).receipt
+        origin=writer.seal_chunks(p13,"01",original_name,(raw,)).receipt
         self.assertIsNotNone(origin)
         provenance=self.provenance(inv_art,**(provenance_changes or {}))
         opts=dict(invocation=CMD,target=TARGET,exit_code=2,
@@ -188,6 +190,108 @@ class O1ApprovedOwnerOracles(unittest.TestCase):
                     continue # Operational builder already rejected invalid code
                 with self.assertRaises(CanonicalContractError):
                     build_canonical(folder,run)
+
+
+    def test_stderr_only_original_is_diagnostic_not_drive_health(self):
+        folder,run,*_=self.canonical_fixture(original_name="call0001-stderr")
+        manifest=build_canonical(folder,run)
+        self.assertEqual(validate_canonical(folder),manifest)
+        observed=json.loads((folder/"private/system.json").read_text())["observations"]
+        self.assertFalse(any(x["datum_path"].startswith("health.")
+                             for x in observed))
+        statuses=json.loads((folder/"private/status_records.json").read_text())
+        o1=next(s for s in statuses["status_records"] if s["subject_id"]=="SRC-13")
+        self.assertEqual(o1["reason_code"],"SOURCE_INCOMPLETE")
+
+    def test_nvme_controller_traced_to_same_run_namespace(self):
+        path="/sys/class/block/nvme0n1/size"
+        folder,run,*_=self.canonical_fixture(
+            inventory_path=path,
+            provenance_changes=dict(
+                target="/dev/nvme0",consent_target="/dev/nvme0",
+                inventory_source_path=path,
+                approved_argv=["nvme","smart-log","/dev/nvme0"]),
+            o1_changes=dict(target="/dev/nvme0",
+                            invocation="nvme smart-log /dev/nvme0"))
+        self.assertEqual(validate_canonical(folder) if
+                         (folder/"private/session_manifest.json").exists()
+                         else build_canonical(folder,run)["attempt_count"],2)
+
+    def test_rejected_stream_ordinal_and_modified_receipt(self):
+        folder,run,*_=self.canonical_fixture(original_name="call0002-stdout")
+        with self.assertRaises(CanonicalContractError):
+            build_canonical(folder,run)
+        folder,run,origin,receipt=self.canonical_fixture()
+        receipt_path=folder/receipt
+        metadata=json.loads(receipt_path.read_text())
+        metadata["authorization_provenance"]["consent_target"]="/dev/sdb"
+        receipt_path.write_text(json.dumps(metadata))
+        with self.assertRaises(CanonicalContractError):
+            build_canonical(folder,run)
+
+    def test_g503_engine_binding_flows_to_real_g502_receipt_without_device_io(self):
+        """Mock transport and device metadata only; run real source dispatcher."""
+        from datetime import datetime,timezone
+        import os
+        import stat
+        from unittest.mock import patch
+        from lbt_g5.engine import UnifiedCollectorEngine
+        from lbt_g5.receipt_dispatch import capture_and_record
+        from lbt_g5.o1 import OptionalSourcePlan
+        from lbt_g5.runtime import TransportCapture
+        from lbt_g5.safety import SourceRequest,SourceConsent
+        temp=tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        folder=Path(temp.name)/RUN
+        folder.mkdir(mode=0o700)
+        writer=EvidenceWriter(str(folder),RUN)
+        inventory,_=self.inventory(folder,writer)
+        consent=SourceConsent(RUN,"SRC-13","DEVICE_HEALTH",TARGET,
+                              datetime.now(timezone.utc),True)
+        req=SourceRequest(RUN,"SRC-13","DEVICE_HEALTH",
+                          target=TARGET,consent=consent,
+                          trusted_targets=frozenset({"/dev/forged"}))
+        engine=UnifiedCollectorEngine(str(folder),RUN,writer=writer)
+        real_lstat=os.lstat
+        def device_stat(path,*args,**kwargs):
+            if str(path)==TARGET:
+                return SimpleNamespace(st_mode=stat.S_IFBLK)
+            return real_lstat(path,*args,**kwargs)
+        def dispatch(request,*args,**kwargs):
+            if request.source_id=="SRC-11":
+                return RecordedOutcome(
+                    SimpleNamespace(disposition="DENIED",source_paths=(),
+                                    artifacts=()),"not-used")
+            if request.source_id=="SRC-12":
+                return inventory
+            return capture_and_record(request,*args,**kwargs)
+        plan=OptionalSourcePlan("SRC-13","DEVICE_HEALTH",TARGET,
+                                ("smartctl","-i","-H",TARGET),4096,2,
+                                "may wake device")
+        transport=TransportCapture(b"SMART device excerpt\\n",b"",2,.01,
+                                    False,False,0,0)
+        with patch("lbt_g5.engine.os.lstat",side_effect=device_stat),\\
+             patch("lbt_g5.o1_execution.plan_optional",return_value=plan),\\
+             patch("lbt_g5.o1_execution._resolve_executable",
+                   return_value="/usr/sbin/smartctl"),\\
+             patch("lbt_g5.o1_execution._capture_child",
+                   return_value=transport),\\
+             patch("lbt_g5.engine.capture_and_record",side_effect=dispatch):
+            run=engine.run(("COL-BLOCK",),o1_requests={"SRC-13":req})
+        o1=run.collectors[0].source_attempts[-1]
+        meta=json.loads((folder/o1.receipt_private_path).read_text())
+        self.assertEqual(meta["schema_version"],"g5-02-attempt-0.2")
+        self.assertEqual(meta["authorization_provenance"]["inventory_source_path"],INVPATH)
+        self.assertEqual(meta["authorization_provenance"]["consent_target"],TARGET)
+        self.assertEqual(meta["exit_code"],2)
+        self.assertEqual(meta["invocation"],CMD)
+        subset=EngineRun(RUN,(CollectorRun("COL-BLOCK",(inventory,o1)),))
+        canonical=build_canonical(folder,subset)
+        self.assertEqual(validate_canonical(folder),canonical)
+        statuses=json.loads((folder/"private/status_records.json").read_text())
+        o1_status=next(s for s in statuses["status_records"]
+                       if s["subject_id"]=="SRC-13")
+        self.assertEqual(o1_status["reason_code"],"SOURCE_INCOMPLETE")
 
     def test_prior_d1_source_incomplete_remains_unchanged(self):
         self.assertEqual(_status_for(
