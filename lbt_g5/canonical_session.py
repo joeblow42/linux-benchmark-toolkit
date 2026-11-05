@@ -381,8 +381,8 @@ def _verified_o1_provenance(folder, run_id, receipt, recorded, all_attempts,
                 for stream in ("stdout","stderr")]
     names=[a.artifact for a in artifacts]
     if (not names or len(names)>2 or len(set(names))!=len(names)
-            or names != sorted(names,key=expected.index)
-            if all(n in expected for n in names) else True):
+            or any(n not in expected for n in names)
+            or names != sorted(names,key=expected.index)):
         raise CanonicalContractError("O1 source stream ordinal/order mismatch")
     inv_path=p["inventory_source_path"]
     if type(inv_path) is not str or type(p["inventory_evidence_id"]) is not str:
@@ -405,7 +405,7 @@ def _verified_o1_provenance(folder, run_id, receipt, recorded, all_attempts,
     for previous in all_attempts:
         prior_path=previous.receipt_private_path
         if (type(prior_path) is not str or not re.fullmatch(
-                r"private/source_attempt_records/SRC-[0-9]{2,}-[0-9]{2,}\\.json",
+                r"private/source_attempt_records/SRC-[0-9]{2,}-[0-9]{2,}\.json",
                 prior_path)):
             continue
         prior=_json_load(_read_restricted(folder/prior_path,MAX_RECEIPT_BYTES))
