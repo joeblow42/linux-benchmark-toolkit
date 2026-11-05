@@ -16,10 +16,11 @@ from .records import build_attempt,commit_attempt
 class RecordedOutcome:
     outcome: object
     receipt_private_path: str
+    authorization_provenance: dict | None = None
 
 def capture_and_record(request:SourceRequest,attempt,writer,slots,calls,
                        *,subcall=0,source14_evidence=None,
-                       privileged_session=None)->RecordedOutcome:
+                       privileged_session=None,o1_inventory_binding=None)->RecordedOutcome:
     policies={p.source_id:p for p in initial_source_policies()}
     policy=policies.get(request.source_id)
     if policy is None:
@@ -68,6 +69,28 @@ def capture_and_record(request:SourceRequest,attempt,writer,slots,calls,
     decision="DENY" if state=="DENIED" else "ALLOW"
     if len(source_paths)!=len(items):
         source_paths=()
+    # The engine, not an external request, supplies the witnessed D0 binding.
+    # A successful O1 executor supplies the checked plan identity. Both are
+    # necessary; an ALLOW-looking receipt alone cannot assert operator consent.
+    provenance=None
+    if (policy.authorization_class=="O1" and isinstance(outcome,dict)
+            and outcome.get("preflight_approved") is True
+            and type(o1_inventory_binding) is dict
+            and request.consent is not None and request.target in request.trusted_targets
+            and state in ("CAPTURED","PARTIAL") and items):
+        consent=request.consent
+        provenance=dict(
+            run_id=request.run_id,source_id=request.source_id,
+            operation_id=request.operation_id,target=request.target,
+            consent_run_id=consent.run_id,consent_source_id=consent.source_id,
+            consent_operation_id=consent.operation_id,consent_target=consent.target,
+            consent_issued_utc=consent.issued_utc.isoformat().replace("+00:00","Z"),
+            impact_acknowledged=consent.impact_acknowledged,
+            inventory_source_id=o1_inventory_binding.get("source_id"),
+            inventory_source_path=o1_inventory_binding.get("source_path"),
+            inventory_evidence_id=o1_inventory_binding.get("evidence_id"),
+            approved_argv=list(outcome.get("approved_argv",())))
+        invocation=" ".join(provenance["approved_argv"])
     record=build_attempt(request.run_id,request.source_id,attempt,
         decision,state,reason,evidence=items,
         bytes_count=sum(x.byte_count for x in items),
@@ -76,6 +99,7 @@ def capture_and_record(request:SourceRequest,attempt,writer,slots,calls,
         source_paths=source_paths,
         unavailable_fields=tuple(getattr(outcome,"unavailable_fields",()) or ()),
         exit_code=exit_code,elapsed_seconds=elapsed_seconds,
-        timed_out=timed_out,capture_limited=capture_limited)
+        timed_out=timed_out,capture_limited=capture_limited,
+        authorization_provenance=provenance)
     location=commit_attempt(writer.run_directory,record)
-    return RecordedOutcome(outcome,location)
+    return RecordedOutcome(outcome,location,provenance)
