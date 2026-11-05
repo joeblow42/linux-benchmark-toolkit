@@ -1,0 +1,94 @@
+{
+  "record_id": "LBT-G504-CP03-INCREMENT17-EVIDENCE-20261105",
+  "date": "2026-11-05",
+  "disposition": "CANDIDATE_IMPLEMENTED_SCOPED_CI_PASS",
+  "gate": "CP-03 IN_PROGRESS / G5-04 OPEN",
+  "parent": {
+    "pr": 39,
+    "sha": "0e4c359db4d898b162631cfe51814aabe8406c5e",
+    "state": "DRAFT UNMERGED"
+  },
+  "new_pr": 40,
+  "authorized_scope": "SRC-13 G4-07 registered O1 smartctl -i -H or nvme smart-log only; no new acquisition/device/privilege actions",
+  "source_first": {
+    "oracle": "verification/g5_04/cp03_src13_health_stream_oracle_17.json",
+    "tests": "tests/test_g5_cp03_src13_health_stream_17.py",
+    "review": "AI-authored; independent human review NOT claimed"
+  },
+  "implementation": {
+    "files": [
+      "lbt_g5/src13_normalization.py",
+      "lbt_g5/normalization.py",
+      "lbt_g5/canonical_session.py",
+      "tests/test_g5_cp03_src13_health_stream_17.py",
+      ".github/workflows/test.yml",
+      "legacy parser-registration expectation updates"
+    ],
+    "claims": [
+      "Strict same-run verified G5-03 O1 consent, target and source12 D0 evidence before parser invocation",
+      "Only sealed, hash-checked O1 stdout is data; stderr diagnostic-only",
+      "smartctl model/serial/firmware and direct reported SMART assessment are literal strings not health judgment",
+      "NVMe explicitly reported numeric counters, percent, Celsius and raw unknown temperatures; exact header target match",
+      "Explicit reported PASSED with exit 2 still PARTIAL/SOURCE_INCOMPLETE",
+      "CAPTURED success requires valid O1 provenance and parsed stdout, else fail closed",
+      "Millisecond receipt timestamp truncation accommodated without accepting future consent beyond recorded precision",
+      "Original evidence bytes preserved; production schemas 1.0.0 / status 1.0 unchanged"
+    ],
+    "limitations": [
+      "No full smartctl error-log extraction beyond approved -i -H plan",
+      "No device-health classification from bitmask, thresholds or reported strings",
+      "No physical Bodhi Linux 7 target O1 verification",
+      "No independent human source-first or negative-test assurance"
+    ]
+  },
+  "verification": {
+    "code_head_sha": "49e0e008c6180555b0abf30fd1d3156f63a71e45",
+    "workflow_id": 42130545183,
+    "url": "https://github.com/joeblow42/linux-benchmark-toolkit/actions/runs/42130545183",
+    "job_id": 127605731645,
+    "result": "SUCCESS",
+    "new_src13_tests": "14/14 PASS",
+    "unified_validation": "21 PASS, 0 FAIL, 0 SKIP, 0 BLOCKED, 0 NOT_APPLICABLE",
+    "regression": "Prior source parser tests including source-13 registry reconciliation and O1-16 suite CI PASS",
+    "status": "Scoped CI evidence only, not requirement-wide verification"
+  },
+  "trace": {
+    "csv": "LBT_CP03_Trace_20261105_Increment17.csv",
+    "sha256": "26f2c5a28439934ce80a6a39aa0c964513c5b0d00c007746616bc44f4e554b53",
+    "modified_rows": [
+      "LBT-FR-047",
+      "LBT-FR-168",
+      "LBT-NFR-068",
+      "LBT-NFR-070"
+    ],
+    "controlled_requirements_rev": "1.6",
+    "controlled_requirements_sha256": "04849cd13ecc75c803839ab7c59a1015c5b92d1f05bf31422b54406c188e2702",
+    "rows": 283,
+    "columns": 31,
+    "controlled_cells_equal": 5660,
+    "verification_states": {
+      "NOT_VERIFIED": 283
+    },
+    "verification_evidence_populated": 0
+  },
+  "completion": {
+    "candidate_semantic_parsers": 21,
+    "total_sources": 28,
+    "remaining": [
+      "SRC-14",
+      "SRC-15",
+      "SRC-18",
+      "SRC-20",
+      "SRC-21",
+      "SRC-23",
+      "SRC-28"
+    ],
+    "next": "SRC-14 /proc/self/mountinfo bounded parser, still CP-03",
+    "other_open": [
+      "CP-02 39-case cumulative requirement reconciliation",
+      "CP-03 source/normalization and independent assurance",
+      "CP-04-07 gating by sequence",
+      "Bodhi Linux 7 AMD64 physical host verification"
+    ]
+  }
+}
