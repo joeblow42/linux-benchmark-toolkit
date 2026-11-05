@@ -1,7 +1,7 @@
 {
   "record_id": "LBT-G504-CP03-O1-EXIT-STATUS-OWNER-REVIEW-20261104",
-  "revision": "0.1",
-  "status": "PENDING_OWNER_DECISION",
+  "revision": "0.2",
+  "status": "OWNER_APPROVED_ALTERNATIVE_A_IMPLEMENTATION_PENDING",
   "date": "2026-11-04",
   "trigger": "First source remaining after SRC-11 (20 of 28 candidate parsers): SRC-13 O1 drive-health acquisition",
   "confirmed_authority": {
@@ -72,11 +72,20 @@
     "CAPTURE_LIMIT takes precedence; no accidental COMPLETE on contradictory exit",
     "Original bytes, status detail, exit-code bitmask and session links all preserved"
   ],
-  "stop_status": "NO SRC-13 parser code, O1 transport, status mapping or privilege changes authorized until owner selects A/B/C; CP-03 remains OPEN.",
+  "stop_status": "Owner decision has been received; stop for requested next-conversation handoff. Do not implement or claim SRC-13 complete in this session.",
   "history": [
     {
       "date": "2026-11-04",
       "event": "Opened at verified SRC-11 checkpoint PR #38 CI #652 after owner approved preceding D1 Alternative A."
+    },
+    {
+      "date": "2026-11-04",
+      "event": "Owner explicitly approved Alternative A and requested handoff and ZIP for next conversation. Approval recorded; implementation deferred."
     }
-  ]
+  ],
+  "owner_choice": "A",
+  "owner_approval_verbatim": "A (recommended): Map verified O1 `PARTIAL/ACQUISITION_ERROR` to `PARTIAL/SOURCE_INCOMPLETE`, retaining the actual exit code and original evidence without inferring device health.",
+  "owner_approved_date": "2026-11-04",
+  "approval_scope": "Registered, authorized O1 attempts only. Require verified nonzero integer exit code and at least one sealed same-run original. Preserve original transport reason, target and exit code in private evidence/record. Do not interpret smartctl exit bitmask as a drive health assertion. No new status pair, schema, command, consent bypass, or privilege elevation. Existing capture-limit precedence remains.",
+  "implementation_state": "NOT_IMPLEMENTED; resume next conversation with source-first tests, bounded code changes, CI checks, and accumulated RTM reconciliation before SRC-13 parser"
 }
