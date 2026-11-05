@@ -374,7 +374,12 @@ def _verified_o1_provenance(folder, run_id, receipt, recorded, all_attempts,
     if (timestamp.tzinfo is None or timestamp.utcoffset().total_seconds()!=0
             or not p["consent_issued_utc"].endswith("Z")
             or observed.tzinfo is None or observed.utcoffset().total_seconds()!=0
-            or not run_start <= timestamp <= observed):
+            # The immutable G5-02 receipt timestamps are truncated to
+            # milliseconds; the validated G5-03 consent ticket carries
+            # microseconds. Compare at the *recorded* precision only.
+            or not run_start <= timestamp
+            or timestamp.replace(
+                microsecond=(timestamp.microsecond // 1000) * 1000) > observed):
         raise CanonicalContractError("O1 consent outside source run")
     slot = receipt["attempt_id"].rsplit("-",1)[-1]
     expected = ["call" + format(int(slot),"04d") + "-" + stream
