@@ -213,9 +213,8 @@ class O1ApprovedOwnerOracles(unittest.TestCase):
                 approved_argv=["nvme","smart-log","/dev/nvme0"]),
             o1_changes=dict(target="/dev/nvme0",
                             invocation="nvme smart-log /dev/nvme0"))
-        self.assertEqual(validate_canonical(folder) if
-                         (folder/"private/session_manifest.json").exists()
-                         else build_canonical(folder,run)["attempt_count"],2)
+        self.assertEqual(build_canonical(folder,run)["attempt_count"],2)
+        self.assertEqual(validate_canonical(folder)["attempt_count"],2)
 
     def test_rejected_stream_ordinal_and_modified_receipt(self):
         folder,run,*_=self.canonical_fixture(original_name="call0002-stdout")
@@ -270,12 +269,12 @@ class O1ApprovedOwnerOracles(unittest.TestCase):
                                 "may wake device")
         transport=TransportCapture(b"SMART device excerpt\\n",b"",2,.01,
                                     False,False,0,0)
-        with patch("lbt_g5.engine.os.lstat",side_effect=device_stat),\\
-             patch("lbt_g5.o1_execution.plan_optional",return_value=plan),\\
+        with patch("lbt_g5.engine.os.lstat",side_effect=device_stat),\
+             patch("lbt_g5.o1_execution.plan_optional",return_value=plan),\
              patch("lbt_g5.o1_execution._resolve_executable",
-                   return_value="/usr/sbin/smartctl"),\\
+                   return_value="/usr/sbin/smartctl"),\
              patch("lbt_g5.o1_execution._capture_child",
-                   return_value=transport),\\
+                   return_value=transport),\
              patch("lbt_g5.engine.capture_and_record",side_effect=dispatch):
             run=engine.run(("COL-BLOCK",),o1_requests={"SRC-13":req})
         o1=run.collectors[0].source_attempts[-1]
