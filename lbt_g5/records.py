@@ -41,6 +41,8 @@ class AttemptReceipt:
     elapsed_seconds: float | None = None
     timed_out: bool = False
     capture_limited: bool = False
+    # G5-02 optional O1 execution witness (not a G5-04 schema field).
+    authorization_provenance: dict | None = None
 
 def utc_now():
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00","Z")
@@ -48,7 +50,8 @@ def utc_now():
 def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                   *,evidence=(),bytes_count=0,missing=None,errors=(),
                   invocation="NOT_INVOKED",target=None,source_paths=(),unavailable_fields=(),
-                  exit_code=None,elapsed_seconds=None,timed_out=False,capture_limited=False):
+                  exit_code=None,elapsed_seconds=None,timed_out=False,capture_limited=False,
+                  authorization_provenance=None):
     policy={p.source_id:p for p in initial_source_policies()}.get(source_id)
     if not valid_run_id(run_id) or policy is None:
         raise ValueError("invalid source or run identity")
@@ -70,14 +73,21 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
         raise ValueError("unbounded unavailable-attribute diagnostics")
     if len(errors)>64 or len(str(errors))>8192:
         raise ValueError("unbounded diagnostics")
-    return AttemptReceipt("g5-02-attempt-0.1",run_id,
+    if authorization_provenance is not None:
+        if (policy.authorization_class != "O1" or decision != "ALLOW"
+                or type(authorization_provenance) is not dict
+                or len(str(authorization_provenance)) > 4096):
+            raise ValueError("invalid O1 operational authorization provenance")
+    return AttemptReceipt("g5-02-attempt-0.2" if authorization_provenance else
+                          "g5-02-attempt-0.1",run_id,
         f"{source_id}-{attempt}",policy.collector_id,source_id,
         policy.operation_id,policy.authorization_class,
         invocation,target,decision,outcome,reason,bytes_count,
         ids,missing,tuple(str(e)[:256] for e in errors),utc_now(),
         source_paths=tuple(source_paths),unavailable_fields=tuple(unavailable_fields),
         exit_code=exit_code,elapsed_seconds=elapsed_seconds,
-        timed_out=bool(timed_out),capture_limited=bool(capture_limited))
+        timed_out=bool(timed_out),capture_limited=bool(capture_limited),
+        authorization_provenance=authorization_provenance)
 
 def _safe_private_dir(parent_fd,name):
     try: os.mkdir(name,0o700,dir_fd=parent_fd)
@@ -97,7 +107,10 @@ def commit_attempt(run_directory,receipt):
     if os.path.basename(os.path.abspath(run_directory))!=receipt.run_id:
         raise ValueError("run directory mismatch")
     name=receipt.attempt_id+".json"
-    payload=(json.dumps(asdict(receipt),sort_keys=True,separators=(",",":"),
+    fields=asdict(receipt)
+    if fields["authorization_provenance"] is None:
+        del fields["authorization_provenance"]  # Preserve legacy 0.1 receipt envelope.
+    payload=(json.dumps(fields,sort_keys=True,separators=(",",":"),
                         allow_nan=False)+"\n").encode("utf-8")
     if len(payload)>256*1024:
         raise ValueError("attempt receipt exceeds limit")

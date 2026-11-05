@@ -149,6 +149,49 @@ class UnifiedCollectorEngine:
             return frozenset()
         return frozenset((target,))
 
+    def _o1_inventory_binding(self, source_id, target, results):
+        """Return a same-run D0 original/path that justified G5-03 O1 trust.
+
+        Called only AFTER _trusted_targets has accepted the real device; never
+        accepts caller-provided trusted-target assertions. The consumer checks
+        this private execution witness against sealed D0 receipts again.
+        """
+        upstream = {"SRC-13":"SRC-12", "SRC-18":"SRC-17",
+                    "SRC-21":"SRC-19"}.get(source_id)
+        if upstream is None or type(target) is not str:
+            return None
+        entries=[]
+        for recorded in results.get(upstream, ()):
+            outcome=recorded.outcome
+            if getattr(outcome,"disposition",None) not in ("CAPTURED","PARTIAL"):
+                continue
+            for path,receipt in zip(getattr(outcome,"source_paths",()),
+                                    getattr(outcome,"artifacts",())):
+                if (receipt.run_id==self.run_id and receipt.source_id==upstream
+                        and receipt.private_relative_path ==
+                        "private/evidence/" + receipt.evidence_id):
+                    entries.append((path,receipt))
+        name=target.rsplit("/",1)[-1]
+        for path,artifact in sorted(entries,key=lambda pair: pair[0]):
+            if source_id=="SRC-13":
+                m=_BLOCK.match(path)
+                valid=bool(m and (m.group(1)==name or
+                    (re.fullmatch(r"nvme[0-9]+",name) and
+                     re.fullmatch(re.escape(name)+r"n[0-9]+",m.group(1)))))
+            elif source_id=="SRC-18":
+                m=_OPTICAL.match(path)
+                valid=bool(m and m.group(1)==name)
+            else:
+                m=_DRM_CARD.match(path)
+                valid=bool(m and _RENDER.fullmatch(target) and
+                    os.path.exists(Path("/sys/class/drm")/name/"device") and
+                    os.path.realpath(Path("/sys/class/drm")/name/"device") ==
+                    os.path.realpath(Path("/sys/class/drm")/m.group(1)/"device"))
+            if valid:
+                return {"source_id":upstream,"source_path":path,
+                        "evidence_id":artifact.evidence_id}
+        return None
+
     def _mountinfo_original(self, results):
         """Consume SOURCE-14 immutable bytes, never re-read live mountinfo."""
         for result in results.get("SRC-14", ()):
@@ -248,10 +291,17 @@ class UnifiedCollectorEngine:
                     requests = (SourceRequest(self.run_id, sid, policy.operation_id,
                                              operator_disabled=sid in disabled),)
                 for index, request in enumerate(requests):
+                    o1_binding = None
                     if policy.authorization_class == "O1":
+                        trusted = self._trusted_targets(
+                            sid, request.target, receipts_by_source)
+                        # A binding is minted only for a target independently
+                        # accepted by this run-scoped inventory/device check.
+                        if request.target in trusted:
+                            o1_binding = self._o1_inventory_binding(
+                                sid, request.target, receipts_by_source)
                         request = replace(request,
-                            trusted_targets=self._trusted_targets(
-                                sid, request.target, receipts_by_source),
+                            trusted_targets=trusted,
                             operator_disabled=(sid in disabled or request.operator_disabled))
                     subcalls = (_SUBCALLS.get(sid, (0,))
                                 if policy.authorization_class != "O1" else (index,))
@@ -264,7 +314,8 @@ class UnifiedCollectorEngine:
                             recorded = capture_and_record(
                                 request, attempt, self.writer, self.slots, self.calls,
                                 subcall=subcall, source14_evidence=source14,
-                                privileged_session=privileged_session)
+                                privileged_session=privileged_session,
+                                o1_inventory_binding=o1_binding)
                         except Exception:
                             notify(cid, sid, "ERROR")
                             raise

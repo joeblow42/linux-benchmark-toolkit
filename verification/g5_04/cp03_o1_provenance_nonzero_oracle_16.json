@@ -1,0 +1,72 @@
+{
+  "record_id": "LBT-G504-CP03-O1-ALLOW-ATTESTATION-16",
+  "revision": "0.1",
+  "date": "2026-11-04",
+  "source_first": true,
+  "implementation_state_at_filing": "NOT_IMPLEMENTED",
+  "authority": {
+    "owner_choice": "Alternative A approved 2026-11-04",
+    "owner_extension": "Bounded G5-02 operational receipt and G5-03 provenance contract amendment approved; no production schema, vocabulary, scope, command, or permission change",
+    "governing_record": "governance/cp03_o1_nonzero_status_owner_review_2026-11-04.json",
+    "upstream_contracts": [
+      "lbt_g5/safety.py SourceRequest/SourceConsent",
+      "lbt_g5/engine.py run-scoped D0->O1 trust",
+      "lbt_g5/o1.py exact device plans",
+      "lbt_g5/o1_execution.py nonzero transport and sealed output",
+      "lbt_g5/records.py original operational receipt",
+      "lbt_g5/canonical_session.py acquisition status"
+    ]
+  },
+  "boundaries": {
+    "o1_sources": [
+      "SRC-13",
+      "SRC-18",
+      "SRC-21"
+    ],
+    "inventory_dependencies": {
+      "SRC-13": "SRC-12",
+      "SRC-18": "SRC-17",
+      "SRC-21": "SRC-19"
+    },
+    "approved_status": [
+      "PARTIAL",
+      "SOURCE_INCOMPLETE"
+    ],
+    "incoming": [
+      "PARTIAL",
+      "ACQUISITION_ERROR"
+    ],
+    "nonzero_integer_range": "[-65535,-1] or [1,65535] (bool invalid)",
+    "existing_status_registry_change": false,
+    "canonical_schema_change": false,
+    "operational_receipt_change": "Add bounded execution authorization witness recording consent and trusted inventory provenance; accept only after G5-03 trust and O1 plan validation, never from caller assertion alone",
+    "target_identity": "Exact consent target == recorded target == approved argv target; source-run/operation and source-class match",
+    "evidence": "At least one hash-verified same-run sealed callNNNN-stdout/stderr; D0 original evidence in same run proves target provenance; no raw edits",
+    "privacy": "Private receipt and canonical status only; no paths in public output",
+    "timed_out_or_truncated": "Existing CAPTURE_LIMIT precedence; no O1 acquisition_error reclassification when timed_out or capture_limited",
+    "stderr": "diagnostic original, not semantic health data",
+    "health": "Never infer healthy/failing from smartctl bitmask, stderr or nonzero exit",
+    "no_new_actions": "No device probes, no privilege escalation, no sudo in unit tests"
+  },
+  "positive": [
+    "Valid O1 SRC-13 smartctl /dev/sdX with matching consent, same-run sealed SRC-12 inventory and stdout/stderr original, exit 2 -> PARTIAL/SOURCE_INCOMPLETE; detail retains original PARTIAL/ACQUISITION_ERROR, target and exit 2",
+    "Valid O1 SRC-13 nvme smart-log /dev/nvmeN with matching same-run namespace inventory -> partial SOURCE_INCOMPLETE with raw code retained",
+    "Registered SRC-18 and SRC-21 O1 nonzero with exact source-specific consent, plan, target and same-run D0 evidence -> same canonical mapping",
+    "All original bytes identical before and after canonical commit; manifest+receipt hashes verified; status schema still exactly 14 fields",
+    "D1 EXIT_NONZERO owner mapping unchanged; D0 and other acquisition states unchanged"
+  ],
+  "negative": [
+    "Missing consent / impact acknowledgement, altered ticket run/source/operation/target, untrusted target, mismatched recorded invocation, unsupported target, forged approval marker -> fail closed",
+    "No matching same-run D0 inventory evidence, fabricated inventory ID or source path, cross-run original, forged operational receipt or altered manifest -> fail closed",
+    "Missing/zero/bool/string/non-integer/out-of-bounds exit code; no original -> fail closed",
+    "Wrong auth class/source ID, wrong attempt ordinal, unsupported stream name/order, non-sealed stderr -> fail closed",
+    "Unclassified partial reason, CAPTURED with acquisition error, timeout and capture-limited precedence -> never COMPLETE/OK",
+    "Status detail must retain exact transport and code; no health derivation and no public evidence path"
+  ],
+  "assurance": {
+    "fixture_oracles_produced_by": "AI implementation assistant; independent human review NOT claimed",
+    "independent_assurance": "OPEN; CP-03 acceptance and target Bodhi verification remain future gates",
+    "scope": "One O1 status-mapping + provenance amendment increment. SRC-13 semantic parser separate increment",
+    "verification_method": "GitHub exact-head CI + fail-closed unit/integration fixtures and cumulative RTM; do not merge draft PR"
+  }
+}
