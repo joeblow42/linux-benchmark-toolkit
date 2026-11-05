@@ -66,7 +66,8 @@ class LsblkD1Oracles(unittest.TestCase):
     def test_approved_fixed_command_and_only_stdout_is_data(self):
         self.assertEqual(command_plan("SRC-11").argv, APPROVED)
         self.assertTrue(parser_available("SRC-11"))
-        self.assertFalse(parser_available("SRC-13"))
+        # SRC-13 becomes available in later CP03-17, with O1 verification.
+        self.assertTrue(parser_available("SRC-13"))
         got=normalize_sealed_source("SRC-11",RAW,source_stream="stdout")
         self.assertEqual(got.values[0].datum_path,"storage.lsblk.blockdevices")
         self.assertEqual(got.values[0].value_type,"ARRAY")
