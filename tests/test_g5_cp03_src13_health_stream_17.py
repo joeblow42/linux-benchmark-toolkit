@@ -99,7 +99,7 @@ class SRC13HealthOracles(unittest.TestCase):
             NVME.replace(b"device:nvme0",b"device:nvme9"),
             NVME.replace(b"Smart Log for NVME device:nvme0 namespace-id:ffffffff\n",b""),
             b"SMART overall-health self-assessment test result: PASSED\n",
-            b""),
+            b"",
             b"invalid unknown lines\n",
         ):
             with self.subTest(raw=raw[:45]),self.assertRaises(SourceParseError):
