@@ -62,7 +62,7 @@ class LscpuD1SourceFirstOracles(unittest.TestCase):
     def test_approved_command_and_data_stream_only(self):
         self.assertEqual(command_plan("SRC-05").argv, ("lscpu",))
         self.assertTrue(parser_available("SRC-05"))
-        self.assertFalse(parser_available("SRC-13"))
+        self.assertTrue(parser_available("SRC-13"))  # CP03-17 O1 verified stdout
         parsed = normalize_sealed_source(
             "SRC-05", b"Architecture:   x86_64\nCPU(s): 4\n",
             source_stream="stdout")
