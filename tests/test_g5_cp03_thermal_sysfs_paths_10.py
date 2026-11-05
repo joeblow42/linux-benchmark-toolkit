@@ -64,7 +64,7 @@ class ThermalSourceFirstOracles(unittest.TestCase):
         self.assertEqual(ROOTS["SRC-24"], ROOT.rstrip("/"))
         self.assertEqual(ATTRS["SRC-24"], THERM_ATTRS)
         self.assertTrue(parser_available("SRC-24"))
-        self.assertFalse(parser_available("SRC-13"))
+        self.assertTrue(parser_available("SRC-13"))  # CP03-17 verified O1 stdout
 
     def test_one_thermal_zone_type_and_temperature_cite_original_bytes(self):
         paths = (ROOT + "thermal_zone0/type", ROOT + "thermal_zone0/temp")
