@@ -312,7 +312,124 @@ def _verified_lsblk_streams(metadata, artifacts):
             "NAME,KNAME,TYPE,SIZE,RO,RM,MODEL,SERIAL,TRAN"), label="lsblk")
 
 
-def _status_for(receipt, artifacts, *, parser_state="NOT_RUN"):
+def _o1_expected_argv(source_id, target):
+    """Pure approved G5-03 O1 command identity; never touches a device."""
+    if type(target) is not str:
+        return None
+    if source_id == "SRC-13":
+        if re.fullmatch(r"/dev/sd[a-z]+", target):
+            return ["smartctl", "-i", "-H", target]
+        if re.fullmatch(r"/dev/nvme[0-9]+(?:n[0-9]+)?", target):
+            return ["nvme", "smart-log", target]
+    elif source_id == "SRC-18" and re.fullmatch(r"/dev/sr[0-9]+", target):
+        return ["sg_get_config", "--readonly", "--current", target]
+    elif source_id == "SRC-21" and re.fullmatch(r"/dev/dri/renderD[0-9]+", target):
+        return ["vainfo", "--display", "drm", "--device", target]
+    return None
+
+
+def _verified_o1_provenance(folder, run_id, receipt, recorded, all_attempts,
+                            artifacts):
+    """Match G5-03 runtime witness to its durable consent and sealed D0 slot.
+
+    A receipt's ALLOW field alone is not authorization. The originating
+    RecordedOutcome and same-run inventory must independently agree. This is
+    an operational chain of custody, not a cryptographic operator signature.
+    """
+    p = receipt.get("authorization_provenance")
+    fields = {"run_id", "source_id", "operation_id", "target",
+              "consent_run_id", "consent_source_id", "consent_operation_id",
+              "consent_target", "consent_issued_utc", "impact_acknowledged",
+              "inventory_source_id", "inventory_source_path",
+              "inventory_evidence_id", "approved_argv"}
+    sid = receipt.get("source_id")
+    upstream = {"SRC-13":"SRC-12", "SRC-18":"SRC-17",
+                "SRC-21":"SRC-19"}.get(sid)
+    if (upstream is None or receipt.get("authorization_class") != "O1"
+            or receipt.get("schema_version") != "g5-02-attempt-0.2"
+            or receipt.get("decision") != "ALLOW"
+            or type(p) is not dict or set(p) != fields
+            or recorded.authorization_provenance != p
+            or receipt.get("source_paths") != []):
+        raise CanonicalContractError("O1 operational authorization witness absent or forged")
+    target = receipt.get("target")
+    argv = _o1_expected_argv(sid, target)
+    if (argv is None or p["approved_argv"] != argv
+            or receipt.get("invocation") != " ".join(argv)
+            or any(p[key] != receipt[key] for key in (
+                "run_id","source_id","operation_id","target"))
+            or p["consent_run_id"] != run_id
+            or p["consent_source_id"] != sid
+            or p["consent_operation_id"] != receipt["operation_id"]
+            or p["consent_target"] != target
+            or p["impact_acknowledged"] is not True
+            or p["inventory_source_id"] != upstream):
+        raise CanonicalContractError("O1 consent, source or fixed command mismatch")
+    try:
+        timestamp = datetime.fromisoformat(p["consent_issued_utc"].replace("Z","+00:00"))
+        observed = datetime.fromisoformat(receipt["observed_utc"].replace("Z","+00:00"))
+        run_start = datetime.strptime(run_id[4:], "%Y%j%H%M%S").replace(tzinfo=timezone.utc)
+    except (ValueError, TypeError, AttributeError) as exc:
+        raise CanonicalContractError("invalid O1 consent timestamps") from exc
+    if (timestamp.tzinfo is None or timestamp.utcoffset().total_seconds()!=0
+            or not p["consent_issued_utc"].endswith("Z")
+            or observed.tzinfo is None or observed.utcoffset().total_seconds()!=0
+            or not run_start <= timestamp <= observed):
+        raise CanonicalContractError("O1 consent outside source run")
+    slot = receipt["attempt_id"].rsplit("-",1)[-1]
+    expected = ["call" + format(int(slot),"04d") + "-" + stream
+                for stream in ("stdout","stderr")]
+    names=[a.artifact for a in artifacts]
+    if (not names or len(names)>2 or len(set(names))!=len(names)
+            or names != sorted(names,key=expected.index)
+            if all(n in expected for n in names) else True):
+        raise CanonicalContractError("O1 source stream ordinal/order mismatch")
+    inv_path=p["inventory_source_path"]
+    if type(inv_path) is not str or type(p["inventory_evidence_id"]) is not str:
+        raise CanonicalContractError("invalid O1 inventory evidence identity")
+    if sid == "SRC-13":
+        m=re.match(r"^/sys/class/block/(sd[a-z]+|nvme[0-9]+n[0-9]+)/",inv_path)
+        name=target.rsplit("/",1)[-1]
+        matches=bool(m and (m.group(1)==name or (
+            re.fullmatch(r"nvme[0-9]+",name) and
+            re.fullmatch(re.escape(name)+r"n[0-9]+",m.group(1)))))
+    elif sid == "SRC-18":
+        m=re.match(r"^/sys/class/block/(sr[0-9]+)/",inv_path)
+        matches=bool(m and target=="/dev/"+m.group(1))
+    else:
+        matches=bool(re.match(r"^/sys/class/drm/card[0-9]+/",inv_path))
+        # Render-node->card identity was checked using the real device at
+        # G5-03 execution, not re-probed while normalizing sealed evidence.
+    if not matches:
+        raise CanonicalContractError("O1 inventory path and target do not match")
+    for previous in all_attempts:
+        prior_path=previous.receipt_private_path
+        if (type(prior_path) is not str or not re.fullmatch(
+                r"private/source_attempt_records/SRC-[0-9]{2,}-[0-9]{2,}\\.json",
+                prior_path)):
+            continue
+        prior=_json_load(_read_restricted(folder/prior_path,MAX_RECEIPT_BYTES))
+        if (prior.get("run_id") != run_id or prior.get("source_id") != upstream
+                or prior.get("authorization_class") != "D0"
+                or prior.get("outcome") not in ("CAPTURED","PARTIAL")):
+            continue
+        evidence=_artifacts(previous)
+        paths=prior.get("source_paths")
+        if (type(paths) is not list or len(paths) != len(evidence)
+                or prior.get("evidence_ids") != [a.evidence_id for a in evidence]):
+            continue
+        for path, item in zip(paths,evidence):
+            if (path==inv_path and item.evidence_id==p["inventory_evidence_id"]
+                    and item.run_id==run_id and item.source_id==upstream):
+                raw=_read_restricted(folder/item.private_relative_path,item.byte_count)
+                if (len(raw)==item.byte_count and
+                        hashlib.sha256(raw).hexdigest()==item.sha256):
+                    return True
+    raise CanonicalContractError("O1 inventory witness not bound to sealed same-run D0")
+
+
+def _status_for(receipt, artifacts, *, parser_state="NOT_RUN",
+                o1_provenance_verified=False):
     """A status needs actual factual source and parser evidence.
 
     A captured source without a parser cannot be finalized as acquisition
@@ -346,6 +463,20 @@ def _status_for(receipt, artifacts, *, parser_state="NOT_RUN"):
                     or code == 0 or abs(code) > 65535
                     or receipt.get("timed_out") or receipt.get("capture_limited")):
                 raise CanonicalContractError("unsubstantiated D1 nonzero exit")
+            return "PARTIAL", "SOURCE_INCOMPLETE"
+        # Separate owner-approved O1 Alternative A. The G5-03 recorded
+        # consent/inventory/command witness MUST be independently checked
+        # above; a self-asserted ALLOW receipt is insufficient.
+        if reason == "ACQUISITION_ERROR":
+            code = receipt.get("exit_code")
+            if (receipt.get("authorization_class") != "O1"
+                    or receipt.get("source_id") not in ("SRC-13","SRC-18","SRC-21")
+                    or receipt.get("decision") != "ALLOW"
+                    or o1_provenance_verified is not True
+                    or not artifacts or type(code) is not int
+                    or code == 0 or abs(code) > 65535
+                    or receipt.get("timed_out") or receipt.get("capture_limited")):
+                raise CanonicalContractError("unsubstantiated O1 nonzero acquisition")
             return "PARTIAL", "SOURCE_INCOMPLETE"
         raise CanonicalContractError("unclassified partial-source reason")
     if state == "DENIED" and reason == "OPERATOR_AUTH_REQUIRED":
@@ -583,7 +714,13 @@ def build_canonical(run_directory, engine_run):
             parser_state = "FAILED" if parser_failures else "OK"
         else:
             parser_state = "NOT_RUN"
-        status, reason = _status_for(metadata, artifacts, parser_state=parser_state)
+        o1_verified = (_verified_o1_provenance(
+            folder, run_id, metadata, item, all_attempts, artifacts)
+            if metadata["outcome"] == "PARTIAL" and
+               metadata["reason"] == "ACQUISITION_ERROR" else False)
+        status, reason = _status_for(
+            metadata, artifacts, parser_state=parser_state,
+            o1_provenance_verified=o1_verified)
         status_id = "st:" + attempt_id
         if (metadata.get("capture_limited") or any(x.limit_applied for x in artifacts)):
             limit_id = "limit:" + attempt_id
@@ -604,9 +741,12 @@ def build_canonical(run_directory, engine_run):
             status=status, reason_code=reason,
             detail=("transport=" + str(metadata["outcome"]) +
                     "/" + str(metadata["reason"]) +
-                    (("; exit_code=" + str(metadata["exit_code"]))
+                    (("; exit_code=" + str(metadata["exit_code"])) +
+                     ("; target=" + metadata["target"]
+                      if metadata["reason"] == "ACQUISITION_ERROR" else "")
                      if metadata["outcome"] == "PARTIAL" and
-                        metadata["reason"] == "EXIT_NONZERO" else "") +
+                        metadata["reason"] in ("EXIT_NONZERO","ACQUISITION_ERROR")
+                     else "") +
                     (("; parser_errors=" + ",".join(parser_failures))
                      if parser_failures else ("; parser=verified" if parser_executions else
                                               "; parser=not-run")))[:1024],
