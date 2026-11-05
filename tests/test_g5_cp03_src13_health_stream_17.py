@@ -3,7 +3,7 @@
 See verification/g5_04/cp03_src13_health_stream_oracle_17.json.
 No real device, helper, sudo, shell, or host probe in these fixtures.
 """
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import hashlib
 import json
 from pathlib import Path
@@ -123,7 +123,8 @@ class SRC13HealthOracles(unittest.TestCase):
             with self.subTest(size=len(raw)),self.assertRaises(SourceParseError):
                 self.parse(raw)
 
-    def canonical(self, *,raw=SMART,partial=False,stderr_only=False):
+    def canonical(self, *,raw=SMART,partial=False,stderr_only=False,
+                  consent_future_seconds=0):
         temp=tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         folder=Path(temp.name)/RUN
@@ -139,7 +140,8 @@ class SRC13HealthOracles(unittest.TestCase):
             SimpleNamespace(artifacts=(original,)),invfile)
         stream_name="call0001-stderr" if stderr_only else "call0001-stdout"
         o1_original=writer.seal_chunks(policies["SRC-13"],"01",stream_name,(raw,)).receipt
-        consent_time=datetime.now(timezone.utc).isoformat().replace("+00:00","Z")
+        consent_time=(datetime.now(timezone.utc) +
+                      timedelta(seconds=consent_future_seconds)).isoformat().replace("+00:00","Z")
         witness={
             "run_id":RUN,"source_id":"SRC-13","operation_id":"DEVICE_HEALTH","target":"/dev/sda",
             "consent_run_id":RUN,"consent_source_id":"SRC-13",
@@ -185,6 +187,12 @@ class SRC13HealthOracles(unittest.TestCase):
                          ("PARTIAL","SOURCE_INCOMPLETE"))
         self.assertIn("ACQUISITION_ERROR",o1["detail"])
         self.assertIn("exit_code=2",o1["detail"])
+
+    def test_future_consent_beyond_receipt_precision_fails_closed(self):
+        folder,run,_,_=self.canonical(consent_future_seconds=2)
+        with self.assertRaises(CanonicalContractError):
+            build_canonical(folder,run)
+        self.assertFalse((folder/"private/session_manifest.json").exists())
 
     def test_diagnostic_only_stderr_cannot_complete_success(self):
         folder,run,_,_=self.canonical(stderr_only=True)
