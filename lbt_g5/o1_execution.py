@@ -52,6 +52,7 @@ def execute_optional(request,attempt,subcall,writer,slots,calls,*,privileged_ses
             state="PARTIAL" if receipts and (limited or captured.returncode) else (
                   "FAILED" if limited or captured.returncode else "CAPTURED")
             return {"disposition":state,"reason":reason,"receipts":tuple(receipts),
+                    "preflight_approved":True,"approved_argv":tuple(plan.argv),
                     "exit_code":captured.returncode,
                     "elapsed_seconds":captured.elapsed_seconds,
                     "timed_out":captured.timed_out,
