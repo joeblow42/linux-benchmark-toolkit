@@ -32,7 +32,8 @@
       "Explicit reported PASSED with exit 2 still PARTIAL/SOURCE_INCOMPLETE",
       "CAPTURED success requires valid O1 provenance and parsed stdout, else fail closed",
       "Millisecond receipt timestamp truncation accommodated without accepting future consent beyond recorded precision",
-      "Original evidence bytes preserved; production schemas 1.0.0 / status 1.0 unchanged"
+      "Original evidence bytes preserved; production schemas 1.0.0 / status 1.0 unchanged",
+      "CAPTURED with nonzero/missing exit, timeout or capture_limited is rejected before COMPLETE/OK status"
     ],
     "limitations": [
       "No full smartctl error-log extraction beyond approved -i -H plan",
@@ -42,15 +43,20 @@
     ]
   },
   "verification": {
-    "code_head_sha": "49e0e008c6180555b0abf30fd1d3156f63a71e45",
-    "workflow_id": 42130545183,
-    "url": "https://github.com/joeblow42/linux-benchmark-toolkit/actions/runs/42130545183",
-    "job_id": 127605731645,
+    "code_head_sha": "600b0a6872373c81958d676d60390a494504a8f2",
+    "workflow_id": 42131080791,
+    "url": "https://github.com/joeblow42/linux-benchmark-toolkit/actions/runs/42131080791",
+    "job_id": 127607557505,
     "result": "SUCCESS",
-    "new_src13_tests": "14/14 PASS",
+    "new_src13_tests": "15/15 PASS",
     "unified_validation": "21 PASS, 0 FAIL, 0 SKIP, 0 BLOCKED, 0 NOT_APPLICABLE",
     "regression": "Prior source parser tests including source-13 registry reconciliation and O1-16 suite CI PASS",
-    "status": "Scoped CI evidence only, not requirement-wide verification"
+    "status": "Scoped CI evidence only, not requirement-wide verification",
+    "previous_passing_code_checkpoint": {
+      "sha": "49e0e008c6180555b0abf30fd1d3156f63a71e45",
+      "workflow": 42130545183,
+      "new_tests": "14/14 PASS"
+    }
   },
   "trace": {
     "csv": "LBT_CP03_Trace_20261105_Increment17.csv",
@@ -90,5 +96,6 @@
       "CP-04-07 gating by sequence",
       "Bodhi Linux 7 AMD64 physical host verification"
     ]
-  }
+  },
+  "revision": "0.2"
 }
