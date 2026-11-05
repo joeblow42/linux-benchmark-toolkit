@@ -11,6 +11,7 @@ import math
 import json
 import re
 import shlex
+from .src13_normalization import parse_src13, SRC13ParseError
 
 
 MAX_PARSER_BYTES = 1024 * 1024
@@ -1000,9 +1001,23 @@ def _parse_lsblk_stdout(raw):
     ))
 
 
+# SRC-13 O1: parser dispatch is by a VERIFIED fixed command, never by
+# untrusted output text. The private canonical writer supplies provenance.
+def _parse_src13_stdout(raw, *, source_command, source_target):
+    try:
+        rows = parse_src13(raw, source_command=source_command,
+                           source_target=source_target)
+    except SRC13ParseError as exc:
+        raise SourceParseError(str(exc)) from exc
+    return ParseResult("linux-src13-health-verified-stdout-v1", tuple(
+        ParsedDatum(path, observed, normalized, kind, unit)
+        for path, observed, normalized, kind, unit in rows))
+
+
 # Intentional bounded list. Unsupported source families are not normalized
 # by interpreting raw bytes as arbitrary meaningful inventory fields.
 PARSERS = {
+    "SRC-13": _parse_src13_stdout,
     "SRC-11": _parse_lsblk_stdout,
     "SRC-05": _parse_lscpu_stdout,
     "SRC-26": _parse_power_sysfs,
@@ -1031,11 +1046,21 @@ def parser_available(source_id):
 
 
 def normalize_sealed_source(source_id, raw, *, source_path=None,
-                            source_stream=None):
+                            source_stream=None, source_command=None,
+                            source_target=None):
     """Normalize sealed source bytes only with their approved attribution."""
     parser = PARSERS.get(source_id)
     if parser is None:
         return None
+    if source_id == "SRC-13":
+        if (source_path is not None or source_stream != "stdout"
+                or source_command not in ("smartctl", "nvme")
+                or type(source_target) is not str):
+            raise SourceParseError("O1_UNVERIFIED_DATA_STREAM")
+        return parser(raw, source_command=source_command,
+                      source_target=source_target)
+    if source_command is not None or source_target is not None:
+        raise SourceParseError("SOURCE_COMMAND_NOT_APPLICABLE")
     if source_id in ("SRC-05", "SRC-11"):
         if source_path is not None or source_stream != "stdout":
             raise SourceParseError("D1_UNVERIFIED_DATA_STREAM")

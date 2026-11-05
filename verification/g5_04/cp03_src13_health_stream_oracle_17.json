@@ -1,0 +1,47 @@
+{
+  "record_id": "LBT-G504-CP03-SRC13-ORACLE-17",
+  "prepared_on": "2026-11-05",
+  "phase": "SOURCE_FIRST_NO_PARSER_IMPLEMENTATION",
+  "parent": {
+    "pr": 39,
+    "sha": "0e4c359db4d898b162631cfe51814aabe8406c5e"
+  },
+  "authority": [
+    "Requirements Rev1.6",
+    "G4-07 SRC-13 O1 DEVICE_HEALTH consent/target bounds",
+    "CP03-16 owner-approved O1 nonzero and operational provenance",
+    "Canonical schema 1.0.0; distinct 14-field status schema 1.0"
+  ],
+  "sources": [
+    "https://manpages.debian.org/trixie/smartmontools/smartctl.8.en.html",
+    "https://github.com/linux-nvme/nvme-cli/issues/1880",
+    "https://github.com/linux-nvme/nvme-cli/issues/2456"
+  ],
+  "expected": [
+    "Only hash-verified same-run callNNNN-stdout after G5-03 O1 source/consent/D0 provenance and fixed plan verification may be parsed",
+    "smartctl -i -H /dev/sdX: select bounded device model, vendor/product, serial, firmware and exact reported SMART assessment strings, never health verdict inference",
+    "nvme smart-log /dev/nvmeX: target-matched header and conservative whitelisted integer/percent/count/temperature fields; no implicit Celsius conversion",
+    "Nonzero authentic O1 return remains acquisition PARTIAL/SOURCE_INCOMPLETE with original transport and exit code even on parseable data",
+    "Zero-exit O1 CAPTURED may be COMPLETE/OK only on attributed, successfully parsed stdout and verified consent/inventory",
+    "stderr originals are diagnostic-only; no observation is generated from stderr beyond original fallback",
+    "Original bytes never rewritten; invalid or unknown fields remain sealed; no new commands, privileges or schema vocabulary"
+  ],
+  "negative": [
+    "Missing/wrong consent ticket, unapproved target, unsupported command/tool or forged inventory/receipt -> fail closed",
+    "Cross-run identity, hash tampering, wrong stream/ordinal, stderr-only successful capture -> no false COMPLETE",
+    "smartctl nonzero+reported PASSED -> still PARTIAL/SOURCE_INCOMPLETE, never inferred healthy",
+    "nvme header different from approved device, duplicate labels, malformed count/percent, bad UTF8/control byte/oversize/no whitelist -> parser error and raw fallback",
+    "Ambiguous Fahrenheit/Kelvin-only temperature retained as unconverted string",
+    "Existing capture-limit precedence, D1 Alternative A, denied/unavailable states unchanged"
+  ],
+  "verification": {
+    "tests": "tests/test_g5_cp03_src13_health_stream_17.py",
+    "regressions": [
+      "tests/test_g5_cp03_o1_provenance_16.py",
+      "tests/test_g5_cp03_lsblk_stream_15.py"
+    ],
+    "source_first_author": "same AI implementation agent; independent human review not claimed",
+    "ci": "exact-head GitHub Actions and unified validation",
+    "acceptance": "CP-03 and G5-04 remain open until owner gate closeout; no Bodhi host evidence"
+  }
+}
