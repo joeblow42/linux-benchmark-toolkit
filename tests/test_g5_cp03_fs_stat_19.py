@@ -100,9 +100,8 @@ class FSStatSourceOracles(unittest.TestCase):
             self.assertEqual(artifacts[0].sha256, hashlib.sha256(encoded()).hexdigest())
             self.assertEqual((folder / artifacts[0].private_relative_path).read_bytes(), encoded())
             status = json.loads((folder / "private/status_records.json").read_text())
-            self.assertEqual([(s["subject_id"], s["status"], s["reason_code"])
-                              for s in status["status_records"]][-1],
-                             ("SRC-15", "COMPLETE", "OK"))
+            src15 = next(s for s in status["status_records"] if s["subject_id"] == "SRC-15")
+            self.assertEqual((src15["status"], src15["reason_code"]), ("COMPLETE", "OK"))
 
     def test_second_mount_escaped_kernel_path_no_host_probe(self):
         path = "/mnt/local drive"
@@ -173,8 +172,8 @@ class FSStatSourceOracles(unittest.TestCase):
         with self.session(raw=b"{not json}\n") as (folder, run, artifacts):
             build_canonical(folder, run)
             status=json.loads((folder/"private/status_records.json").read_text())
-            self.assertEqual((status["status_records"][-1]["status"],
-                              status["status_records"][-1]["reason_code"]),
+            src15 = next(s for s in status["status_records"] if s["subject_id"] == "SRC-15")
+            self.assertEqual((src15["status"], src15["reason_code"]),
                              ("PARTIAL","PARSE_FAILED"))
             obs=json.loads((folder/"private/system.json").read_text())["observations"]
             self.assertTrue(any(o["evidence_refs"] == [artifacts[0].evidence_id]
@@ -220,8 +219,8 @@ class FSStatSourceOracles(unittest.TestCase):
                           limited=True) as (folder,run,_):
             build_canonical(folder,run)
             status=json.loads((folder/"private/status_records.json").read_text())
-            self.assertEqual((status["status_records"][-1]["status"],
-                              status["status_records"][-1]["reason_code"]),
+            src15 = next(s for s in status["status_records"] if s["subject_id"] == "SRC-15")
+            self.assertEqual((src15["status"], src15["reason_code"]),
                              ("PARTIAL","CAPTURE_LIMIT"))
 
 if __name__ == "__main__":
