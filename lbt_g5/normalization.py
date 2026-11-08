@@ -12,6 +12,7 @@ import json
 import re
 import shlex
 from .src13_normalization import parse_src13, SRC13ParseError
+from .mountinfo_normalization import parse_mountinfo, MountinfoParseError
 
 
 MAX_PARSER_BYTES = 1024 * 1024
@@ -1014,9 +1015,23 @@ def _parse_src13_stdout(raw, *, source_command, source_target):
         for path, observed, normalized, kind, unit in rows))
 
 
+# SRC-14: a single fixed G5-02/03 D0 worker file; identity is validated
+# by the private canonical producer before any original bytes are parsed.
+def _parse_mountinfo_file(raw):
+    try:
+        records = parse_mountinfo(raw)
+    except MountinfoParseError as exc:
+        raise SourceParseError(str(exc)) from exc
+    return ParseResult("linux-mountinfo-proc-bounded-v1", (
+        ParsedDatum("storage.mountinfo.records", "MOUNTINFO_KERNEL_ROWS",
+                    list(records), "ARRAY"),
+    ))
+
+
 # Intentional bounded list. Unsupported source families are not normalized
 # by interpreting raw bytes as arbitrary meaningful inventory fields.
 PARSERS = {
+    "SRC-14": _parse_mountinfo_file,
     "SRC-13": _parse_src13_stdout,
     "SRC-11": _parse_lsblk_stdout,
     "SRC-05": _parse_lscpu_stdout,
@@ -1052,6 +1067,12 @@ def normalize_sealed_source(source_id, raw, *, source_path=None,
     parser = PARSERS.get(source_id)
     if parser is None:
         return None
+    if source_id == "SRC-14":
+        if (source_path != "/proc/self/mountinfo"
+                or source_stream is not None
+                or source_command is not None or source_target is not None):
+            raise SourceParseError("SRC14_UNVERIFIED_FIXED_FILE")
+        return parser(raw)
     if source_id == "SRC-13":
         if (source_path is not None or source_stream != "stdout"
                 or source_command not in ("smartctl", "nvme")
