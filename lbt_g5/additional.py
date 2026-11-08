@@ -1,5 +1,6 @@
 """G5-02 local-only D1: statvfs bounded worker and dpkg installed metadata."""
 from dataclasses import dataclass
+from datetime import datetime, timezone
 import os
 import time
 from .safety import SourceRequest,decide_source,initial_source_policies
@@ -21,13 +22,21 @@ class AdditionalOutcome:
     errors: tuple[str,...]
     elapsed_seconds: float
     limited: bool
+    exit_code: int | None = None
+    execution_provenance: dict | None = None
 
 def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
                        slots:ProbeSlots,calls:SourceCallBudget,
                        *,source14_evidence:bytes|None=None)->AdditionalOutcome:
+    # Only SRC-28 is authorized to add the 0.3 private execution witness.
+    # No execution witness is minted on a missing executable or failed spawn.
+    executed_code = None
+    execution_witness = None
     def out(disposition,reason,artifacts=(),targets=(),errors=(),elapsed=0.,limited=False):
         return AdditionalOutcome(request.source_id,disposition,reason,tuple(artifacts),
-                                 tuple(targets),tuple(errors),elapsed,limited)
+                                 tuple(targets),tuple(errors),elapsed,limited,
+                                 executed_code if request.source_id == "SRC-28" else None,
+                                 execution_witness if request.source_id == "SRC-28" else None)
     policy={p.source_id:p for p in initial_source_policies()}.get(request.source_id)
     decision=decide_source(request,
         remaining_seconds=writer.meter.time_remaining(),
@@ -78,10 +87,26 @@ def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
                         writer.meter.time_remaining())
                     if seconds<=0:
                         limited=True;errors.append("TIME_BUDGET_EXCEEDED");break
-                    transport=_capture_child((binary,)+argv[1:],
+                    actual_argv = (binary,)+argv[1:]
+                    # These clock readings bracket the real transport operation.
+                    # The transport's elapsed_seconds is independently monotonic.
+                    cmd_started_utc = (datetime.now(timezone.utc)
+                        .isoformat(timespec="milliseconds").replace("+00:00","Z")) \
+                        if request.source_id == "SRC-28" else None
+                    transport=_capture_child(actual_argv,
                         8*MIB if request.source_id=="SRC-28" else 1*MIB,
                         1*MIB if request.source_id=="SRC-28" else 128*1024,
                         seconds,8*MIB if request.source_id=="SRC-28" else 2*MIB)
+                    if request.source_id == "SRC-28":
+                        cmd_completed_utc = (datetime.now(timezone.utc)
+                            .isoformat(timespec="milliseconds").replace("+00:00","Z"))
+                        executed_code = transport.returncode
+                        execution_witness = dict(
+                            argv_executed=list(actual_argv),
+                            exit_code=transport.returncode,
+                            started_utc=cmd_started_utc,
+                            completed_utc=cmd_completed_utc,
+                            elapsed_seconds=transport.elapsed_seconds)
                     for name,data,stream_limit in (
                         ("stdout",transport.stdout,8*MIB if request.source_id=="SRC-28" else 1*MIB),
                         ("stderr",transport.stderr,1*MIB if request.source_id=="SRC-28" else 128*1024)):
