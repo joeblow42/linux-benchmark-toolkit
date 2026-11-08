@@ -102,8 +102,8 @@ class CpuOpticalParsers(unittest.TestCase):
         self.assertTrue(parser_available("SRC-13"))  # CP03-17 approved O1 stdout only
         self.assertTrue(parser_available("SRC-14"))  # CP03-18 fixed D0 proc source
         self.assertTrue(parser_available("SRC-15"))  # CP03-19 bounded D1 FS_STAT
-        for source in ("SRC-28",):
-            self.assertFalse(parser_available(source))
+        self.assertTrue(parser_available("SRC-28"))
+        self.assertFalse(parser_available("SRC-29"))
 
 
 class CpuOpticalIntegration(unittest.TestCase):
