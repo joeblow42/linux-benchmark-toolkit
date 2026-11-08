@@ -373,6 +373,32 @@ def _verified_ip_local_streams(metadata, artifacts):
     return tuple(n.rsplit("-",1)[-1] for n in names)
 
 
+def _verified_offline_dpkg_streams(metadata, artifacts):
+    """Bind original SRC-28 metadata to the one registered local dpkg adapter.
+
+    The G5-03 AdditionalOutcome retains source operation and per-stream labels,
+    but not the exact executed argv or process return code. Do not manufacture
+    either fact; only the selected adapter and stream identity are attested.
+    """
+    if (metadata.get("attempt_id") != "SRC-28-01"
+            or metadata.get("invocation") != "OFFLINE_METADATA"
+            or metadata.get("target") is not None
+            or type(metadata.get("source_paths")) is not list
+            or len(metadata["source_paths"]) != len(artifacts)
+            or metadata.get("exit_code") is not None):
+        raise CanonicalContractError("OFFLINE_METADATA unverified adapter receipt")
+    names=[a.artifact for a in artifacts]
+    labels=metadata["source_paths"]
+    expected=["call0001-stdout","call0001-stderr"]
+    if (len(names)>2 or len(set(names))!=len(names)
+            or any(name not in expected for name in names)
+            or names != sorted(names,key=expected.index)
+            or labels != ["installed-packages:"+name.rsplit("-",1)[-1]
+                          for name in names]):
+        raise CanonicalContractError("OFFLINE_METADATA worker stream identity mismatch")
+    return tuple(name.rsplit("-",1)[-1] for name in names)
+
+
 def _verified_fsstat_streams(metadata, artifacts, local_mounts, policy):
     """Bind each D1 FS_STAT stream to an ordered, approved same-run local mount.
 
@@ -785,6 +811,13 @@ def build_canonical(run_directory, engine_run):
                     or any(a.limit_applied or not a.complete for a in artifacts)):
                 raise CanonicalContractError(
                     "IP_LOCAL captured transport contradicts original/exit evidence")
+        if source_id == "SRC-28" and metadata["outcome"] == "CAPTURED":
+            if (metadata.get("timed_out") is not False
+                    or metadata.get("capture_limited") is not False
+                    or not artifacts
+                    or any(a.limit_applied or not a.complete for a in artifacts)):
+                raise CanonicalContractError(
+                    "OFFLINE_METADATA captured original contradicts status")
         command_streams = (_verified_lscpu_streams(metadata, artifacts)
                            if source_id == "SRC-05" else
                            _verified_lsblk_streams(metadata, artifacts)
@@ -793,6 +826,8 @@ def build_canonical(run_directory, engine_run):
                            if source_id == "SRC-20" else
                            _verified_ip_local_streams(metadata, artifacts)
                            if source_id == "SRC-23" else
+                           _verified_offline_dpkg_streams(metadata, artifacts)
+                           if source_id == "SRC-28" else
                            tuple(a.artifact.rsplit("-", 1)[-1] for a in artifacts)
                            if source_id in ("SRC-13", "SRC-18", "SRC-21") and o1_verified else ())
         fsstat_mounts, fsstat_streams = (
@@ -837,10 +872,10 @@ def build_canonical(run_directory, engine_run):
             source_stream = (fsstat_streams[artifact_index - 1]
                              if source_id == "SRC-15" else
                              command_streams[artifact_index - 1]
-                             if source_id in ("SRC-05", "SRC-11", "SRC-20", "SRC-23")
+                             if source_id in ("SRC-05", "SRC-11", "SRC-20", "SRC-23", "SRC-28")
                              or (source_id in ("SRC-13", "SRC-18", "SRC-21") and o1_verified)
                              else None)
-            diagnostic_only = (source_id in ("SRC-05", "SRC-11", "SRC-13", "SRC-15", "SRC-18", "SRC-20", "SRC-21", "SRC-23")
+            diagnostic_only = (source_id in ("SRC-05", "SRC-11", "SRC-13", "SRC-15", "SRC-18", "SRC-20", "SRC-21", "SRC-23", "SRC-28")
                                and source_stream == "stderr")
             if (metadata["outcome"] in ("CAPTURED", "PARTIAL")
                     and parser_available(source_id) and not diagnostic_only
@@ -849,12 +884,16 @@ def build_canonical(run_directory, engine_run):
                 try:
                     parsed = normalize_sealed_source(
                         source_id, raw,
-                        source_path=(fsstat_mounts[artifact_index - 1]
+                        source_path=("installed-packages"
+                                     if source_id == "SRC-28" else
+                                     fsstat_mounts[artifact_index - 1]
                                      if source_id == "SRC-15" else
                                      sysfs_paths[artifact_index - 1]
                                      if source_id in ("SRC-04", "SRC-07", "SRC-12", "SRC-14", "SRC-17", "SRC-19", "SRC-22", "SRC-24", "SRC-25", "SRC-26") else None),
                         source_stream=source_stream,
-                        source_command=(metadata["invocation"]
+                        source_command=("dpkg-query"
+                                        if source_id == "SRC-28" else
+                                        metadata["invocation"]
                                         if source_id == "SRC-23" else
                                         metadata["authorization_provenance"]
                                         ["approved_argv"][0]

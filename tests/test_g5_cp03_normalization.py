@@ -99,8 +99,8 @@ class G504CP03PureParserTests(unittest.TestCase):
                 normalize_sealed_source(source, raw)
 
     def test_unknown_source_fails_closed_and_never_fakes_parser_failure(self):
-        self.assertFalse(parser_available("SRC-28"))
-        self.assertIsNone(normalize_sealed_source("SRC-28", b"arbitrary host bytes"))
+        self.assertFalse(parser_available("SRC-29"))
+        self.assertIsNone(normalize_sealed_source("SRC-29", b"arbitrary host bytes"))
         with self.assertRaises(CanonicalContractError):
             _status_for({"outcome": "CAPTURED", "reason": "BYTES_PRESERVED"},
                         [object()])
@@ -173,7 +173,7 @@ class G504CP03CanonicalIntegrationTests(unittest.TestCase):
         preserved = self.run / original.private_relative_path
         self.assertEqual(hashlib.sha256(preserved.read_bytes()).hexdigest(), original.sha256)
 
-    def test_unsupported_captured_source_does_not_commit_final_manifest(self):
+    def test_unattributed_offline_metadata_does_not_commit_final_manifest(self):
         saved, original = self.saved("SRC-28", b"unrecognized semantic source")
         run = EngineRun(RUN, (CollectorRun("COL-SOFTCODEC", (saved,)),))
         with self.assertRaises(CanonicalContractError):

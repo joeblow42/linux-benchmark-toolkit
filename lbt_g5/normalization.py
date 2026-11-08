@@ -18,6 +18,7 @@ from .optical_media_normalization import parse_optical_media, OpticalMediaParseE
 from .lspci_normalization import parse_lspci_nn, LspciParseError
 from .vainfo_normalization import parse_vainfo, VainfoParseError
 from .ip_local_normalization import parse_ip_local, IpLocalParseError
+from .offline_dpkg_normalization import parse_offline_dpkg, OfflineDpkgParseError
 
 
 MAX_PARSER_BYTES = 1024 * 1024
@@ -1097,9 +1098,23 @@ def _parse_ip_local_stdout(raw, *, source_command):
     ))
 
 
+# SRC-28: package/version fields from existing fixed local dpkg-query only.
+# The prior AdditionalOutcome does not attest exact argv or process exit.
+def _parse_offline_dpkg_stdout(raw):
+    try:
+        records = parse_offline_dpkg(raw)
+    except OfflineDpkgParseError as exc:
+        raise SourceParseError(str(exc)) from exc
+    return ParseResult("linux-dpkg-query-package-records-v1", (
+        ParsedDatum("software.dpkg.reported_package_db_records",
+                    "DPKG_REPORTED_DATABASE_ROWS", records, "ARRAY"),
+    ))
+
+
 # Intentional bounded list. Unsupported source families are not normalized
 # by interpreting raw bytes as arbitrary meaningful inventory fields.
 PARSERS = {
+    "SRC-28": _parse_offline_dpkg_stdout,
     "SRC-23": _parse_ip_local_stdout,
     "SRC-21": _parse_vainfo_stdout,
     "SRC-20": _parse_lspci_stdout,
@@ -1166,6 +1181,11 @@ def normalize_sealed_source(source_id, raw, *, source_path=None,
             raise SourceParseError("O1_UNVERIFIED_DATA_STREAM")
         return parser(raw, source_command=source_command,
                       source_target=source_target)
+    if source_id == "SRC-28":
+        if (source_path != "installed-packages" or source_stream != "stdout"
+                or source_command != "dpkg-query" or source_target is not None):
+            raise SourceParseError("OFFLINE_DPKG_UNVERIFIED_SOURCE_STREAM")
+        return parser(raw)
     if source_id == "SRC-23":
         if (source_path is not None or source_target is not None
                 or source_stream != "stdout"
