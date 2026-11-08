@@ -346,6 +346,33 @@ def _verified_lspci_streams(metadata, artifacts):
         metadata, artifacts, invocation="lspci -nn", label="lspci")
 
 
+def _verified_ip_local_streams(metadata, artifacts):
+    """Bind D1 SRC-23 two independent receipts to exact fixed ip -j subcalls.
+
+    G5-03 emits one source-attempt per subcall, with attempt 01/02 and
+    call0001/0002 stdout/stderr. Never infer that one successful call is
+    evidence of the other command completing.
+    """
+    attempt = metadata.get("attempt_id")
+    plans = {
+        "SRC-23-01": ("ip -j addr show", "call0001-"),
+        "SRC-23-02": ("ip -j route show", "call0002-"),
+    }
+    if (metadata.get("source_paths") != []
+            or metadata.get("target") is not None
+            or attempt not in plans):
+        raise CanonicalContractError("IP_LOCAL unauthorized receipt or target")
+    expected_command, prefix = plans[attempt]
+    if artifacts and metadata.get("invocation") != expected_command:
+        raise CanonicalContractError("IP_LOCAL subcall argv mismatch")
+    names = [x.artifact for x in artifacts]
+    if (len(names) > 2 or len(names) != len(set(names))
+            or any(n not in (prefix+"stdout", prefix+"stderr") for n in names)
+            or names != sorted(names, key=(prefix+"stdout",prefix+"stderr").index)):
+        raise CanonicalContractError("IP_LOCAL original subcall stream mismatch")
+    return tuple(n.rsplit("-",1)[-1] for n in names)
+
+
 def _verified_fsstat_streams(metadata, artifacts, local_mounts, policy):
     """Bind each D1 FS_STAT stream to an ordered, approved same-run local mount.
 
@@ -749,12 +776,23 @@ def build_canonical(run_directory, engine_run):
                     or any(a.limit_applied or not a.complete for a in artifacts)):
                 raise CanonicalContractError(
                     "lspci captured transport contradicts original/exit evidence")
+        if source_id == "SRC-23" and metadata["outcome"] == "CAPTURED":
+            if (type(metadata.get("exit_code")) is not int
+                    or metadata["exit_code"] != 0
+                    or metadata.get("timed_out") is not False
+                    or metadata.get("capture_limited") is not False
+                    or not artifacts
+                    or any(a.limit_applied or not a.complete for a in artifacts)):
+                raise CanonicalContractError(
+                    "IP_LOCAL captured transport contradicts original/exit evidence")
         command_streams = (_verified_lscpu_streams(metadata, artifacts)
                            if source_id == "SRC-05" else
                            _verified_lsblk_streams(metadata, artifacts)
                            if source_id == "SRC-11" else
                            _verified_lspci_streams(metadata, artifacts)
                            if source_id == "SRC-20" else
+                           _verified_ip_local_streams(metadata, artifacts)
+                           if source_id == "SRC-23" else
                            tuple(a.artifact.rsplit("-", 1)[-1] for a in artifacts)
                            if source_id in ("SRC-13", "SRC-18", "SRC-21") and o1_verified else ())
         fsstat_mounts, fsstat_streams = (
@@ -799,10 +837,10 @@ def build_canonical(run_directory, engine_run):
             source_stream = (fsstat_streams[artifact_index - 1]
                              if source_id == "SRC-15" else
                              command_streams[artifact_index - 1]
-                             if source_id in ("SRC-05", "SRC-11", "SRC-20")
+                             if source_id in ("SRC-05", "SRC-11", "SRC-20", "SRC-23")
                              or (source_id in ("SRC-13", "SRC-18", "SRC-21") and o1_verified)
                              else None)
-            diagnostic_only = (source_id in ("SRC-05", "SRC-11", "SRC-13", "SRC-15", "SRC-18", "SRC-20", "SRC-21")
+            diagnostic_only = (source_id in ("SRC-05", "SRC-11", "SRC-13", "SRC-15", "SRC-18", "SRC-20", "SRC-21", "SRC-23")
                                and source_stream == "stderr")
             if (metadata["outcome"] in ("CAPTURED", "PARTIAL")
                     and parser_available(source_id) and not diagnostic_only
@@ -816,7 +854,9 @@ def build_canonical(run_directory, engine_run):
                                      sysfs_paths[artifact_index - 1]
                                      if source_id in ("SRC-04", "SRC-07", "SRC-12", "SRC-14", "SRC-17", "SRC-19", "SRC-22", "SRC-24", "SRC-25", "SRC-26") else None),
                         source_stream=source_stream,
-                        source_command=(metadata["authorization_provenance"]
+                        source_command=(metadata["invocation"]
+                                        if source_id == "SRC-23" else
+                                        metadata["authorization_provenance"]
                                         ["approved_argv"][0]
                                         if source_id in ("SRC-13", "SRC-18", "SRC-21") else None),
                         source_target=(metadata["target"]
