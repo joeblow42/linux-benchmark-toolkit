@@ -7,7 +7,7 @@
   "authority": "G4-07 SRC-14 COL-FS D0 MOUNTINFO fixed file /proc/self/mountinfo; Rev1.6, private canonical 1.0.0, distinct 14-field status 1.0; no new acquisition or permissions",
   "source": "Linux kernel /proc/<pid>/mountinfo specification; https://cdn.kernel.org/doc/html/latest/filesystems/proc.html ; https://man.archlinux.org/man/proc_pid_mountinfo.5.en",
   "expected": {
-    "acquisition": "One D0 fixed file; verified private receipt source_paths exactly ['/proc/self/mountinfo']; one sealed item0001; no executable invocation or target; preserve original bytes without rewriting",
+    "acquisition": "One D0 fixed file; verified private receipt source_paths exactly ['/proc/self/mountinfo']; one sealed item0001; no executable invocation or target; preserve original bytes without rewriting; G5-03 records operation ID MOUNTINFO as invocation label (not an executed command)",
     "shape": "One bounded ARRAY datum storage.mountinfo.records. Each record stores mount_id, parent_id, major, minor, root, mount_point, mount_options, optional_fields, filesystem_type, mount_source, super_options. No inferred mount graph or writable status.",
     "grammar": "mount_id parent_id major:minor root mountpoint per-mount-options [optional tag[:value] ...] - fs_type mount_source super_options; require exactly one separator and 3 trailing fields",
     "paths": "Decode only /proc mountinfo four octal path escapes: backslash+040 (space), 011(tab), 012(linefeed), 134(backslash); reject malformed/unknown escapes and control characters. Never resolve or traverse decoded paths",
