@@ -147,6 +147,30 @@ class MountinfoSourceFirstOracles(unittest.TestCase):
             with self.assertRaises(CanonicalContractError):
                 build_canonical(folder,run)
 
+    def test_tampered_sealed_original_rejected_before_parser(self):
+        with self.originals() as (folder,run,items):
+            evidence=folder/items[0].private_relative_path
+            # Test fixture only: corruption must never become trusted data.
+            evidence.write_bytes(RAW.replace(b"/dev/sda1",b"/dev/sdb1"))
+            with self.assertRaises(CanonicalContractError):
+                build_canonical(folder,run)
+            self.assertFalse((folder/"private/session_manifest.json").exists())
+
+    def test_missing_original_never_marks_captured_complete(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder=Path(tmp)/RUN
+            folder.mkdir(mode=0o700)
+            receipt=build_attempt(RUN,"SRC-14","01","ALLOW",
+                                  "CAPTURED","BYTES_PRESERVED",
+                                  evidence=(),bytes_count=0,source_paths=())
+            path=commit_attempt(str(folder),receipt)
+            attempt=SimpleNamespace(receipt_private_path=path,
+                                    outcome=SimpleNamespace(artifacts=()))
+            run=EngineRun(RUN,(CollectorRun("COL-FS",(attempt,)),))
+            with self.assertRaises(CanonicalContractError):
+                build_canonical(folder,run)
+            self.assertFalse((folder/"private/session_manifest.json").exists())
+
     def test_no_src14_stream_or_path_override_at_parser_boundary(self):
         for kwargs in ({"source_path":"/proc/self/mountinfo"},
                        {"source_stream":"stdout"},
