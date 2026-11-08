@@ -713,10 +713,10 @@ def build_canonical(run_directory, engine_run):
                        _verified_lexical_sysfs_paths(metadata, artifacts, policy,
                            identity_fn=power_sysfs_path_identity, label="POWER")
                        if source_id == "SRC-26" else ())
-        # SRC-13 O1 may be normalized only after verifying same-run
+        # SRC-13/SRC-18 O1 may be normalized only after verifying same-run
         # consent, approved device/argv and D0 original evidence.
         o1_verified = False
-        if (source_id == "SRC-13"
+        if (source_id in ("SRC-13", "SRC-18")
                 and metadata["outcome"] in ("CAPTURED","PARTIAL")
                 and metadata["reason"] in ("BYTES_PRESERVED","ACQUISITION_ERROR")):
             o1_verified = _verified_o1_provenance(
@@ -724,20 +724,20 @@ def build_canonical(run_directory, engine_run):
         # G5-03 O1 transport cannot claim captured success with a nonzero
         # return, timeout, truncation, or non-complete preserved stream.
         # Never promote such a contradictory receipt to COMPLETE/OK.
-        if source_id == "SRC-13" and metadata["outcome"] == "CAPTURED":
+        if source_id in ("SRC-13", "SRC-18") and metadata["outcome"] == "CAPTURED":
             if (type(metadata.get("exit_code")) is not int
                     or metadata["exit_code"] != 0
                     or metadata.get("timed_out") is not False
                     or metadata.get("capture_limited") is not False
                     or any(a.limit_applied or not a.complete for a in artifacts)):
                 raise CanonicalContractError(
-                    "SRC-13 captured transport contradicts original/exit evidence")
+                    "O1 captured transport contradicts original/exit evidence")
         command_streams = (_verified_lscpu_streams(metadata, artifacts)
                            if source_id == "SRC-05" else
                            _verified_lsblk_streams(metadata, artifacts)
                            if source_id == "SRC-11" else
                            tuple(a.artifact.rsplit("-", 1)[-1] for a in artifacts)
-                           if source_id == "SRC-13" and o1_verified else ())
+                           if source_id in ("SRC-13", "SRC-18") and o1_verified else ())
         fsstat_mounts, fsstat_streams = (
             _verified_fsstat_streams(metadata, artifacts, verified_local_mounts, policy)
             if source_id == "SRC-15" else ((), ()))
@@ -781,13 +781,13 @@ def build_canonical(run_directory, engine_run):
                              if source_id == "SRC-15" else
                              command_streams[artifact_index - 1]
                              if source_id in ("SRC-05", "SRC-11")
-                             or (source_id == "SRC-13" and o1_verified)
+                             or (source_id in ("SRC-13", "SRC-18") and o1_verified)
                              else None)
-            diagnostic_only = (source_id in ("SRC-05", "SRC-11", "SRC-13", "SRC-15")
+            diagnostic_only = (source_id in ("SRC-05", "SRC-11", "SRC-13", "SRC-15", "SRC-18")
                                and source_stream == "stderr")
             if (metadata["outcome"] in ("CAPTURED", "PARTIAL")
                     and parser_available(source_id) and not diagnostic_only
-                    and (source_id != "SRC-13" or o1_verified)):
+                    and (source_id not in ("SRC-13", "SRC-18") or o1_verified)):
                 parser_executions += 1
                 try:
                     parsed = normalize_sealed_source(
@@ -799,9 +799,9 @@ def build_canonical(run_directory, engine_run):
                         source_stream=source_stream,
                         source_command=(metadata["authorization_provenance"]
                                         ["approved_argv"][0]
-                                        if source_id == "SRC-13" else None),
+                                        if source_id in ("SRC-13", "SRC-18") else None),
                         source_target=(metadata["target"]
-                                       if source_id == "SRC-13" else None))
+                                       if source_id in ("SRC-13", "SRC-18") else None))
                 except SourceParseError as exc:
                     error = str(exc)[:128]
                     parser_failures.append(error)
@@ -836,7 +836,7 @@ def build_canonical(run_directory, engine_run):
             parser_state = "FAILED" if parser_failures else "OK"
         else:
             parser_state = "NOT_RUN"
-        if (source_id != "SRC-13" and metadata["outcome"] == "PARTIAL"
+        if (source_id not in ("SRC-13", "SRC-18") and metadata["outcome"] == "PARTIAL"
                 and metadata["reason"] == "ACQUISITION_ERROR"):
             o1_verified = _verified_o1_provenance(
                 folder, run_id, metadata, item, all_attempts, artifacts)

@@ -14,6 +14,7 @@ import shlex
 from .src13_normalization import parse_src13, SRC13ParseError
 from .mountinfo_normalization import parse_mountinfo, MountinfoParseError
 from .fs_stat_normalization import parse_fs_stat_stdout, FSStatParseError
+from .optical_media_normalization import parse_optical_media, OpticalMediaParseError
 
 
 MAX_PARSER_BYTES = 1024 * 1024
@@ -1042,9 +1043,23 @@ def _parse_fsstat_stdout(raw, *, source_path):
     ))
 
 
+# SRC-18: O1 only. Receipt+consent+same-run SRC-17 binding is checked before
+# entering this source parser. Opaque feature lines do not establish health.
+def _parse_optical_media_stdout(raw, *, source_target):
+    try:
+        value = parse_optical_media(raw, source_target=source_target)
+    except OpticalMediaParseError as exc:
+        raise SourceParseError(str(exc)) from exc
+    return ParseResult("linux-sg-get-config-current-v1", (
+        ParsedDatum("optical.mmc.current_configuration",
+                    "SG_GET_CONFIG_CURRENT", value, "OBJECT"),
+    ))
+
+
 # Intentional bounded list. Unsupported source families are not normalized
 # by interpreting raw bytes as arbitrary meaningful inventory fields.
 PARSERS = {
+    "SRC-18": _parse_optical_media_stdout,
     "SRC-15": _parse_fsstat_stdout,
     "SRC-14": _parse_mountinfo_file,
     "SRC-13": _parse_src13_stdout,
@@ -1088,6 +1103,12 @@ def normalize_sealed_source(source_id, raw, *, source_path=None,
                 or source_command is not None or source_target is not None):
             raise SourceParseError("SRC14_UNVERIFIED_FIXED_FILE")
         return parser(raw)
+    if source_id == "SRC-18":
+        if (source_path is not None or source_stream != "stdout"
+                or source_command != "sg_get_config"
+                or type(source_target) is not str):
+            raise SourceParseError("OPTICAL_O1_UNVERIFIED_STREAM")
+        return parser(raw, source_target=source_target)
     if source_id == "SRC-13":
         if (source_path is not None or source_stream != "stdout"
                 or source_command not in ("smartctl", "nvme")
