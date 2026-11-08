@@ -17,6 +17,7 @@ from .fs_stat_normalization import parse_fs_stat_stdout, FSStatParseError
 from .optical_media_normalization import parse_optical_media, OpticalMediaParseError
 from .lspci_normalization import parse_lspci_nn, LspciParseError
 from .vainfo_normalization import parse_vainfo, VainfoParseError
+from .ip_local_normalization import parse_ip_local, IpLocalParseError
 
 
 MAX_PARSER_BYTES = 1024 * 1024
@@ -1083,9 +1084,23 @@ def _parse_vainfo_stdout(raw, *, source_target):
     ))
 
 
+# SRC-23: exact D1 local netlink command strings differentiate two receipts.
+def _parse_ip_local_stdout(raw, *, source_command):
+    try:
+        kind, rows = parse_ip_local(raw, source_command=source_command)
+    except IpLocalParseError as exc:
+        raise SourceParseError(str(exc)) from exc
+    label = ("network.ip.local_addresses.reported" if kind == "addr"
+             else "network.ip.local_routes.reported")
+    return ParseResult("linux-iproute2-json-local-v1", (
+        ParsedDatum(label, "IP_LOCAL_JSON_REPORT", rows, "ARRAY"),
+    ))
+
+
 # Intentional bounded list. Unsupported source families are not normalized
 # by interpreting raw bytes as arbitrary meaningful inventory fields.
 PARSERS = {
+    "SRC-23": _parse_ip_local_stdout,
     "SRC-21": _parse_vainfo_stdout,
     "SRC-20": _parse_lspci_stdout,
     "SRC-18": _parse_optical_media_stdout,
@@ -1151,6 +1166,12 @@ def normalize_sealed_source(source_id, raw, *, source_path=None,
             raise SourceParseError("O1_UNVERIFIED_DATA_STREAM")
         return parser(raw, source_command=source_command,
                       source_target=source_target)
+    if source_id == "SRC-23":
+        if (source_path is not None or source_target is not None
+                or source_stream != "stdout"
+                or source_command not in ("ip -j addr show", "ip -j route show")):
+            raise SourceParseError("IP_LOCAL_UNVERIFIED_D1_STREAM")
+        return parser(raw, source_command=source_command)
     if source_command is not None or source_target is not None:
         raise SourceParseError("SOURCE_COMMAND_NOT_APPLICABLE")
     if source_id == "SRC-15":
