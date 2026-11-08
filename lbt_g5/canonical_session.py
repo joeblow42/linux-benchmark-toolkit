@@ -338,6 +338,14 @@ def _verified_lsblk_streams(metadata, artifacts):
             "NAME,KNAME,TYPE,SIZE,RO,RM,MODEL,SERIAL,TRAN"), label="lsblk")
 
 
+def _verified_lspci_streams(metadata, artifacts):
+    """Exact single-subcall D1 PCI original stream; never an operator target."""
+    if metadata.get("target") is not None:
+        raise CanonicalContractError("lspci target not approved")
+    return _verified_d1_single_call_streams(
+        metadata, artifacts, invocation="lspci -nn", label="lspci")
+
+
 def _verified_fsstat_streams(metadata, artifacts, local_mounts, policy):
     """Bind each D1 FS_STAT stream to an ordered, approved same-run local mount.
 
@@ -732,10 +740,21 @@ def build_canonical(run_directory, engine_run):
                     or any(a.limit_applied or not a.complete for a in artifacts)):
                 raise CanonicalContractError(
                     "O1 captured transport contradicts original/exit evidence")
+        if source_id == "SRC-20" and metadata["outcome"] == "CAPTURED":
+            if (type(metadata.get("exit_code")) is not int
+                    or metadata["exit_code"] != 0
+                    or metadata.get("timed_out") is not False
+                    or metadata.get("capture_limited") is not False
+                    or not artifacts
+                    or any(a.limit_applied or not a.complete for a in artifacts)):
+                raise CanonicalContractError(
+                    "lspci captured transport contradicts original/exit evidence")
         command_streams = (_verified_lscpu_streams(metadata, artifacts)
                            if source_id == "SRC-05" else
                            _verified_lsblk_streams(metadata, artifacts)
                            if source_id == "SRC-11" else
+                           _verified_lspci_streams(metadata, artifacts)
+                           if source_id == "SRC-20" else
                            tuple(a.artifact.rsplit("-", 1)[-1] for a in artifacts)
                            if source_id in ("SRC-13", "SRC-18") and o1_verified else ())
         fsstat_mounts, fsstat_streams = (
@@ -780,10 +799,10 @@ def build_canonical(run_directory, engine_run):
             source_stream = (fsstat_streams[artifact_index - 1]
                              if source_id == "SRC-15" else
                              command_streams[artifact_index - 1]
-                             if source_id in ("SRC-05", "SRC-11")
+                             if source_id in ("SRC-05", "SRC-11", "SRC-20")
                              or (source_id in ("SRC-13", "SRC-18") and o1_verified)
                              else None)
-            diagnostic_only = (source_id in ("SRC-05", "SRC-11", "SRC-13", "SRC-15", "SRC-18")
+            diagnostic_only = (source_id in ("SRC-05", "SRC-11", "SRC-13", "SRC-15", "SRC-18", "SRC-20")
                                and source_stream == "stderr")
             if (metadata["outcome"] in ("CAPTURED", "PARTIAL")
                     and parser_available(source_id) and not diagnostic_only
