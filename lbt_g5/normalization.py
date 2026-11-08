@@ -12,6 +12,7 @@ import json
 import re
 import shlex
 from .src13_normalization import parse_src13, SRC13ParseError
+from .src14_mountinfo import parse_mountinfo, MountinfoParseError
 
 
 MAX_PARSER_BYTES = 1024 * 1024
@@ -1014,9 +1015,22 @@ def _parse_src13_stdout(raw, *, source_command, source_target):
         for path, observed, normalized, kind, unit in rows))
 
 
+# SRC-14 D0 fixed kernel mountinfo original, never a host mount probe.
+# Keep namespace-scoped mount order, absent parents and opaque options.
+def _parse_mountinfo_sealed(raw):
+    try:
+        mounts = parse_mountinfo(raw)
+    except MountinfoParseError as exc:
+        raise SourceParseError(str(exc)) from exc
+    return ParseResult("linux-mountinfo-sealed-v1", (
+        ParsedDatum("filesystem.mountinfo.mounts", "MOUNTINFO_RECORDS", mounts, "ARRAY"),
+    ))
+
+
 # Intentional bounded list. Unsupported source families are not normalized
 # by interpreting raw bytes as arbitrary meaningful inventory fields.
 PARSERS = {
+    "SRC-14": _parse_mountinfo_sealed,
     "SRC-13": _parse_src13_stdout,
     "SRC-11": _parse_lsblk_stdout,
     "SRC-05": _parse_lscpu_stdout,

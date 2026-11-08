@@ -1,0 +1,43 @@
+{
+  "record_id": "LBT-G504-CP03-SRC14-ORACLE-18",
+  "date": "2026-11-07",
+  "stage": "SOURCE_FIRST_BEFORE_PARSER_OR_CANONICAL_EDITS",
+  "parent": {
+    "pr": 40,
+    "sha": "aeb7e1e8d4811571da0786132c66398e6575a8c6"
+  },
+  "baseline": [
+    "Requirements Revision 1.6 / 283 rows",
+    "G4-07 SRC-14 fixed D0 /proc/self/mountinfo",
+    "canonical schema_version 1.0.0; status schema_version 1.0 14 fields",
+    "O1 owner mapping and provenance from PR39+40 unaffected"
+  ],
+  "specification_sources": [
+    "https://www.kernel.org/doc/html/latest/filesystems/proc.html",
+    "https://man.archlinux.org/man/proc_pid_mountinfo.5.en"
+  ],
+  "positive": [
+    "Sealed single item0001 original associated with exactly one /proc/self/mountinfo source_paths entry, correct source/attempt/run and SHA-256",
+    "Parse mount ID and parent ID as distinct nonnegative finite bounded integers; do not require parent ID present inside namespace",
+    "Major:minor parsed as two bounded integers; root/mountpoint decoded from only documented octal escapes 040,011,012,134; retain immutable original",
+    "Single hyphen delimiter separates six mandatory fields and optional tags from exactly three filesystem fields",
+    "Preserve unknown optional tags opaque; do not interpret mount propagation from tags not authorized by source contract",
+    "Preserve raw mount options and super options as opaque strings; do not infer filesystem health/capability or mount accessibility",
+    "Preserve original mount record order and allow distinct mount IDs with identical mountpoint (stacked mounts)",
+    "Private normalized array cites exact source original and status; original bytes unchanged, no new public evidence references",
+    "Valid CAPTURED/ BYTES_PRESERVED with parsed records yields COMPLETE/OK; malformed original yields PARSE_FAILED with fallback"
+  ],
+  "negative": [
+    "Empty, non-UTF8, NUL, newline/control corruption, input >1MiB, >4096 records, overly long row or field fail source parser",
+    "Missing/repeated delimiter, fewer or extra mandatory fields, malformed major:minor/ID, overflow, duplicate mount ID fail",
+    "Unsupported octal escape, stray backslash, embedded control escapes, relative root or mountpoint reject",
+    "Wrong fixed source path, missing path, extra path, wrong item ordinal, forged receipt source/run identity or modified sealed bytes fail canonical",
+    "Do not require parent mount ID in observed records; do not reject legitimate stacked mounts, unknown optional fields or escaped names",
+    "Unsupported source_path, source_stream or source_command passed to parser fail closed",
+    "Denied/unavailable source statuses remain prior state, no phantom successful normalization",
+    "All existing parser families and O1 Alternative A behavior remain unchanged"
+  ],
+  "scope": "No acquisition probe, read, permission, production schema change, source permissions, public output or package changes",
+  "implementation_assurance": "Oracle and test expectations authored by implementing AI; independent human/third party review not claimed",
+  "gate": "CP-03 and G5-04 remain OPEN pending all required stages and host assurance"
+}

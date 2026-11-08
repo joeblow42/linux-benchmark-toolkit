@@ -1,0 +1,106 @@
+{
+  "record_id": "LBT-G504-CP03-INCREMENT18-EVIDENCE-20261107",
+  "date_local": "2026-11-07",
+  "state": "CANDIDATE_IMPLEMENTED_SCOPED_CI_PASS",
+  "parent": {
+    "pr": 40,
+    "sha": "aeb7e1e8d4811571da0786132c66398e6575a8c6"
+  },
+  "pr": 41,
+  "branch": "g5/cp03-src14-mountinfo-18",
+  "authority": {
+    "source": "SRC-14 COL-FS D0 fixed file /proc/self/mountinfo; no new permissions",
+    "baseline": "Requirements Rev1.6 controlled 283x20; canonical schema 1.0.0; status schema 1.0, 14 fields",
+    "governance": "AI-Assisted Software Engineering Governance Standard v1.0; owner approved",
+    "original_evidence": "raw source bytes preserved unmodified and hidden from public output"
+  },
+  "source_first": {
+    "oracle": "verification/g5_04/cp03_src14_mountinfo_oracle_18.json",
+    "tests": "tests/test_g5_cp03_src14_mountinfo_18.py",
+    "authorship": "AI implementation assistant; NOT independently reviewed by human or separate agent",
+    "external_contracts": [
+      "https://www.kernel.org/doc/html/latest/filesystems/proc.html",
+      "https://man.archlinux.org/man/proc_pid_mountinfo.5.en"
+    ]
+  },
+  "implementation": {
+    "files": [
+      "lbt_g5/src14_mountinfo.py",
+      "lbt_g5/normalization.py",
+      "lbt_g5/canonical_session.py",
+      "tests/test_g5_cp03_src14_mountinfo_18.py",
+      ".github/workflows/test.yml",
+      "tests/test_g5_cp03_normalization.py",
+      "tests/test_g5_cp03_platform_02.py",
+      "tests/test_g5_cp03_cpu_optical_03.py"
+    ],
+    "behavior": [
+      "Strict D0 fixed /proc/self/mountinfo path, one item0001 original, run/receipt/SHA-256 binding",
+      "Parser consumes sealed original only; does not open host filesystem, probes or commands",
+      "Kernel mount ID/parent ID/dev major/minor; root and mountpoint documented octal escapes",
+      "Single delimiter, six required preceding fields, three trailing filesystem fields; optional tags opaque",
+      "Absence of parent mount record and stacked mounts preserved without false hierarchy construction",
+      "Preserves opaque options/source strings, no medium or health inference",
+      "Captured valid original leads to COMPLETE/OK; parse failures preserve original and yield PARSE_FAILED; missing/forged original fails closed"
+    ],
+    "limitations": [
+      "Pure parser rejects >1MiB original even though source acquisition ceiling is 16MiB; raw evidence remains sealed and parse state is incomplete",
+      "No filesystem capacity, transport type or medium classification is inferred",
+      "Non-UTF8 mount names and undocumented escapes remain unparsed rather than guessed",
+      "Not a physical Bodhi Linux 7 target run, independent review, published report or CP-03 completion"
+    ]
+  },
+  "verification": {
+    "code_head_sha": "27d0bf2b04c0f7536a3b32a91f9c447c2124d918",
+    "actions_run": 42443654615,
+    "url": "https://github.com/joeblow42/linux-benchmark-toolkit/actions/runs/42443654615",
+    "job_id": 128617950155,
+    "conclusion": "SUCCESS",
+    "new_suite": "11/11 PASS",
+    "unified": "21 PASS; 0 FAIL/SKIP/BLOCKED/NOT_APPLICABLE",
+    "legacy": "All workflow steps passed including previous O1/D1 and canonical parser suites",
+    "claim_boundary": "Exact-code scoped CI, not independent end-to-end physical-host acceptance"
+  },
+  "trace": {
+    "filename": "LBT_CP03_Trace_20261107_Increment18.csv",
+    "sha256": "516a673a788769f7e01956d989ada49e50cef721665e20c36c0b285673fa281e",
+    "verification_filename": "LBT_CP03_Trace_Increment18_Verification.json",
+    "verification_sha256": "6a2a1cfbc110547b6306c097277f9059781a3b98b4129968b9f4c816bbbb9038",
+    "baseline_control_sha256": "04849cd13ecc75c803839ab7c59a1015c5b92d1f05bf31422b54406c188e2702",
+    "rows": 283,
+    "columns": 31,
+    "controlled_cells_preserved": 5660,
+    "scoped_rows": [
+      "LBT-FR-049",
+      "LBT-FR-168",
+      "LBT-NFR-068",
+      "LBT-NFR-070"
+    ],
+    "verification_states": {
+      "NOT_VERIFIED": 283
+    }
+  },
+  "gates": {
+    "candidate_parsers": 22,
+    "initial_sources": 28,
+    "remaining": [
+      "SRC-15",
+      "SRC-18",
+      "SRC-20",
+      "SRC-21",
+      "SRC-23",
+      "SRC-28"
+    ],
+    "cp03": "IN_PROGRESS",
+    "g5_04": "OPEN",
+    "pr41": "DRAFT_UNMERGED",
+    "pending": [
+      "CP-02 39-case cumulative acceptance reconciliation",
+      "CP-03 remaining six parsers and independent assurance",
+      "CP-04 strict canonical integrity",
+      "CP-05 integrated end-to-end",
+      "CP-06 Bodhi Linux 7 AMD64 target evidence",
+      "CP-07 owner explicit acceptance"
+    ]
+  }
+}

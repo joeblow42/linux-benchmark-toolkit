@@ -300,6 +300,26 @@ def _verified_d1_single_call_streams(metadata, artifacts, *, invocation, label):
     return tuple(n.split("-")[-1] for n in names)
 
 
+def _verified_mountinfo_original(metadata, artifacts, policy):
+    """Bind SRC-14 D0 original to the *only* G5-03 registered fixed path.
+
+    A source receipt ALLOW is not proof of path identity: require the exact
+    passive-worker item slot and fixed_file path recorded in the same receipt.
+    No live /proc access occurs during this check.
+    """
+    if policy.source_id != "SRC-14" or policy.fixed_file != "/proc/self/mountinfo":
+        raise CanonicalContractError("SRC-14 fixed file catalog mismatch")
+    paths=metadata.get("source_paths")
+    if not artifacts:
+        if paths != []:
+            raise CanonicalContractError("SRC-14 absent original claims source path")
+        return ()
+    if (len(artifacts) != 1 or paths != [policy.fixed_file]
+            or artifacts[0].artifact != "item0001"):
+        raise CanonicalContractError("SRC-14 original/path/ordinal mismatch")
+    return (policy.fixed_file,)
+
+
 def _verified_lscpu_streams(metadata, artifacts):
     return _verified_d1_single_call_streams(
         metadata, artifacts, invocation="lscpu", label="lscpu")
@@ -638,6 +658,8 @@ def build_canonical(run_directory, engine_run):
                        _verified_lexical_sysfs_paths(metadata, artifacts, policy,
                            identity_fn=power_sysfs_path_identity, label="POWER")
                        if source_id == "SRC-26" else ())
+        if source_id == "SRC-14":
+            _verified_mountinfo_original(metadata, artifacts, policy)
         # SRC-13 O1 may be normalized only after verifying same-run
         # consent, approved device/argv and D0 original evidence.
         o1_verified = False

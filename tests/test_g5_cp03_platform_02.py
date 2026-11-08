@@ -88,7 +88,8 @@ class PlatformParserTests(unittest.TestCase):
             self.assertTrue(parser_available(sid))
         # Increment 17 registers SRC-13 with strict O1 stdout attribution.
         self.assertTrue(parser_available("SRC-13"))
-        for sid in ("SRC-14", "SRC-15", "SRC-28"):
+        self.assertTrue(parser_available("SRC-14"))  # CP03-18 fixed D0 source
+        for sid in ("SRC-15", "SRC-28"):
             self.assertFalse(parser_available(sid))
 
 
