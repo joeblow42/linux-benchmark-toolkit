@@ -1,0 +1,22 @@
+{
+  "document_type": "G5-04 CP03 SRC28 owner Alternative A source-first oracle",
+  "authority": "Owner approved Alternative A on 2026-11-08, Review25 R25-04",
+  "parent_commit": "fb27cf57965f3c5be2c61e0258c100c2afc10777",
+  "parent_pr": 49,
+  "phase": "FROZEN_BEFORE_CODE",
+  "scope": "SRC-28 D1 OFFLINE_METADATA only; no source permissions or fixed commands; no production canonical 1.0.0 or status 1.0 changes; no raw source evidence changes.",
+  "approved_witness": [
+    "argv_executed",
+    "exit_code",
+    "started_utc",
+    "completed_utc",
+    "elapsed_seconds"
+  ],
+  "witness_source": "Existing trusted resolved dpkg-query path and vetted argv from Additional adapter; actual _capture_child TransportCapture returncode and elapsed_seconds; wall UTC sampled around actual transport.",
+  "receipt_schema": "Only newly witnessed SRC-28 private G5-02 attempt has version 0.3; legacy 0.1 and O1 0.2 unchanged.",
+  "safety": "No executable authorization changes, sudo, repository update, package scripts, downloads or network. Witness remains private and cannot be put in generated public output.",
+  "positive": "Recorded truthful argv, code 0, UTC times and monotonic duration, intact sealed stdout and defensive matching of in-memory outcome and receipt.",
+  "partial": "Nonzero actual exit with preserved bytes remains PARTIAL/SOURCE_INCOMPLETE, never inferred software installation or codec readiness.",
+  "negative": "Missing executable, disabled source, forged output flags, wrong binary, exit 0 fabrication, reversed UTC, NaN duration, witness tamper, stderr-only, target/path injection, legacy upgrade must be rejected or leave provisional.",
+  "assurance": "Synthetic source-first tests alone are not independent or live-host verification; CP02 39 acceptance cases remain NOT_EXECUTED."
+}

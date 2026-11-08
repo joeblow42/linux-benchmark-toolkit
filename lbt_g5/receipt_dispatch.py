@@ -100,6 +100,8 @@ def capture_and_record(request:SourceRequest,attempt,writer,slots,calls,
         unavailable_fields=tuple(getattr(outcome,"unavailable_fields",()) or ()),
         exit_code=exit_code,elapsed_seconds=elapsed_seconds,
         timed_out=timed_out,capture_limited=capture_limited,
-        authorization_provenance=provenance)
+        authorization_provenance=provenance,
+        execution_provenance=(getattr(outcome,"execution_provenance",None)
+                              if request.source_id=="SRC-28" else None))
     location=commit_attempt(writer.run_directory,record)
     return RecordedOutcome(outcome,location,provenance)

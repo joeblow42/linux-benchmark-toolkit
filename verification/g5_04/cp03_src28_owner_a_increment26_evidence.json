@@ -1,0 +1,80 @@
+{
+  "schema": "lbt-g504-cp03-src28-owner-a-checkpoint-1",
+  "date_utc": "2026-11-08",
+  "authority": "Owner Alternative A approved after Review25, limited to SRC-28 private G5-02/G5-03 operational receipt witness; existing source permissions and production canonical/status schema unchanged.",
+  "increment": "CP-03 Increment 26",
+  "parent_pr": 49,
+  "pr": 50,
+  "parent_sha": "fb27cf57965f3c5be2c61e0258c100c2afc10777",
+  "source_first_oracle_commit": "d0d540ed464514454805edc13ad453bd4cfbd638",
+  "source_first_tests_commit": "54d2c7ad44b33e809ee7a9531028bbdeb6fd651c",
+  "tested_implementation_head": "a2926dd665a456fdeb5dd92a6469cc1487bb8a3e",
+  "ci": {
+    "run_id": 42532496942,
+    "conclusion": "success",
+    "exact_head_sha": "a2926dd665a456fdeb5dd92a6469cc1487bb8a3e",
+    "targeted_new_tests": {
+      "pass": 8,
+      "fail": 0
+    },
+    "reconciled_review_tests": {
+      "pass": 2,
+      "expected_failure": 3
+    },
+    "unified_full": {
+      "pass": 21,
+      "fail": 0
+    }
+  },
+  "source": "SRC-28",
+  "source_operation": "D1 OFFLINE_METADATA",
+  "fixed_command": [
+    "dpkg-query",
+    "-W",
+    "-f=${Package}\\t${Version}\\n"
+  ],
+  "new_receipt_version": "g5-02-attempt-0.3",
+  "added_private_execution_fields": [
+    "argv_executed",
+    "exit_code",
+    "started_utc",
+    "completed_utc",
+    "elapsed_seconds"
+  ],
+  "other_receipt_schema_versions_preserved": [
+    "g5-02-attempt-0.1",
+    "g5-02-attempt-0.2"
+  ],
+  "actions": [
+    "Actual resolved executable arguments recorded only after _capture_child transport returns.",
+    "UTC times sampled directly around returned transport; elapsed monotonic from TransportCapture; exit code copied unchanged.",
+    "Single existing source dispatcher and acquisition path preserved; no new subprocess or source permissions.",
+    "Canonical normalization checks actual witness equals in-memory G5-03 outcome and exact fixed command template; no public witness exposure.",
+    "Captured/complete requires sealed stdout, valid zero return code and no timeout/truncation; nonzero with evidence is PARTIAL/SOURCE_INCOMPLETE; old unwitnessed records cannot be promoted."
+  ],
+  "unchanged": [
+    "G4-07 authorization and -W fixed format",
+    "G5-04 private/system.json schema_version 1.0.0",
+    "G5-04 14-field status schema_version 1.0",
+    "original acquired evidence bytes",
+    "all 283 approved requirements Rev1.6 controlling cells",
+    "41 status domain/status/reason pairs"
+  ],
+  "disposition": {
+    "R25_04": "Candidate implementation remediated in PR50 at validated exact HEAD; independent acceptance still OPEN.",
+    "R25_01": "OPEN F02 measured acquisition status timestamps across source families",
+    "R25_02": "OPEN F04 time/byte capture-limit dimensions",
+    "R25_03": "OPEN F06 exact approved D02 canonical and manifest fields",
+    "R25_05": "OPEN F05 operational completion and minimum",
+    "R25_06": "OPEN F07 exhaustive manifest integration",
+    "R25_07": "OPEN CT07 exact multi-original provenance",
+    "R25_08": "OPEN downstream public projection and privacy",
+    "R25_09": "OPEN Bodhi Linux7 AMD64 host and full requirements acceptance"
+  },
+  "cp02_39cases": {
+    "executed_original_cases": 0,
+    "approved": 0,
+    "all_source_spec_states": "NOT_EXECUTED"
+  },
+  "assurance": "AI-written source-first fixtures and GitHub CI success are not independent assurance; no live source invocation, release merge, owner gate closure, or requirement VERIFIED promotion."
+}

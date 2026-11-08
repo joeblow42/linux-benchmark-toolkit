@@ -13,7 +13,7 @@ from types import SimpleNamespace
 import tempfile
 import unittest
 
-from lbt_g5.additional import AdditionalOutcome
+from lbt_g5.additional import AdditionalOutcome, _DPKG_ARGV
 from lbt_g5.canonical_session import build_canonical
 from lbt_g5.evidence import EvidenceWriter
 from lbt_g5.engine import EngineRun, CollectorRun
@@ -45,14 +45,22 @@ def make_sealed_run(*,source_id="SRC-28",outcome="CAPTURED",
         invocation="PROC_MEMINFO"
         cid="COL-MEM"
     artifact=writer.seal_chunks(policy,"01",artifact_name,(raw,)).receipt
+    witness = (dict(argv_executed=["/usr/bin/dpkg-query",*_DPKG_ARGV[1:]],
+                    exit_code=0,
+                    started_utc="2026-11-08T12:00:00.000Z",
+                    completed_utc="2026-11-08T12:00:00.100Z",
+                    elapsed_seconds=0.1) if source_id=="SRC-28" else None)
     receipt=build_attempt(RUN,source_id,"01","ALLOW",outcome,reason,
                           evidence=(artifact,),bytes_count=artifact.byte_count,
                           invocation=invocation,source_paths=paths,
+                          exit_code=0 if witness else None,
+                          execution_provenance=witness,
                           elapsed_seconds=elapsed_seconds,
                           timed_out=timed_out,capture_limited=capture_limited)
     loc=commit_attempt(str(folder),receipt)
     entry=SimpleNamespace(receipt_private_path=loc,
-                          outcome=SimpleNamespace(artifacts=(artifact,)))
+                          outcome=SimpleNamespace(artifacts=(artifact,),
+                                                  execution_provenance=witness))
     run=EngineRun(RUN,(CollectorRun(cid,(entry,)),))
     return tmp,folder,run
 
@@ -112,10 +120,9 @@ class CP02ReconciliationReviewGuards(unittest.TestCase):
         self.assertIn("source_receipts",manifest)
         self.assertIn("counts",manifest)
 
-    @unittest.expectedFailure
-    def test_src28_operational_provenance_gap_has_no_argv_or_returncode(self):
+    def test_src28_owner_a_operational_outcome_carries_execution_facts(self):
         recorded_fields={field.name for field in fields(AdditionalOutcome)}
-        self.assertIn("argv",recorded_fields)
+        self.assertIn("execution_provenance",recorded_fields)
         self.assertIn("exit_code",recorded_fields)
 
 if __name__=="__main__":
