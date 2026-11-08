@@ -85,6 +85,8 @@ class MountinfoSourceFirstOracles(unittest.TestCase):
         item=self.parsed(raw).values[0].normalized_value[0]
         self.assertEqual(item["root"],"/dir\ttab\nline")
         self.assertEqual(item["mount_point"],"/mnt space\\slash")
+        # The three-digit escape may be immediately followed by an ordinary digit.
+        self.assertEqual(self.parsed(b"2 1 0:1 /bad\\0400 / rw - tmpfs none rw\n").values[0].normalized_value[0]["root"],"/bad 0")
 
     def test_hidden_parent_and_stacked_distinct_ids_not_invalid(self):
         raw=(b"21 99 0:1 / / rw - tmpfs none rw\n"
@@ -170,7 +172,6 @@ class MountinfoSourceFirstOracles(unittest.TestCase):
             b"36 22 8:1 /relative / rw - ext4 /dev/sda1 rw\n",
             b"36 22 8:1 / not_absolute rw - ext4 /dev/sda1 rw\n",
             b"36 22 8:1 /bad\\999 / rw - ext4 /dev/sda1 rw\n",
-            b"36 22 8:1 /bad\\0400 / rw - ext4 /dev/sda1 rw\n",
             b"36 22 8:1 /bad\\000 / rw - ext4 /dev/sda1 rw\n",
             b"36 22 8:1 /bad\\ / rw - ext4 /dev/sda1 rw\n",
             b"36 22 8:1 / / rw - ext4 /dev/sda1 rw\n"*0,
