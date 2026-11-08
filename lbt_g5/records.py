@@ -92,7 +92,7 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                 or type(witness) is not dict or set(witness) != keys):
             raise ValueError("SRC-28 execution witness invalid scope or shape")
         argv=witness["argv_executed"]
-        suffix=("-W","-f=$"+"{Package}"+r"\\t$"+"{Version}"+r"\\n")
+        suffix=("-W","-f=$"+"{Package}"+r"\t$"+"{Version}"+r"\n")
         if (type(argv) not in (tuple,list) or len(argv)!=3
                 or type(argv[0]) is not str
                 or argv[0] not in ("/usr/bin/dpkg-query","/bin/dpkg-query",
