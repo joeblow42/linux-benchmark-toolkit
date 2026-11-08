@@ -169,7 +169,7 @@ class MountinfoSourceFirstOracles(unittest.TestCase):
             b"36 22 8:three / / rw - ext4 /dev/sda1 rw\n",
             b"36 22 8:1 / / rw - ext4 /dev/sda1 rw\n"*4097,
             b"36 22 8:1 / / rw - ext4 /dev/sda1 rw\n"+b"x"*1048576,
-            b"36 22 8:1 /relative / rw - ext4 /dev/sda1 rw\n",
+            b"36 22 8:1 relative / rw - ext4 /dev/sda1 rw\n",
             b"36 22 8:1 / not_absolute rw - ext4 /dev/sda1 rw\n",
             b"36 22 8:1 /bad\\999 / rw - ext4 /dev/sda1 rw\n",
             b"36 22 8:1 /bad\\000 / rw - ext4 /dev/sda1 rw\n",
