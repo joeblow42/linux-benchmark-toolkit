@@ -81,7 +81,7 @@ class MountinfoOracles(unittest.TestCase):
                          ("D0","MOUNTINFO",PATH))
         self.assertEqual(policy.max_entries,1)
         self.assertTrue(parser_available("SRC-14"))
-        self.assertFalse(parser_available("SRC-28"))
+        self.assertTrue(parser_available("SRC-28"))
 
     def test_positive_field_order_escapes_and_unknown_optional_tags(self):
         result=self.parse()
