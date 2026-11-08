@@ -1,0 +1,33 @@
+{
+  "record_id": "LBT-G504-CP03-20-SCOPED-ENGINEERING-CHECKPOINT",
+  "date_local": "2026-11-08",
+  "pr_number": 44,
+  "branch": "g5/cp03-optical-media-o1-20",
+  "parent_pr": 43,
+  "parent_sha": "521f2629e4f1d32dbcfd9197ec1bc4c71fdbdd3f",
+  "source_first_oracle_commit": "799176e16a297efd8b8e15573e6d07b1df3189e6",
+  "source_first_test_commit": "20c6ad864590657cfb1b55c8fb62bab471df9058",
+  "code_head_before_evidence": "6600fe161efdeef5397c3b9c8912f0ca6a8f8dad",
+  "ci_workflow": 42514347156,
+  "ci_conclusion": "success",
+  "scoped_tests": {
+    "PASS": 11,
+    "FAIL": 0
+  },
+  "unified_full": {
+    "PASS": 21,
+    "FAIL": 0,
+    "SKIP": 0,
+    "BLOCKED": 0,
+    "NOT_APPLICABLE": 0
+  },
+  "source": "SRC-18",
+  "contract": "O1 OPTICAL_MEDIA selected /dev/srN, existing vetted sg_get_config --readonly --current; same-run original SRC-17 witness required; no live optical query performed.",
+  "limits": [
+    "Version-dependent feature descriptions stored as opaque source-reported text; no media presence/health inference.",
+    "Parser accepts 1MiB original vs acquisition max 4MiB/device; failed larger semantic parse retains original bytes.",
+    "No independent human assurance, no Bodhi Linux 7 host verification, no gates accepted."
+  ],
+  "governance": "Requirements Rev1.6, canonical schema 1.0.0, status schema 1.0, G4-07 permissions, controlled authorizations unchanged; raw bytes preserved.",
+  "parser_coverage": "24/28 candidate families; SRC-20, SRC-21, SRC-23, SRC-28 remaining; CP-03 and G5-04 open."
+}
