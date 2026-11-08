@@ -1,0 +1,150 @@
+{
+  "record_id": "LBT-G504-CP02-CP03-ADVERSARIAL-REVIEW-25",
+  "review_date": "2026-11-08",
+  "scope": "Static source-first adversarial analysis plus new synthetic regression guards, NOT independent human/third-party verification",
+  "source_commit": "8d7a3da107cbea5426139a56aae428bc073cd475",
+  "parent_pr": 48,
+  "review_pr": 49,
+  "control_authority": [
+    "2026-11-02 owner approved CP-01 D-01..D-05 including exact D-02 entity fields",
+    "Approved Requirements Rev1.6 SHA256 04849cd13ecc75c803839ab7c59a1015c5b92d1f05bf31422b54406c188e2702",
+    "G4-02/06 41 accepted status pairs and separate 14-field schema 1.0",
+    "G4-07 source authorization register Rev0.1",
+    "CP-02 CT-01..CT-11 39-case specification with execution_state NOT_EXECUTED"
+  ],
+  "case_reconciliation": {
+    "specified": 39,
+    "source_spec_executed": 0,
+    "accepted": 0,
+    "review_dispositions": {
+      "PROXY_TEST_ONLY": 17,
+      "UNRESOLVED_CONTRACT_GAP": 17,
+      "MISSING_EXACT_ORACLE": 2,
+      "DOWNSTREAM_GATE": 3
+    },
+    "crosswalk_path": "verification/g5_04/cp02_39case_coverage_review_25.csv",
+    "requirements_verification_states": "283 NOT_VERIFIED"
+  },
+  "review_findings": [
+    {
+      "id": "R25-01",
+      "relation": "F-02 CT-06-P1 CT-06-N1",
+      "severity": "HIGH",
+      "status": "OPEN_REPRODUCED_EXPECTED_FAILURE",
+      "source_refs": [
+        "lbt_g5/records.py:AttemptReceipt",
+        "lbt_g5/canonical_session.py:new_status"
+      ],
+      "finding": "Successful executed acquisitions may write status started_utc, completed_utc and elapsed_ms as null despite source elapsed metadata; approved D-04 requires true measured execution timing. Original receipt observed_utc does not establish a start time.",
+      "required_action": "Instrument actual source start/end UTC and monotonic elapsed at existing G5-03 capture/receipt boundary; bind truthful timing to status fields; nil only for accepted not-started/unknown cases."
+    },
+    {
+      "id": "R25-02",
+      "relation": "F-04 CT-05-P1 CT-05-N1",
+      "severity": "HIGH",
+      "status": "OPEN_REPRODUCED_EXPECTED_FAILURE",
+      "source_refs": [
+        "lbt_g5/canonical_session.py:capture_limits",
+        "lbt_g5/additional.py:acquire_additional"
+      ],
+      "finding": "Timed-out PARTIAL/CAPTURE_LIMIT may generate CaptureLimit with threshold policy.max_bytes and unit bytes even though the effective bound was time; same receipt can mark capture_limited for elapsed time. Dimension misattribution violates approved G4-07/D-04.",
+      "required_action": "Capture actual time/byte bound type, threshold, observed extent and omitted minimum truthfully, with separate time/byte cases and independent negative tests."
+    },
+    {
+      "id": "R25-03",
+      "relation": "F-06 CT-09-N1 CT-10-P1",
+      "severity": "BLOCKER",
+      "status": "OPEN_REPRODUCED_EXPECTED_FAILURE",
+      "source_refs": [
+        "Approved CP-01 D-02 exact fields",
+        "lbt_g5/canonical_session.py:system",
+        "lbt_g5/canonical_session.py:manifest"
+      ],
+      "finding": "Candidate private/system.json lacks required header and emits unapproved top-level platform_scope and normalization_state. Candidate session_manifest.json omits required manifest_version, minimum_usable, finalized_utc, counts, source_receipts, observation_ids, source_attempt_ids, limit_record_ids, etc. A valid candidate manifest must not be mistaken for exact approved D-02 production conformance.",
+      "required_action": "Implement approved complete exact D-02 required-field/type/nullability/enumeration contract and strict rejection of unknown canonical keys; migrate candidate only on governed branch without modifying raw originals."
+    },
+    {
+      "id": "R25-04",
+      "relation": "SRC-28 D-02 SourceAttempt invocation provenance, FR-192, CT-07",
+      "severity": "HIGH",
+      "status": "OPEN_REPRODUCED_EXPECTED_FAILURE",
+      "source_refs": [
+        "lbt_g5/additional.py:AdditionalOutcome",
+        "lbt_g5/receipt_dispatch.py:capture_and_record",
+        "lbt_g5/canonical_session.py:_verified_offline_dpkg_streams"
+      ],
+      "finding": "Existing G5-03 AdditionalOutcome omits executed argv and process exit_code. SRC-28 receipt records OFFLINE_METADATA and installed-packages stream labels; normalization manufactures neither command nor exit evidence. Full executed-command provenance and evidence-bound COMPLETE classification remain unproven. Do not infer installed-state/codec usability from package/version rows.",
+      "required_action": "Owner disposition required before changing existing G5-02/G5-03 operational receipt contract: bounded executed-argv/exit witness vs retaining explicit provisional incompleteness; approved source permissions unchanged."
+    },
+    {
+      "id": "R25-05",
+      "relation": "F-05 CT-08 CT-10",
+      "severity": "HIGH",
+      "status": "OPEN_STATIC_REVIEW",
+      "source_refs": [
+        "lbt_g5/canonical_session.py:orchestrated_state",
+        "lbt_g5/canonical_session.py:manifest"
+      ],
+      "finding": "Orchestration state is unconditionally PARTIAL/MINIMUM_WITH_GAPS and manifest completion_state INCOMPLETE even where scoped valid byte evidence exists. Integrity validity and operational completeness are not yet fully expressed under accepted D-05.",
+      "required_action": "Model distinct integrity/minimum-usable/operational completion and truthful interrupted/empty session outcomes under D-05."
+    },
+    {
+      "id": "R25-06",
+      "relation": "F-07 CT-10",
+      "severity": "HIGH",
+      "status": "OPEN_STATIC_REVIEW",
+      "source_refs": [
+        "lbt_g5/canonical_session.py:validate_canonical"
+      ],
+      "finding": "Selected hashes and receipts are checked, but all D-02 manifest cross-file IDs, counts, source_receipt digests, observation references and strict schemas are not yet verified end-to-end.",
+      "required_action": "Independent CP-04 negative tests for every approved cross-reference, digest, count and atomic-finalization condition."
+    },
+    {
+      "id": "R25-07",
+      "relation": "CT-07-P1 CT-07-P2",
+      "severity": "MEDIUM",
+      "status": "MISSING_EXACT_ACCEPTANCE_CASES",
+      "source_refs": [
+        "lbt_g5/canonical_session.py:_semantic_observation",
+        "CP-02 cp02_independent_contract_cases.json"
+      ],
+      "finding": "Existing candidate semantic derivation normally emits one artifact reference per datum. The exact CT-07-P1 two-source one-datum provenance scenario, and CT-07-P2 same-byte distinct-attempt scenario, are not recorded as executed acceptance cases.",
+      "required_action": "Add independent approved-scenario synthetic/target acceptance cases before CT-07 acceptance, and prove list provenance is complete."
+    },
+    {
+      "id": "R25-08",
+      "relation": "CT-11-N2 G5-06; SRC-23 FR-121",
+      "severity": "HIGH",
+      "status": "DOWNSTREAM_NOT_EXECUTED",
+      "source_refs": [
+        "lbt_g5/ip_local_normalization.py",
+        "Requirements Rev1.6 FR-121"
+      ],
+      "finding": "Sealed SRC-23 interface/route data may include sensitive network addresses, and publication policy requires masks and no raw evidence pointers. Existing G5-04 parser does not prove public projection compliant.",
+      "required_action": "G5-06 privacy/publication tests including unknown field withholding and absence of source filesystem paths, commands, identifiers or evidence references."
+    },
+    {
+      "id": "R25-09",
+      "relation": "F-08 CP-03",
+      "severity": "MEDIUM",
+      "status": "PARSER_REGISTRY_COMPLETE_ONLY",
+      "source_refs": [
+        "lbt_g5/normalization.py:PARSERS",
+        "PRs #24..#48"
+      ],
+      "finding": "All 28 candidate source IDs have registered parsers and scoped tests, but this is not integrated data completeness or Bodhi 7 AMD64 host acceptance.",
+      "required_action": "Complete CP-03 datum/variant coverage, CP-05 full integration, CP-06 real Bodhi host verification; retain all requirements NOT_VERIFIED until appropriate evidence."
+    }
+  ],
+  "safety_unchanged": [
+    "No live hardware, network, package DB or optical operations run by these review tests",
+    "No changes to G4-07 permission, G5-03 command templates, private canonical version, status vocabulary, output rules, or raw evidence",
+    "No merges or owner acceptance requested or implied"
+  ],
+  "governance_next": [
+    "Treat this as adversarial peer-style AI review but NOT independent assurance.",
+    "Maintain draft branch and open gates.",
+    "Resolve R25-04 owner authority question before modifying original G5-02/G5-03 operational receipt envelope.",
+    "Correct approved D-02/F-02/F-04/F-05/F-07 contracts in sequenced CP-03/CP-04 increments with independent third-party review and target-host tests."
+  ]
+}
