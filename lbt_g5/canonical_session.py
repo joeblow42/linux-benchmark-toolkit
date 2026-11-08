@@ -143,6 +143,31 @@ def _artifacts(recorded):
     return tuple(getattr(outcome, "artifacts", ()) or ())
 
 
+def _verified_mountinfo_paths(metadata, artifacts, policy):
+    """Bind SRC-14 to the one fixed G5-03 D0 proc worker file.
+
+    G5-03 emits /proc/self/mountinfo once and seals its original bytes as
+    item0001; no shell invocation, custom path, target or second artifact is
+    authorized. Unavailable/failed attempts may have no captured original.
+    """
+    paths = metadata.get("source_paths")
+    if type(paths) is not list:
+        raise CanonicalContractError("mountinfo source path record missing")
+    if (metadata.get("invocation") != policy.operation_id
+            or metadata.get("target") is not None):
+        raise CanonicalContractError("mountinfo fixed operation or target mismatch")
+    if not artifacts:
+        if paths:
+            raise CanonicalContractError("mountinfo claimed path without original")
+        return ()
+    if (len(artifacts) != 1 or paths != ["/proc/self/mountinfo"]
+            or artifacts[0].artifact != "item0001"
+            or metadata.get("unavailable_fields") != []
+            or metadata.get("outcome") not in ("CAPTURED","PARTIAL")):
+        raise CanonicalContractError(
+            "mountinfo sealed item/fixed worker source provenance mismatch")
+    return ("/proc/self/mountinfo",)
+
 
 def _verified_dmi_paths(metadata, artifacts, policy):
     """Bind each sealed SRC-04 item to the *recorded* worker source-path slot.
@@ -615,7 +640,9 @@ def build_canonical(run_directory, engine_run):
             raise CanonicalContractError("receipt and engine evidence disagree")
         if metadata.get("acquired_bytes") != sum(x.byte_count for x in artifacts):
             raise CanonicalContractError("receipt byte count mismatch")
-        sysfs_paths = (_verified_dmi_paths(metadata, artifacts, policy)
+        sysfs_paths = (_verified_mountinfo_paths(metadata, artifacts, policy)
+                       if source_id == "SRC-14" else
+                       _verified_dmi_paths(metadata, artifacts, policy)
                        if source_id == "SRC-04" else
                        _verified_cpu_sysfs_paths(metadata, artifacts, policy)
                        if source_id == "SRC-07" else
@@ -713,7 +740,7 @@ def build_canonical(run_directory, engine_run):
                     parsed = normalize_sealed_source(
                         source_id, raw,
                         source_path=(sysfs_paths[artifact_index - 1]
-                                     if source_id in ("SRC-04", "SRC-07", "SRC-12", "SRC-17", "SRC-19", "SRC-22", "SRC-24", "SRC-25", "SRC-26") else None),
+                                     if source_id in ("SRC-04", "SRC-07", "SRC-12", "SRC-14", "SRC-17", "SRC-19", "SRC-22", "SRC-24", "SRC-25", "SRC-26") else None),
                         source_stream=source_stream,
                         source_command=(metadata["authorization_provenance"]
                                         ["approved_argv"][0]
