@@ -1,0 +1,31 @@
+{
+  "record_id": "LBT-G504-CP03-SRC28-SOURCE-FIRST-ORACLE-24",
+  "date": "2026-11-08",
+  "phase": "FROZEN_BEFORE_PARSER_EDIT",
+  "parent_pr": 47,
+  "parent_sha": "03894be16e056cc97b869462c51709b649f436fd",
+  "source_id": "SRC-28",
+  "collector_id": "COL-SOFTCODEC",
+  "authorization": "D1",
+  "operation": "OFFLINE_METADATA",
+  "authorities": [
+    "G4-07 SRC-28 D1 OFFLINE_METADATA: installed local package DB only; <=32MiB source, <=4 calls, <=8s each, <=20s source; no repository refresh, installation, package scripts, downloads, network or elevation.",
+    "Pinned existing G5-03 additional.py adapter executes exactly local `dpkg-query -W -f=${Package}\\t${Version}\\n` via a trusted executable resolver; one bounded worker call; source label `installed-packages`.",
+    "Pinned existing receipt_dispatch.py returns `invocation=OFFLINE_METADATA` and sealed `call0001-stdout/stderr` with `source_paths=['installed-packages:stdout', ...]`. The current AdditionalOutcome does NOT persist actual argv or process exit code; provenance is adapter-based, not cryptographic command attestation.",
+    "Debian dpkg-query(1) manual `-W` `--showformat`, package naming and version field, including multiarch distinctions. `-W` displays status database records, which alone do not verify installed status, driver registration or codec usability; version column does not contain package status."
+  ],
+  "expected": {
+    "parser": "Read only prior sealed SRC-28 worker stdout; exact tab-delimited two columns `Package<TAB>Version<LF>` with strict UTF-8, no comments/header, bounded lines/entries; duplicate package names retained in source order because `${Package}` may omit a multiarch distinction. Do not infer installed state or execute commands.",
+    "output": "One private ARRAY `software.dpkg.reported_package_db_records` of `{package, reported_version}` strings, including blank version strings (unknown) and duplicate names. No software/codec/drivers operational or installed verdict from name/version.",
+    "scope": "This increment supports only the registered Debian/Bodhi dpkg adapter, not RPM or APT repository queries; conditional absence of dpkg remains TOOL_MISSING.",
+    "provenance": "SRC-28-01 only, invocation OFFLINE_METADATA, target None, source_paths `installed-packages:stdout/stderr`, original slots `call0001-stdout/stderr` in order, sealed SHA; stderr diagnostic only.",
+    "status": "`CAPTURED/BYTES_PRESERVED` must show complete nontruncated original, no timeout/limit. `PARTIAL/SOURCE_INCOMPLETE` remains incomplete; no synthesized nonzero exit. Absent stdout cannot be complete. Malformed captured stdout -> PARSE_FAILED with original retained.",
+    "negatives": "wrong attempt, invocation, source label, stdout/stderr attribution, duplicate or reversed stream, tampered sealed evidence, malformed tabs and newline, forbidden control bytes, invalid package syntax, long token and file limits, false transport success, missing program, partial state.",
+    "bounds": "Up to 8MiB original stdout, max 100,000 bounded package lines. Output is private; publication privacy remains a separate gate.",
+    "risks": [
+      "The existing G5-03 AdditionalOutcome does not record original executed argv and actual exit_code. This is a provenance/diagnostic limitation requiring independent governance review, not an excuse to fabricate those fields.",
+      "`dpkg-query -W` does not prove installed package state or codec/driver working health; do not label it as verified installed software.",
+      "AI-written source-first tests and code are not independent human review; CP-02 reconciliation and Bodhi Linux 7 AMD64 checks remain open."
+    ]
+  }
+}
