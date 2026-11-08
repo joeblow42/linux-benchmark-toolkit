@@ -92,7 +92,7 @@ class OpticalO1Oracles(unittest.TestCase):
     def test_direct_wrong_stream_command_target_path_rejected(self):
         for args in ({"source_stream":"stderr"},{"source_stream":None},
                      {"source_command":"cat"},{"source_command":None},
-                     {"source_target":"/dev/sr1"},{"source_target":"/dev/sda"},
+                     {"source_target":"/dev/sr9/../sr1"},{"source_target":"/dev/sda"},
                      {"source_path":"/dev/sr0"}):
             with self.subTest(args=args),self.assertRaises(SourceParseError):
                 self.parse(**args)
