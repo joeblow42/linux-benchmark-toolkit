@@ -1,0 +1,36 @@
+{
+  "record_id": "LBT-G504-CP03-24-SCOPED-ENGINEERING-CHECKPOINT",
+  "local_date": "2026-11-08",
+  "pr": 48,
+  "branch": "g5/cp03-offline-dpkg-metadata-24",
+  "parent_pr": 47,
+  "parent_sha": "03894be16e056cc97b869462c51709b649f436fd",
+  "source_first_oracle_commit": "6f037810233cdeb66b02e8022d4a5de8481950dc",
+  "source_first_test_commit": "5fd795065db2393396826748d455c6cabbd3a727",
+  "implementation_head_before_evidence": "6c0cc0d92c77ab868cd85736845c8fa7b158ac94",
+  "workflow_run": 42518150217,
+  "workflow_conclusion": "success",
+  "new_tests": {
+    "PASS": 11,
+    "FAIL": 0
+  },
+  "unified_full": {
+    "PASS": 21,
+    "FAIL": 0,
+    "SKIP": 0,
+    "BLOCKED": 0,
+    "NOT_APPLICABLE": 0
+  },
+  "source": "SRC-28",
+  "method": "COL-SOFTCODEC D1 OFFLINE_METADATA; existing fixed local dpkg-query -W package/version output, 8MiB/call, 4 max source invocations, 20sec source",
+  "results": "source-reported package database rows in order; duplicate names retained; absent versions preserved as unknown; never claim that packages are installed, that driver is loaded, or codec is usable",
+  "provenance": "one existing registered G5-03 local adapter source receipt, source_paths installed-packages:stdout/stderr matching sealed call0001-stdout/stderr, SHA verified, stderr diagnostic only; no live dpkg queried in fixtures",
+  "material_limitation": "G5-03 AdditionalOutcome omits actual executed argv and return code in persisted receipt. This increment cannot independently attest exact argv or nonzero exit; original bytes and source adapter bound only. Mark as known integration provenance gap for independent CP-02/03 review, not owner acceptance.",
+  "bounds": "semantic parser aligns to approved 8MiB single call stdout; 100000 lines max; no network, scripts, repository refresh/install/download",
+  "validation": "All 28 candidate parsers now registered. This is candidate completeness only; 283 requirements remain NOT_VERIFIED. CP-02 reconciliation and CP03 CP04 CP05 CP06 CP07 gates OPEN.",
+  "authority_change": false,
+  "source_permissions_change": false,
+  "production_schema_change": false,
+  "raw_modified": false,
+  "independent_assurance": false
+}
