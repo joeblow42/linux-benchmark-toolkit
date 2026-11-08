@@ -42,7 +42,7 @@ class MountinfoOracles(unittest.TestCase):
     @contextmanager
     def original(self, raw=RAW, *, paths=None, names=None, outcome="CAPTURED",
                  reason="BYTES_PRESERVED", tamper_run=False, tamper_bytes=False,
-                 target=None, invocation="NOT_INVOKED", unavailable=(),
+                 target=None, invocation="MOUNTINFO", unavailable=(),
                  capture_limited=False):
         with tempfile.TemporaryDirectory() as tmp:
             folder=Path(tmp)/RUN
@@ -164,7 +164,7 @@ class MountinfoOracles(unittest.TestCase):
             b"1 1 0:1 /\\999 / rw - ext4 none rw\n",
             b"1 1 0:1 /\\400 / rw - ext4 none rw\n",
             b"1 1 0:1 /\\ / rw - ext4 none rw\n",
-            b"1 1 0:1 / /\\040rw rw - ext4 none rw\n",
+            b"1 1 0:1 / /rw\\123bad rw - ext4 none rw\n",
             b"1 1 0:1 / / rw - ext4 /\\012evil rw\n", # decoded NL in source is allowed
             b"1 1 0:1 / / rw - ext4 none rw\x00\n",
             b"1 1 0:1 / / rw - ext4 none rw\r\n",
