@@ -1,0 +1,74 @@
+{
+  "record_id": "LBT-G504-CP03-INCREMENT19-SCOPED-ENGINEERING-EVIDENCE-20261107",
+  "date_local": "2026-11-07",
+  "parent_pr": 42,
+  "parent_sha": "c2062df9f052894299d7d2334ce67f5e9c2c99c5",
+  "pr_number": 43,
+  "branch": "g5/cp03-fs-stat-local-19",
+  "pre_evidence_code_sha": "0a4716d93aa28aba17cb30bb1cbb527d12b604aa",
+  "source_first_oracle_sha": "017544231bc42fc7e2a1140f769a83dc80eeff5f",
+  "source_first_test_sha": "8d5602a16ed28edf4190964bc9561919cb62be68",
+  "scoped_ci": {
+    "id": 42448260782,
+    "job_id": 128631725428,
+    "status": "completed",
+    "conclusion": "success",
+    "head_sha": "0a4716d93aa28aba17cb30bb1cbb527d12b604aa",
+    "src15_fixture_passed": 16,
+    "src15_fixture_failed": 0,
+    "unified_full": {
+      "PASS": 21,
+      "FAIL": 0,
+      "SKIP": 0,
+      "BLOCKED": 0,
+      "NOT_APPLICABLE": 0
+    }
+  },
+  "guarded_source": "SRC-15",
+  "collector": "COL-FS",
+  "class": "D1",
+  "operation": "FS_STAT",
+  "source_contract": "G4-07 local-only validated mount, 128 calls, 2MiB total, 2sec per call/15sec source; captured originals are unmodified G5-03 fixed worker stdout/stderr.",
+  "implementation": [
+    "lbt_g5/fs_stat_normalization.py",
+    "lbt_g5/normalization.py",
+    "lbt_g5/canonical_session.py",
+    "tests/test_g5_cp03_fs_stat_19.py",
+    "verification/g5_04/cp03_fs_stat_oracle_19.json"
+  ],
+  "findings": [
+    "One fixed worker JSON schema with unsigned reported counters and mount path; no invented health/device classification",
+    "No host read in semantic normalization; same-run SRC-14 sealed mountinfo required for artifact path binding",
+    "Strict errors for false receipt label, call/stream ordinal, forged target or worker operation, malformed JSON, original hash tamper",
+    "stderr preserved as diagnostic original, not accepted as statvfs data",
+    "Bounded parser allows 1 MiB per stream; source G5-03 aggregate source cap remains 2 MiB",
+    "G5-03 separately rechecks current mountinfo before statvfs; snapshot-to-worker mount TOCTOU cannot be eliminated by semantic parser without acquisition contract change"
+  ],
+  "no_changes": [
+    "Requirements Rev1.6",
+    "canonical schema 1.0.0",
+    "status schema 1.0",
+    "source authorization/register",
+    "raw sealed original bytes",
+    "publication policy",
+    "TUI report navigation"
+  ],
+  "parser_families_candidate": 23,
+  "initial_source_families": 28,
+  "remaining": [
+    "SRC-18",
+    "SRC-20",
+    "SRC-21",
+    "SRC-23",
+    "SRC-28"
+  ],
+  "authority": "Candidate scoped implementation; oracle tests authored by same AI; not independent human/third-party assurance, full CP02/03 acceptance, Bodhi Linux 7 on-target validation or owner gate acceptance.",
+  "gates": {
+    "CP-03": "IN_PROGRESS",
+    "G5-04": "OPEN",
+    "CP-04": "OPEN",
+    "CP-05": "OPEN",
+    "CP-06": "OPEN",
+    "CP-07": "OPEN"
+  }
+}

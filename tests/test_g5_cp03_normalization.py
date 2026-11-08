@@ -99,8 +99,8 @@ class G504CP03PureParserTests(unittest.TestCase):
                 normalize_sealed_source(source, raw)
 
     def test_unknown_source_fails_closed_and_never_fakes_parser_failure(self):
-        self.assertFalse(parser_available("SRC-15"))
-        self.assertIsNone(normalize_sealed_source("SRC-15", b"arbitrary host bytes"))
+        self.assertFalse(parser_available("SRC-18"))
+        self.assertIsNone(normalize_sealed_source("SRC-18", b"arbitrary host bytes"))
         with self.assertRaises(CanonicalContractError):
             _status_for({"outcome": "CAPTURED", "reason": "BYTES_PRESERVED"},
                         [object()])
@@ -174,7 +174,7 @@ class G504CP03CanonicalIntegrationTests(unittest.TestCase):
         self.assertEqual(hashlib.sha256(preserved.read_bytes()).hexdigest(), original.sha256)
 
     def test_unsupported_captured_source_does_not_commit_final_manifest(self):
-        saved, original = self.saved("SRC-15", b"unrecognized semantic source")
+        saved, original = self.saved("SRC-18", b"unrecognized semantic source")
         run = EngineRun(RUN, (CollectorRun("COL-FS", (saved,)),))
         with self.assertRaises(CanonicalContractError):
             build_canonical(self.run, run)
