@@ -85,6 +85,8 @@ jobs:
         run: python3 -m unittest discover -s tests -p 'test_g5_cp03_fs_stat_19.py' -v
       - name: G5-04 CP-03 SRC-18 O1 optical original and adverse provenance oracles
         run: python3 -m unittest discover -s tests -p 'test_g5_cp03_optical_media_20.py' -v
+      - name: G5-04 CP-03 SRC-20 lspci PCI original and adverse provenance oracles
+        run: python3 -m unittest discover -s tests -p 'test_g5_cp03_lspci_pci_21.py' -v
       - name: Unified Full validation (unit and acceptance once)
         run: python3 -m validation.suites full --output validation-results/ci
       - name: Upload unified validation report
