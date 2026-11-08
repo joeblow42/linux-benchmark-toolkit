@@ -13,6 +13,7 @@ a run is not a validated canonical session, even if some private files exist.
 from datetime import datetime, timezone
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -24,6 +25,7 @@ from .canonical_contract import (
     new_status, validate_status_record,
 )
 from .catalog import initial_catalog
+from .additional import _DPKG_ARGV  # G5-03 fixed template; no collection occurs here.
 from .local_space import LOCAL_TYPES
 from .normalization import (normalize_sealed_source, parser_available,
                             SourceParseError, dmi_field_from_source_path,
@@ -373,24 +375,67 @@ def _verified_ip_local_streams(metadata, artifacts):
     return tuple(n.rsplit("-",1)[-1] for n in names)
 
 
-def _verified_offline_dpkg_streams(metadata, artifacts):
-    """Bind original SRC-28 metadata to the one registered local dpkg adapter.
+def _verified_offline_dpkg_streams(metadata, artifacts, recorded):
+    """G5-03 SRC-28 sealed originals and owner-approved private 0.3 witness.
 
-    The G5-03 AdditionalOutcome retains source operation and per-stream labels,
-    but not the exact executed argv or process return code. Do not manufacture
-    either fact; only the selected adapter and stream identity are attested.
+    A successful completed source may never be promoted from legacy 0.1 with
+    only a nominal OFFLINE_METADATA label and no actual process facts.
+    The original receipt and the in-memory G5-03 outcome must agree on the
+    fixed resolved dpkg-query argv, actual return code and sampled clocks.
     """
     if (metadata.get("attempt_id") != "SRC-28-01"
+            or metadata.get("source_id") != "SRC-28"
+            or metadata.get("operation_id") != "OFFLINE_METADATA"
             or metadata.get("invocation") != "OFFLINE_METADATA"
             or metadata.get("target") is not None
             or type(metadata.get("source_paths")) is not list
-            or len(metadata["source_paths"]) != len(artifacts)
-            or metadata.get("exit_code") is not None):
-        raise CanonicalContractError("OFFLINE_METADATA unverified adapter receipt")
+            or len(metadata["source_paths"]) != len(artifacts)):
+        raise CanonicalContractError("OFFLINE_METADATA unapproved adapter or target")
+
+    p=metadata.get("execution_provenance")
+    if p is None:
+        if metadata.get("outcome") in ("CAPTURED","PARTIAL") and artifacts:
+            raise CanonicalContractError("OFFLINE_METADATA legacy missing execution witness")
+        if metadata.get("schema_version") != "g5-02-attempt-0.1":
+            raise CanonicalContractError("OFFLINE_METADATA unwitnessed schema mismatch")
+    else:
+        keys={"argv_executed","exit_code","started_utc",
+              "completed_utc","elapsed_seconds"}
+        if (metadata.get("schema_version")!="g5-02-attempt-0.3"
+                or type(p) is not dict or set(p)!=keys
+                or p != getattr(recorded.outcome,"execution_provenance",None)
+                or metadata.get("exit_code")!=p["exit_code"]):
+            raise CanonicalContractError("OFFLINE_METADATA execution witness mismatch")
+        argv=p["argv_executed"]
+        if (type(argv) is not list or len(argv)!=len(_DPKG_ARGV)
+                or type(argv[0]) is not str
+                or argv[0] not in ("/usr/bin/dpkg-query","/bin/dpkg-query",
+                                  "/usr/sbin/dpkg-query","/sbin/dpkg-query")
+                or argv[1:]!=list(_DPKG_ARGV[1:])):
+            raise CanonicalContractError("OFFLINE_METADATA unapproved actual command")
+        code=p["exit_code"]
+        if code is not None and (type(code) is not int or abs(code)>65535):
+            raise CanonicalContractError("OFFLINE_METADATA invalid actual returncode")
+        duration=p["elapsed_seconds"]
+        if (type(duration) not in (int,float) or not math.isfinite(duration)
+                or duration<0 or duration>20):
+            raise CanonicalContractError("OFFLINE_METADATA invalid monotonic duration")
+        try:
+            start=p["started_utc"];end=p["completed_utc"]
+            if (type(start) is not str or type(end) is not str
+                    or not start.endswith("Z") or not end.endswith("Z")):
+                raise ValueError()
+            a=datetime.fromisoformat(start[:-1]+"+00:00")
+            b=datetime.fromisoformat(end[:-1]+"+00:00")
+            if b<a:
+                raise ValueError()
+        except (TypeError,ValueError,AttributeError) as exc:
+            raise CanonicalContractError("OFFLINE_METADATA invalid recorded clock") from exc
+
     names=[a.artifact for a in artifacts]
     labels=metadata["source_paths"]
     expected=["call0001-stdout","call0001-stderr"]
-    if (len(names)>2 or len(set(names))!=len(names)
+    if (len(names)>2 or len(names)!=len(set(names))
             or any(name not in expected for name in names)
             or names != sorted(names,key=expected.index)
             or labels != ["installed-packages:"+name.rsplit("-",1)[-1]
@@ -812,7 +857,9 @@ def build_canonical(run_directory, engine_run):
                 raise CanonicalContractError(
                     "IP_LOCAL captured transport contradicts original/exit evidence")
         if source_id == "SRC-28" and metadata["outcome"] == "CAPTURED":
-            if (metadata.get("timed_out") is not False
+            if (type(metadata.get("exit_code")) is not int
+                    or metadata["exit_code"] != 0
+                    or metadata.get("timed_out") is not False
                     or metadata.get("capture_limited") is not False
                     or not artifacts
                     or any(a.limit_applied or not a.complete for a in artifacts)):
@@ -826,7 +873,7 @@ def build_canonical(run_directory, engine_run):
                            if source_id == "SRC-20" else
                            _verified_ip_local_streams(metadata, artifacts)
                            if source_id == "SRC-23" else
-                           _verified_offline_dpkg_streams(metadata, artifacts)
+                           _verified_offline_dpkg_streams(metadata, artifacts, item)
                            if source_id == "SRC-28" else
                            tuple(a.artifact.rsplit("-", 1)[-1] for a in artifacts)
                            if source_id in ("SRC-13", "SRC-18", "SRC-21") and o1_verified else ())
@@ -965,7 +1012,10 @@ def build_canonical(run_directory, engine_run):
                      ("; target=" + metadata["target"]
                       if metadata["reason"] == "ACQUISITION_ERROR" else "")
                      if metadata["outcome"] == "PARTIAL" and
-                        metadata["reason"] in ("EXIT_NONZERO","ACQUISITION_ERROR")
+                        (metadata["reason"] in ("EXIT_NONZERO","ACQUISITION_ERROR")
+                         or (source_id == "SRC-28" and
+                             metadata["reason"] == "SOURCE_INCOMPLETE" and
+                             metadata.get("exit_code") is not None))
                      else "") +
                     (("; parser_errors=" + ",".join(parser_failures))
                      if parser_failures else ("; parser=verified" if parser_executions else
