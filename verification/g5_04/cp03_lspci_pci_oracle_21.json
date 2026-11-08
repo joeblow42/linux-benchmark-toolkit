@@ -1,0 +1,22 @@
+{
+  "record_id": "LBT-G504-CP03-SRC20-SOURCE-FIRST-ORACLE-21",
+  "date": "2026-11-08",
+  "phase": "FROZEN_BEFORE_PARSER_EDIT",
+  "parent_pr": 44,
+  "parent_sha": "838c9d6b284b9d08dde1e1ee266adfb5cc485203",
+  "authority": [
+    "G4-07 SRC-20 COL-GPU D1 LSPCI local unprivileged lspci -nn, 16MiB total, stdout12MiB/stderr4MiB, one call, 6sec",
+    "G5-03 lbt_g5/runtime.py _APPROVED_COMMANDS and original call0001-stdout/stderr + D1 transport receipt",
+    "lspci(8) https://man7.org/linux/man-pages/man8/lspci.8.html: default format is human readable and NOT guaranteed stable; -m/-vmm preferred for machine readability but unapproved command change prohibited",
+    "Concrete / Debian examples of -nn slot, class code and vendor:device ID: https://wiki.debian.org/HowToIdentifyADevice/PCI"
+  ],
+  "expected": {
+    "grammar": "Conservative subset of lspci -nn one device per line: optional four-hex-digit domain + two-hex-digit bus:device.function, reported class label [hex4], colon, reported text ending [vendor4:device4], optional (rev hex2). Strict UTF-8, final newline, bounded rows, reject anything outside recognized grammar rather than invent missing IDs.",
+    "shape": "Ordered ARRAY datum gpu.pci.lspci.devices; each record keeps slot, class label, class_code, reported description, numeric vendor_id, numeric device_id and optional revision. Preserve display description as source-reported, without declaring a verified installed driver or active render capability.",
+    "limitations": "`-nn` human-readable output is not a stable machine API. Additional syntaxes/localized output become PARSE_FAILED with originals intact. Parser max 1MiB while acquisition may capture 12MiB stdout. No external PCI bus probe or source command change.",
+    "lineage": "exact invocation `lspci -nn`, D1 command original `call0001-stdout`, empty source_paths, no target, stderr diagnostic-only, seal and verify SHA before parsing.",
+    "status": "Malformed captured original -> PARTIAL/PARSE_FAILED; authentic D1 PARTIAL/EXIT_NONZERO -> PARTIAL/SOURCE_INCOMPLETE with actual exit retained; original capture-limit precedence.",
+    "adverse": "malformed vendor brackets, invalid slot, invalid hex class/IDs/revision, duplicate slot, control bytes and invalid UTF8, oversize lines and file, stderr-only success, source paths/command forgery, wrong call ordinal, original hash tamper.",
+    "assurance": "AI-authored source-first oracle and tests not independent human/third-party acceptance."
+  }
+}
