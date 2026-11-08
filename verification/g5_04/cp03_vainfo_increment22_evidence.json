@@ -1,0 +1,35 @@
+{
+  "record_id": "LBT-G504-CP03-22-SCOPED-ENGINEERING-CHECKPOINT",
+  "date_local": "2026-11-08",
+  "pr_number": 46,
+  "branch": "g5/cp03-vaapi-vainfo-o1-22",
+  "parent_pr": 45,
+  "parent_sha": "7482c4f654309231204a703eccae7739f4a7f5ef",
+  "source_first_oracle_commit": "fa9743d34fbed685850fff9fa4233f1074f0010e",
+  "source_first_test_commit": "f8b3d3533859ecfb4ebc4f8787707d85df390692",
+  "code_head_before_evidence": "5aa0b2e6e45ea7c1917ba9fc2791c8ff0c57448e",
+  "workflow_run_id": 42515123436,
+  "workflow_conclusion": "success",
+  "new_tests": {
+    "PASS": 11,
+    "FAIL": 0
+  },
+  "unified_full": {
+    "PASS": 21,
+    "FAIL": 0,
+    "SKIP": 0,
+    "BLOCKED": 0,
+    "NOT_APPLICABLE": 0
+  },
+  "source": "SRC-21",
+  "method": "O1 VAINFO; one-run selected /dev/dri/renderDNNN; existing vetted vainfo --display drm --device; 8MiB, one call, 10sec",
+  "semantic_scope": "source-reported VA-API version text, driver version text and ordered profile/entrypoint pairs only; no benchmark, confirmed playback, effective acceleration or device health claims",
+  "provenance": "requires in-memory O1 consent+approved argv and same-run sealed SRC-19 cardN D0 witness; stdout only, stderr diagnostic; original bytes unmodified and SHA-verified",
+  "limitations": [
+    "1MiB semantic parser ceiling vs G4-07 8MiB acquisition source limit; original captured bytes always sealed even on parser failure.",
+    "Render node mapping was checked by existing G5-03 device validation at time of execution, not re-probed in normalizer. No independent proof of current node identity after capture.",
+    "Same AI authored source-first oracle, fixtures and parser; no independent human review, Bodhi Linux 7 AMD64 on-target acceptance, production gating or owner acceptance."
+  ],
+  "protected": "Requirements Rev1.6, private canonical 1.0.0, status 1.0, G4-07 source authorization and publication policy unchanged",
+  "candidate_parsers": "26/28; SRC-23 and SRC-28 remain; CP-03 G5-04 OPEN; zero requirements VERIFIED"
+}
