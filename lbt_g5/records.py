@@ -8,6 +8,7 @@ absence, partial capture and preservation failures.
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 import json
+import math
 import os
 import re
 import secrets
@@ -43,6 +44,8 @@ class AttemptReceipt:
     capture_limited: bool = False
     # G5-02 optional O1 execution witness (not a G5-04 schema field).
     authorization_provenance: dict | None = None
+    # Owner Alternative A, 2026-11-08: SRC-28 private execution facts only.
+    execution_provenance: dict | None = None
 
 def utc_now():
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00","Z")
@@ -51,7 +54,7 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                   *,evidence=(),bytes_count=0,missing=None,errors=(),
                   invocation="NOT_INVOKED",target=None,source_paths=(),unavailable_fields=(),
                   exit_code=None,elapsed_seconds=None,timed_out=False,capture_limited=False,
-                  authorization_provenance=None):
+                  authorization_provenance=None,execution_provenance=None):
     policy={p.source_id:p for p in initial_source_policies()}.get(source_id)
     if not valid_run_id(run_id) or policy is None:
         raise ValueError("invalid source or run identity")
@@ -78,7 +81,45 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                 or type(authorization_provenance) is not dict
                 or len(str(authorization_provenance)) > 4096):
             raise ValueError("invalid O1 operational authorization provenance")
-    return AttemptReceipt("g5-02-attempt-0.2" if authorization_provenance else
+    if execution_provenance is not None:
+        witness=execution_provenance
+        keys={"argv_executed","exit_code","started_utc",
+              "completed_utc","elapsed_seconds"}
+        if (source_id != "SRC-28" or decision != "ALLOW"
+                or policy.operation_id != "OFFLINE_METADATA"
+                or invocation != "OFFLINE_METADATA"
+                or authorization_provenance is not None
+                or type(witness) is not dict or set(witness) != keys):
+            raise ValueError("SRC-28 execution witness invalid scope or shape")
+        argv=witness["argv_executed"]
+        suffix=("-W","-f=$"+"{Package}"+r"\\t$"+"{Version}"+r"\\n")
+        if (type(argv) not in (tuple,list) or len(argv)!=3
+                or type(argv[0]) is not str
+                or argv[0] not in ("/usr/bin/dpkg-query","/bin/dpkg-query",
+                                   "/usr/sbin/dpkg-query","/sbin/dpkg-query")
+                or tuple(argv[1:]) != suffix):
+            raise ValueError("SRC-28 actual argv outside approved fixed template")
+        code=witness["exit_code"]
+        if (code is not None and (type(code) is not int or abs(code)>65535)
+                or code != exit_code):
+            raise ValueError("SRC-28 witness return-code mismatch")
+        duration=witness["elapsed_seconds"]
+        if (type(duration) not in (int,float) or not math.isfinite(duration)
+                or duration<0 or duration>RUN_SECONDS):
+            raise ValueError("SRC-28 witness invalid monotonic duration")
+        try:
+            start=witness["started_utc"];end=witness["completed_utc"]
+            if (type(start) is not str or type(end) is not str
+                    or not start.endswith("Z") or not end.endswith("Z")):
+                raise ValueError("SRC-28 timestamps must be UTC")
+            a=datetime.fromisoformat(start[:-1]+"+00:00")
+            b=datetime.fromisoformat(end[:-1]+"+00:00")
+            if b<a:
+                raise ValueError("SRC-28 end precedes start")
+        except (TypeError,AttributeError,ValueError) as exc:
+            raise ValueError("SRC-28 actual execution clock invalid") from exc
+    return AttemptReceipt("g5-02-attempt-0.3" if execution_provenance else
+                          "g5-02-attempt-0.2" if authorization_provenance else
                           "g5-02-attempt-0.1",run_id,
         f"{source_id}-{attempt}",policy.collector_id,source_id,
         policy.operation_id,policy.authorization_class,
@@ -87,7 +128,8 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
         source_paths=tuple(source_paths),unavailable_fields=tuple(unavailable_fields),
         exit_code=exit_code,elapsed_seconds=elapsed_seconds,
         timed_out=bool(timed_out),capture_limited=bool(capture_limited),
-        authorization_provenance=authorization_provenance)
+        authorization_provenance=authorization_provenance,
+        execution_provenance=execution_provenance)
 
 def _safe_private_dir(parent_fd,name):
     try: os.mkdir(name,0o700,dir_fd=parent_fd)
@@ -110,6 +152,8 @@ def commit_attempt(run_directory,receipt):
     fields=asdict(receipt)
     if fields["authorization_provenance"] is None:
         del fields["authorization_provenance"]  # Preserve legacy 0.1 receipt envelope.
+    if fields["execution_provenance"] is None:
+        del fields["execution_provenance"]  # Other source IDs retain exact old shape.
     payload=(json.dumps(fields,sort_keys=True,separators=(",",":"),
                         allow_nan=False)+"\n").encode("utf-8")
     if len(payload)>256*1024:
