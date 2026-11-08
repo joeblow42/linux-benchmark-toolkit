@@ -74,7 +74,9 @@ class VainfoO1SourceFirstOracles(unittest.TestCase):
                       authorization_provenance=witness if memory_witness else None))
         if tamper:
             (folder/original_va.private_relative_path).write_bytes(b"forged\n")
-        run=EngineRun(RUN,(CollectorRun("COL-VAAPI",tuple(entries)),))
+        collectors = ((CollectorRun("COL-GPU", (entries[0],)),)
+                      if include_inventory else ())
+        run=EngineRun(RUN,collectors+(CollectorRun("COL-VAAPI",(entries[-1],)),))
         return folder,run,original_va
 
     def test_approved_registered_o1_source_and_parser(self):
