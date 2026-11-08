@@ -90,8 +90,8 @@ class PlatformParserTests(unittest.TestCase):
         self.assertTrue(parser_available("SRC-13"))
         self.assertTrue(parser_available("SRC-14"))  # CP03-18 fixed D0 proc source
         self.assertTrue(parser_available("SRC-15"))  # CP03-19 local D1 FS_STAT
-        for sid in ("SRC-28",):
-            self.assertFalse(parser_available(sid))
+        self.assertTrue(parser_available("SRC-28"))
+        self.assertFalse(parser_available("SRC-29"))
 
 
 class PlatformCanonicalIntegrationTests(unittest.TestCase):
