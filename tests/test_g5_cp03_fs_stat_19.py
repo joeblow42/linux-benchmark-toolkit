@@ -199,8 +199,8 @@ class FSStatSourceOracles(unittest.TestCase):
         for names, labels in ((("call0002-stdout",),("/:stdout",)),
                               (("item0001",),("/:stdout",)),
                               (("call0001-stderr",),("/:stdout",)),
-                              (("call0001-stdout","call0001-stdout"),
-                               ("/:stdout","/:stdout"))):
+                              (("call0001-stderr","call0001-stdout"),
+                               ("/:stderr","/:stdout"))):
             with self.subTest(names=names), self.session(names=names,labels=labels) as (folder,run,_):
                 with self.assertRaises(CanonicalContractError):
                     build_canonical(folder,run)
