@@ -15,6 +15,7 @@ from .src13_normalization import parse_src13, SRC13ParseError
 from .mountinfo_normalization import parse_mountinfo, MountinfoParseError
 from .fs_stat_normalization import parse_fs_stat_stdout, FSStatParseError
 from .optical_media_normalization import parse_optical_media, OpticalMediaParseError
+from .lspci_normalization import parse_lspci_nn, LspciParseError
 
 
 MAX_PARSER_BYTES = 1024 * 1024
@@ -1056,9 +1057,22 @@ def _parse_optical_media_stdout(raw, *, source_target):
     ))
 
 
+# SRC-20 D1 lspci -nn human-readable snapshot; only parsed reported PCI IDs.
+def _parse_lspci_stdout(raw):
+    try:
+        records = parse_lspci_nn(raw)
+    except LspciParseError as exc:
+        raise SourceParseError(str(exc)) from exc
+    return ParseResult("linux-lspci-nn-bounded-v1", (
+        ParsedDatum("gpu.pci.lspci.devices", "LSPCI_NN_HUMAN_ROWS",
+                    records, "ARRAY"),
+    ))
+
+
 # Intentional bounded list. Unsupported source families are not normalized
 # by interpreting raw bytes as arbitrary meaningful inventory fields.
 PARSERS = {
+    "SRC-20": _parse_lspci_stdout,
     "SRC-18": _parse_optical_media_stdout,
     "SRC-15": _parse_fsstat_stdout,
     "SRC-14": _parse_mountinfo_file,
@@ -1122,7 +1136,7 @@ def normalize_sealed_source(source_id, raw, *, source_path=None,
         if source_stream != "stdout" or type(source_path) is not str:
             raise SourceParseError("FSSTAT_UNVERIFIED_DATA_STREAM")
         return parser(raw, source_path=source_path)
-    if source_id in ("SRC-05", "SRC-11"):
+    if source_id in ("SRC-05", "SRC-11", "SRC-20"):
         if source_path is not None or source_stream != "stdout":
             raise SourceParseError("D1_UNVERIFIED_DATA_STREAM")
         return parser(raw)
