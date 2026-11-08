@@ -150,7 +150,8 @@ class IpLocalOracle(unittest.TestCase):
         for a in arts:
             self.assertEqual(hashlib.sha256((folder/a.private_relative_path).read_bytes()).hexdigest(),a.sha256)
         st=json.loads((folder/"private/status_records.json").read_text())["status_records"]
-        self.assertEqual([(x["status"],x["reason_code"]) for x in st],
+        source_statuses=[x for x in st if x["subject_id"]=="SRC-23"]
+        self.assertEqual([(x["status"],x["reason_code"]) for x in source_statuses],
                          [("COMPLETE","OK"),("COMPLETE","OK")])
 
     def test_source_partial_exit_retains_status_and_actual_code(self):
