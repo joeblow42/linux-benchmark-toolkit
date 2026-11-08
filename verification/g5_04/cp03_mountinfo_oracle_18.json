@@ -1,0 +1,33 @@
+{
+  "record_id": "LBT-G504-CP03-SRC14-SOURCE-FIRST-ORACLE-18",
+  "date": "2026-11-07",
+  "phase": "FROZEN_BEFORE_PARSER_SOURCE_EDIT",
+  "parent_pr": 40,
+  "parent_sha": "aeb7e1e8d4811571da0786132c66398e6575a8c6",
+  "authority": "G4-07 SRC-14 COL-FS D0 MOUNTINFO fixed file /proc/self/mountinfo; Rev1.6, private canonical 1.0.0, distinct 14-field status 1.0; no new acquisition or permissions",
+  "source": "Linux kernel /proc/<pid>/mountinfo specification; https://cdn.kernel.org/doc/html/latest/filesystems/proc.html ; https://man.archlinux.org/man/proc_pid_mountinfo.5.en",
+  "expected": {
+    "acquisition": "One D0 fixed file; verified private receipt source_paths exactly ['/proc/self/mountinfo']; one sealed item0001; no executable invocation or target; preserve original bytes without rewriting",
+    "shape": "One bounded ARRAY datum storage.mountinfo.records. Each record stores mount_id, parent_id, major, minor, root, mount_point, mount_options, optional_fields, filesystem_type, mount_source, super_options. No inferred mount graph or writable status.",
+    "grammar": "mount_id parent_id major:minor root mountpoint per-mount-options [optional tag[:value] ...] - fs_type mount_source super_options; require exactly one separator and 3 trailing fields",
+    "paths": "Decode only /proc mountinfo four octal path escapes: backslash+040 (space), 011(tab), 012(linefeed), 134(backslash); reject malformed/unknown escapes and control characters. Never resolve or traverse decoded paths",
+    "numbers": "Numeric IDs and major/minor decimal unsigned, within 64-bit bound; mount IDs unique within snapshot. Parent can be outside snapshot, and mountpoints may repeat",
+    "other": "Preserve unknown optional fields as opaque text; do not infer mount propagation semantics, filesystem accessibility, health, or mount option effects. Keep mount and super options opaque strings",
+    "bounds": "At most 1MiB parser input, 4096 records, bounded line/field lengths, strict UTF8. Larger valid captures remain original and parser-failed with recorded limitation",
+    "status": "Captured/verified/parsed -> COMPLETE/OK. Captured/invalid bytes -> PARTIAL/PARSE_FAILED with original preserved. Partial/capture-limited retains CAPTURE_LIMIT precedence. Denied/unavailable unchanged"
+  },
+  "negative": [
+    "wrong/missing source path, extra path, wrong artifact ordinal/count, wrong file vs worker ROOTS, arbitrary source_path in direct API -> refuse",
+    "missing final newline or missing separator, too few/many columns, malformed major:minor, duplicate mount ID, invalid parent, invalid root/mountpoint -> parser-failed original only",
+    "invalid UTF8, NUL/CR/raw tab, unsupported \\999/\\400/\\123 escape, overlength line, >4096 records, >1MiB bytes -> fail parser boundedly",
+    "unsupported command attribution, explicit stream for D0 source, fabricated target, cross-run artifact, changed hash -> fail closed",
+    "unknown optional field is retained verbatim; root parent ID absent from snapshot is valid; duplicate mountpoint is valid",
+    "no new source permission, no external command, no following filesystem paths, no public original evidence pointers"
+  ],
+  "verification": {
+    "new_suite": "tests/test_g5_cp03_mountinfo_18.py",
+    "prior": "All prior CP-03 fixtures, O1-16 and SRC-13-17, unified Full 21",
+    "author": "AI-assisted oracle; NOT independent reviewer",
+    "gate": "CP03 IN_PROGRESS, G5-04 OPEN"
+  }
+}
