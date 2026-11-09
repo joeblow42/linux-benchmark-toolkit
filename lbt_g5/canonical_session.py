@@ -401,7 +401,7 @@ def _verified_offline_dpkg_streams(metadata, artifacts, recorded):
     else:
         keys={"argv_executed","exit_code","started_utc",
               "completed_utc","elapsed_seconds"}
-        if (metadata.get("schema_version")!="g5-02-attempt-0.3"
+        if (metadata.get("schema_version") not in ("g5-02-attempt-0.3","g5-02-attempt-0.4")
                 or type(p) is not dict or set(p)!=keys
                 or p != getattr(recorded.outcome,"execution_provenance",None)
                 or metadata.get("exit_code")!=p["exit_code"]):
@@ -524,7 +524,7 @@ def _verified_o1_provenance(folder, run_id, receipt, recorded, all_attempts,
     upstream = {"SRC-13":"SRC-12", "SRC-18":"SRC-17",
                 "SRC-21":"SRC-19"}.get(sid)
     if (upstream is None or receipt.get("authorization_class") != "O1"
-            or receipt.get("schema_version") != "g5-02-attempt-0.2"
+            or receipt.get("schema_version") not in ("g5-02-attempt-0.2","g5-02-attempt-0.4")
             or receipt.get("decision") != "ALLOW"
             or type(p) is not dict or set(p) != fields
             or recorded.authorization_provenance != p
@@ -786,6 +786,31 @@ def build_canonical(run_directory, engine_run):
                 or receipt_path != "private/source_attempt_records/" + attempt_id + ".json"
                 or attempt_id in attempted):
             raise CanonicalContractError("invalid/duplicate source receipt")
+        source_timing=metadata.get("source_timing")
+        recorded_timing=getattr(item,"source_timing",None)
+        if source_timing is not None:
+            if (metadata.get("schema_version")!="g5-02-attempt-0.4"
+                    or type(source_timing) is not dict
+                    or set(source_timing)!={"started_utc","completed_utc","elapsed_ms"}
+                    or source_timing != recorded_timing
+                    or metadata.get("decision") != "ALLOW"
+                    or metadata.get("outcome") not in ("CAPTURED","PARTIAL","FAILED")):
+                raise CanonicalContractError("measured source timing missing or contradicted")
+            start=source_timing["started_utc"]
+            end=source_timing["completed_utc"]
+            duration=source_timing["elapsed_ms"]
+            if (type(start) is not str or type(end) is not str
+                    or not start.endswith("Z") or not end.endswith("Z")
+                    or type(duration) is not int or not 0<=duration<=600000):
+                raise CanonicalContractError("invalid actual source execution time")
+            try:
+                a=datetime.fromisoformat(start[:-1]+"+00:00")
+                b=datetime.fromisoformat(end[:-1]+"+00:00")
+                if b<a: raise ValueError()
+            except ValueError as exc:
+                raise CanonicalContractError("actual acquisition clock order invalid") from exc
+        elif metadata.get("schema_version")=="g5-02-attempt-0.4" or recorded_timing is not None:
+            raise CanonicalContractError("versioned source clock missing")
         attempted.add(attempt_id)
         all_attempt_ids.add(attempt_id)
         source_ids.add(source_id)
@@ -1020,6 +1045,9 @@ def build_canonical(run_directory, engine_run):
                     (("; parser_errors=" + ",".join(parser_failures))
                      if parser_failures else ("; parser=verified" if parser_executions else
                                               "; parser=not-run")))[:1024],
+            started_utc=(source_timing["started_utc"] if source_timing else None),
+            completed_utc=(source_timing["completed_utc"] if source_timing else None),
+            elapsed_ms=(source_timing["elapsed_ms"] if source_timing else None),
             evidence_refs=linked, source_attempt_ids=[attempt_id],
             limit_record_ids=([limit_id] if limit_id else [])))
         attempts.append({
