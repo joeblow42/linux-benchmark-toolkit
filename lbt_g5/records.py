@@ -48,6 +48,8 @@ class AttemptReceipt:
     execution_provenance: dict | None = None
     # Truthful measured existing G5-03 adapter entry/exit, D-04.
     source_timing: dict | None = None
+    # Effective bound facts from the worker transport, never guessed.
+    limit_witness: dict | None = None
 
 def utc_now():
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00","Z")
@@ -57,7 +59,7 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                   invocation="NOT_INVOKED",target=None,source_paths=(),unavailable_fields=(),
                   exit_code=None,elapsed_seconds=None,timed_out=False,capture_limited=False,
                   authorization_provenance=None,execution_provenance=None,
-                  source_timing=None):
+                  source_timing=None,limit_witness=None):
     policy={p.source_id:p for p in initial_source_policies()}.get(source_id)
     if not valid_run_id(run_id) or policy is None:
         raise ValueError("invalid source or run identity")
@@ -139,7 +141,38 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                 raise ValueError("source end precedes start")
         except ValueError as exc:
             raise ValueError("invalid source UTC clock") from exc
-    return AttemptReceipt("g5-02-attempt-0.4" if source_timing else
+    if limit_witness is not None:
+        bound=limit_witness
+        keys={"unit","threshold","observed_extent","missing_extent",
+              "affected_scope","reason"}
+        if (type(bound) is not dict or set(bound)!=keys
+                or decision!="ALLOW" or outcome not in ("PARTIAL","FAILED")
+                or bound["unit"] not in ("seconds","bytes")
+                or bound["reason"] not in ("CAPTURE_LIMIT","TIME_BUDGET_EXCEEDED")
+                or (bound["unit"]=="seconds")!=(bound["reason"]=="TIME_BUDGET_EXCEEDED")):
+            raise ValueError("unproven capture-limit dimension")
+        scope=bound["affected_scope"]
+        if (type(scope) is not str or not re.fullmatch(
+                re.escape(source_id)+r":call[0-9]{4}:(transport|stdout|stderr)",scope)):
+            raise ValueError("capture-limit scope outside approved source")
+        th=bound["threshold"];observed=bound["observed_extent"]
+        if (type(th) not in (int,float) or type(observed) not in (int,float)
+                or not all(math.isfinite(float(v)) for v in (th,observed))
+                or th<=0 or observed<0):
+            raise ValueError("invalid measured capture limit")
+        bound_missing=bound["missing_extent"]
+        if bound["unit"]=="seconds":
+            per=policy.per_target_seconds or policy.max_seconds
+            if th>per or bound_missing is not None or timed_out is not True:
+                raise ValueError("unproved actual time ceiling or missing bytes")
+        else:
+            if (th>policy.max_bytes or type(th) is not int
+                    or type(observed) is not int
+                    or observed>th or type(bound_missing) not in (int,type(None))
+                    or (bound_missing is not None and bound_missing<0)):
+                raise ValueError("invalid observed byte ceiling or omitted extent")
+    return AttemptReceipt("g5-02-attempt-0.5" if limit_witness else
+                          "g5-02-attempt-0.4" if source_timing else
                           "g5-02-attempt-0.3" if execution_provenance else
                           "g5-02-attempt-0.2" if authorization_provenance else
                           "g5-02-attempt-0.1",run_id,
@@ -152,7 +185,8 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
         timed_out=bool(timed_out),capture_limited=bool(capture_limited),
         authorization_provenance=authorization_provenance,
         execution_provenance=execution_provenance,
-        source_timing=source_timing)
+        source_timing=source_timing,
+        limit_witness=limit_witness)
 
 def _safe_private_dir(parent_fd,name):
     try: os.mkdir(name,0o700,dir_fd=parent_fd)
@@ -179,6 +213,8 @@ def commit_attempt(run_directory,receipt):
         del fields["execution_provenance"]  # Other source IDs retain exact old shape.
     if fields["source_timing"] is None:
         del fields["source_timing"]  # Old schema envelopes remain byte-compatible.
+    if fields["limit_witness"] is None:
+        del fields["limit_witness"]
     payload=(json.dumps(fields,sort_keys=True,separators=(",",":"),
                         allow_nan=False)+"\n").encode("utf-8")
     if len(payload)>256*1024:
