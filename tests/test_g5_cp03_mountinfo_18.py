@@ -242,15 +242,15 @@ class MountinfoOracles(unittest.TestCase):
                         build_canonical(folder,run)
                     self.assertFalse((folder/"private/session_manifest.json").exists())
 
-    def test_partial_capture_never_complete_even_with_valid_prefix(self):
+    def test_legacy_partial_without_applied_dimension_fails_closed(self):
+        # F-04: a CAPTURE_LIMIT flag without the actual effective byte/time
+        # ceiling cannot create a truthful production CaptureLimit record.
+        # Original bytes stay sealed; final manifest is not created.
         with self.original(RAW, outcome="PARTIAL", reason="CAPTURE_LIMIT",
-                           capture_limited=True) as (folder,run,_):
-            manifest=build_canonical(folder,run)
-            self.assertEqual(validate_canonical(folder),manifest)
-            status=json.loads((folder/"private/status_records.json").read_text())
-            self.assertEqual((status["status_records"][0]["status"],
-                              status["status_records"][0]["reason_code"]),
-                             ("PARTIAL","CAPTURE_LIMIT"))
+                           capture_limited=True) as (folder,run,artifacts):
+            with self.assertRaises(CanonicalContractError):
+                build_canonical(folder,run)
+            self.assertFalse((folder/"private/session_manifest.json").exists())
 
 
 if __name__=="__main__":
