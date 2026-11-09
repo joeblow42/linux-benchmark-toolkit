@@ -214,14 +214,14 @@ class FSStatSourceOracles(unittest.TestCase):
             with self.assertRaises(CanonicalContractError):
                 build_canonical(folder,run)
 
-    def test_partial_capture_precedence(self):
+    def test_legacy_partial_unknown_actual_bound_fails_closed(self):
+        # F-04: a CAPTURE_LIMIT flag alone cannot prove which effective
+        # source/stream ceiling was exceeded or how much was omitted.
         with self.session(outcome="PARTIAL", reason="CAPTURE_LIMIT",
                           limited=True) as (folder,run,_):
-            build_canonical(folder,run)
-            status=json.loads((folder/"private/status_records.json").read_text())
-            src15 = next(s for s in status["status_records"] if s["subject_id"] == "SRC-15")
-            self.assertEqual((src15["status"], src15["reason_code"]),
-                             ("PARTIAL","CAPTURE_LIMIT"))
+            with self.assertRaises(CanonicalContractError):
+                build_canonical(folder,run)
+            self.assertFalse((folder/"private/session_manifest.json").exists())
 
 if __name__ == "__main__":
     unittest.main()
