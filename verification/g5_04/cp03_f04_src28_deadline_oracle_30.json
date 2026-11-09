@@ -1,0 +1,33 @@
+{
+  "oracle_id": "CP03-F04-SRC28-DEADLINE-30",
+  "authority": [
+    "CP-01 D-04 actual applied time bound and measured extent",
+    "CP-01 D-02 exact CaptureLimit fields",
+    "Approved G4-07 SRC-28 8-second per-target bound",
+    "CP-03 Owner Alternative A exact SRC-28 execution provenance"
+  ],
+  "scope": "Mock-only one registered SRC-28 D1 offline package query; not live host collection",
+  "cases": [
+    {
+      "id": "S28-T01",
+      "given": "Approved fixed one-call dpkg-query transport returns a timed_out flag and preserved stdout, without stream, writer, or combined-cap overrun.",
+      "expect": "Private 0.5 source receipt retains prior actual argv/exit/time provenance and exact single seconds limit witness: threshold equals actual applied _capture_child deadline, observed_extent equals measured process duration, missing_extent null, source:call0001:transport. Canonical records matching CaptureLimit and PARTIAL/CAPTURE_LIMIT status."
+    },
+    {
+      "id": "S28-T02",
+      "given": "Same command reports a timeout and byte-cap overflow.",
+      "expect": "Seal original available bytes, retain timed_out and capture_limited, but do not claim a single event dimension. Canonical must reject missing bound witness."
+    },
+    {
+      "id": "S28-T03",
+      "given": "Command reports a timeout but downstream evidence writer applies a second byte bound.",
+      "expect": "Do not substitute the process deadline for both limits; no single witness and canonical fails closed."
+    },
+    {
+      "id": "S28-T04",
+      "given": "Completed 0-exit command and original data without a limit event.",
+      "expect": "No limit witness; canonical records no CaptureLimit and preserves established SRC-28 execution provenance."
+    }
+  ],
+  "acceptance": "AI-authored source-first fixtures; independent CT-05/CP-02 review remains OPEN"
+}
