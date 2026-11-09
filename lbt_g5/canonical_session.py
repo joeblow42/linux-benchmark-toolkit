@@ -401,7 +401,7 @@ def _verified_offline_dpkg_streams(metadata, artifacts, recorded):
     else:
         keys={"argv_executed","exit_code","started_utc",
               "completed_utc","elapsed_seconds"}
-        if (metadata.get("schema_version") not in ("g5-02-attempt-0.3","g5-02-attempt-0.4")
+        if (metadata.get("schema_version") not in ("g5-02-attempt-0.3","g5-02-attempt-0.4","g5-02-attempt-0.5")
                 or type(p) is not dict or set(p)!=keys
                 or p != getattr(recorded.outcome,"execution_provenance",None)
                 or metadata.get("exit_code")!=p["exit_code"]):
@@ -524,7 +524,7 @@ def _verified_o1_provenance(folder, run_id, receipt, recorded, all_attempts,
     upstream = {"SRC-13":"SRC-12", "SRC-18":"SRC-17",
                 "SRC-21":"SRC-19"}.get(sid)
     if (upstream is None or receipt.get("authorization_class") != "O1"
-            or receipt.get("schema_version") not in ("g5-02-attempt-0.2","g5-02-attempt-0.4")
+            or receipt.get("schema_version") not in ("g5-02-attempt-0.2","g5-02-attempt-0.4","g5-02-attempt-0.5")
             or receipt.get("decision") != "ALLOW"
             or type(p) is not dict or set(p) != fields
             or recorded.authorization_provenance != p
@@ -789,7 +789,7 @@ def build_canonical(run_directory, engine_run):
         source_timing=metadata.get("source_timing")
         recorded_timing=getattr(item,"source_timing",None)
         if source_timing is not None:
-            if (metadata.get("schema_version")!="g5-02-attempt-0.4"
+            if (metadata.get("schema_version") not in ("g5-02-attempt-0.4","g5-02-attempt-0.5")
                     or type(source_timing) is not dict
                     or set(source_timing)!={"started_utc","completed_utc","elapsed_ms"}
                     or source_timing != recorded_timing
@@ -809,7 +809,7 @@ def build_canonical(run_directory, engine_run):
                 if b<a: raise ValueError()
             except ValueError as exc:
                 raise CanonicalContractError("actual acquisition clock order invalid") from exc
-        elif metadata.get("schema_version")=="g5-02-attempt-0.4" or recorded_timing is not None:
+        elif metadata.get("schema_version") in ("g5-02-attempt-0.4","g5-02-attempt-0.5") or recorded_timing is not None:
             raise CanonicalContractError("versioned source clock missing")
         attempted.add(attempt_id)
         all_attempt_ids.add(attempt_id)
@@ -1014,19 +1014,47 @@ def build_canonical(run_directory, engine_run):
             metadata, artifacts, parser_state=parser_state,
             o1_provenance_verified=o1_verified)
         status_id = "st:" + attempt_id
-        if (metadata.get("capture_limited") or any(x.limit_applied for x in artifacts)):
-            limit_id = "limit:" + attempt_id
+        # F-04: a source/stream limit is a fact, not the source max_bytes.
+        # Only a same-run in-memory transport bound and v0.5 private receipt
+        # may establish the actual trigger dimension and applied threshold.
+        bound=metadata.get("limit_witness")
+        evidence_limited=(metadata.get("capture_limited")
+                          or metadata.get("timed_out")
+                          or any(x.limit_applied for x in artifacts))
+        if bound is not None:
+            facts=(item.outcome.get("limit_witness") if isinstance(item.outcome,dict)
+                   else getattr(item.outcome,"limit_witness",None))
+            if (metadata.get("schema_version")!="g5-02-attempt-0.5"
+                    or type(bound) is not dict or bound!=facts
+                    or set(bound)!={"unit","threshold","observed_extent",
+                                    "missing_extent","affected_scope","reason"}
+                    or not evidence_limited):
+                raise CanonicalContractError("unverified source capture-limit witness")
+            if ((bound["unit"]=="seconds" and (
+                     metadata.get("timed_out") is not True
+                     or bound["reason"]!="TIME_BUDGET_EXCEEDED"))
+                    or (bound["unit"]=="bytes" and (
+                     metadata.get("capture_limited") is not True
+                     or bound["reason"]!="CAPTURE_LIMIT"))
+                    or bound["unit"] not in ("seconds","bytes")):
+                raise CanonicalContractError("time/byte capture bound contradicted")
+            limit_id="limit:"+attempt_id
             limits.append({
-                "limit_id": limit_id, "source_attempt_id": attempt_id,
-                "approved_rule_id": "G4-07:" + source_id,
-                "threshold": policy.max_bytes, "unit": "bytes",
-                "observed_extent": metadata["acquired_bytes"],
-                "missing_extent": metadata.get("missing_extent_known_at_least"),
-                "affected_scope": source_id,
-                "reason": metadata["reason"],
+                "limit_id":limit_id,"source_attempt_id":attempt_id,
+                "approved_rule_id":"G4-07:"+source_id,
+                "threshold":bound["threshold"],"unit":bound["unit"],
+                "observed_extent":bound["observed_extent"],
+                "missing_extent":bound["missing_extent"],
+                "affected_scope":bound["affected_scope"],
+                "reason":bound["reason"],
             })
+        elif evidence_limited:
+            # Historical source attempts are preserved in private receipts.
+            # Without a recorded effective bound, never invent max_bytes for
+            # a timed-out worker or guess the amount omitted.
+            raise CanonicalContractError("capture-limit dimension not evidenced")
         else:
-            limit_id = None
+            limit_id=None
         statuses.append(new_status(
             record_id=status_id, domain="acquisition",
             component_id=policy.collector_id, subject_id=source_id,
