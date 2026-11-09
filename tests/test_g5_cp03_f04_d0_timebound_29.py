@@ -18,14 +18,14 @@ SRC = "SRC-02"
 
 
 def transport_record(*, record_limited=False, end=False):
-    value = b"NAME=Example\\n"
+    value = b"NAME=Example\n"
     record = {"path": "/etc/os-release",
               "bytes_b64": base64.b64encode(value).decode("ascii"),
               "limited": record_limited}
     lines = [record]
     if end:
         lines.append({"end": True, "entries": 1, "bytes": len(value), "limited": False})
-    return b"".join((json.dumps(x, sort_keys=True) + "\\n").encode() for x in lines)
+    return b"".join((json.dumps(x, sort_keys=True) + "\n").encode() for x in lines)
 
 
 class D0ActualTimeoutLimitOracles(unittest.TestCase):
