@@ -5,6 +5,8 @@ NOT a production launcher. Every returned attempt has an immutable private
 receipt, including denials and missing tools. Canonical/IC-04 statuses are G5-04.
 """
 from dataclasses import dataclass
+import time
+from .records import utc_now
 from .safety import SourceRequest, initial_source_policies
 from .passive import acquire_passive
 from .runtime import execute_source_command
@@ -17,6 +19,7 @@ class RecordedOutcome:
     outcome: object
     receipt_private_path: str
     authorization_provenance: dict | None = None
+    source_timing: dict | None = None
 
 def capture_and_record(request:SourceRequest,attempt,writer,slots,calls,
                        *,subcall=0,source14_evidence=None,
@@ -25,6 +28,9 @@ def capture_and_record(request:SourceRequest,attempt,writer,slots,calls,
     policy=policies.get(request.source_id)
     if policy is None:
         raise ValueError("unregistered source cannot create an approved attempt")
+    # Witness G5-03 adapter entry/exit on the existing single source path.
+    source_started_utc=utc_now()
+    source_started_ns=time.monotonic_ns()
     if policy.authorization_class=="D0":
         outcome=acquire_passive(request,attempt,writer,slots,calls)
     elif request.source_id in ("SRC-05","SRC-11","SRC-20","SRC-23"):
@@ -38,6 +44,8 @@ def capture_and_record(request:SourceRequest,attempt,writer,slots,calls,
     else:
         raise ValueError("approved source has no bounded adapter")
 
+    source_completed_ns=time.monotonic_ns()
+    source_completed_utc=utc_now()
     if isinstance(outcome,dict):
         items=tuple(outcome.get("receipts",()))
         state=outcome["disposition"]
@@ -67,6 +75,12 @@ def capture_and_record(request:SourceRequest,attempt,writer,slots,calls,
         timed_out=bool(getattr(outcome,"timed_out",False))
         capture_limited=bool(getattr(outcome,"capture_limited",False) or getattr(outcome,"limited",False))
     decision="DENY" if state=="DENIED" else "ALLOW"
+    # Denied/unavailable preflight does not prove that source execution began.
+    source_timing = (dict(started_utc=source_started_utc,
+                          completed_utc=source_completed_utc,
+                          elapsed_ms=max(0,(source_completed_ns-source_started_ns)//1000000))
+                     if decision=="ALLOW" and state in ("CAPTURED","PARTIAL","FAILED")
+                     else None)
     if len(source_paths)!=len(items):
         source_paths=()
     # The engine, not an external request, supplies the witnessed D0 binding.
@@ -102,6 +116,7 @@ def capture_and_record(request:SourceRequest,attempt,writer,slots,calls,
         timed_out=timed_out,capture_limited=capture_limited,
         authorization_provenance=provenance,
         execution_provenance=(getattr(outcome,"execution_provenance",None)
-                              if request.source_id=="SRC-28" else None))
+                              if request.source_id=="SRC-28" else None),
+        source_timing=source_timing)
     location=commit_attempt(writer.run_directory,record)
-    return RecordedOutcome(outcome,location,provenance)
+    return RecordedOutcome(outcome,location,provenance,source_timing)

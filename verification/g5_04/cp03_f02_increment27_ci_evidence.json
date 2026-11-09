@@ -1,0 +1,26 @@
+{
+  "id": "G504-CP03-F02-INC27",
+  "authority": "Owner-approved CP-01 D-04 plus exact 14-field status schema 1.0",
+  "source_first_oracle_commit": "15aeb007381aa828273e784d12527ec34e3d233c",
+  "source_first_fixture_commit": "2d971d8da41c9fea4480757499da2de0c92e9b18",
+  "base_sha": "ba75b172fe3c77acd775c93b8f09e84ac0480473",
+  "ci_tested_sha": "3fac317538c2d1211b0dc6d73e1390d72084661b",
+  "exact_head_ci": 42539996107,
+  "new_F02_tests": {
+    "pass": 5,
+    "fail": 0
+  },
+  "unified_full": {
+    "pass": 21,
+    "fail": 0
+  },
+  "remediation": "True entry/exit UTC sampled in existing receipt_dispatch adapter boundary with monotonic_ns; new source_timing on private g5-02-attempt-0.4. No inferred execution timing for denied/legacy records. Canonical status binds and checks trusted in-memory source timing, preserving O1 and SRC-28 command witnesses.",
+  "limitations": [
+    "AI-authored synthetic CI tests are not independent human acceptance",
+    "Historical legacy records with unrecorded times cannot be retroactively assigned times",
+    "CP-02 CT06 39-case independent acceptance remains NOT_EXECUTED",
+    "Approved D02 exact canonical structure F06 remains OPEN",
+    "F04 applied capture-limit dimension remains OPEN"
+  ],
+  "status": "CANDIDATE_VERIFIED_CI_NOT_ACCEPTED"
+}

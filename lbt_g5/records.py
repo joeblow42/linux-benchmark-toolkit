@@ -46,6 +46,8 @@ class AttemptReceipt:
     authorization_provenance: dict | None = None
     # Owner Alternative A, 2026-11-08: SRC-28 private execution facts only.
     execution_provenance: dict | None = None
+    # Truthful measured existing G5-03 adapter entry/exit, D-04.
+    source_timing: dict | None = None
 
 def utc_now():
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00","Z")
@@ -54,7 +56,8 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                   *,evidence=(),bytes_count=0,missing=None,errors=(),
                   invocation="NOT_INVOKED",target=None,source_paths=(),unavailable_fields=(),
                   exit_code=None,elapsed_seconds=None,timed_out=False,capture_limited=False,
-                  authorization_provenance=None,execution_provenance=None):
+                  authorization_provenance=None,execution_provenance=None,
+                  source_timing=None):
     policy={p.source_id:p for p in initial_source_policies()}.get(source_id)
     if not valid_run_id(run_id) or policy is None:
         raise ValueError("invalid source or run identity")
@@ -118,7 +121,26 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                 raise ValueError("SRC-28 end precedes start")
         except (TypeError,AttributeError,ValueError) as exc:
             raise ValueError("SRC-28 actual execution clock invalid") from exc
-    return AttemptReceipt("g5-02-attempt-0.3" if execution_provenance else
+    if source_timing is not None:
+        keys={"started_utc","completed_utc","elapsed_ms"}
+        if (type(source_timing) is not dict or set(source_timing)!=keys
+                or decision != "ALLOW" or outcome == "DENIED"):
+            raise ValueError("invalid factual acquisition timing envelope")
+        start=source_timing["started_utc"];end=source_timing["completed_utc"]
+        elapsed=source_timing["elapsed_ms"]
+        if (type(start) is not str or type(end) is not str
+                or not start.endswith("Z") or not end.endswith("Z")
+                or type(elapsed) is not int or not 0<=elapsed<=RUN_SECONDS*1000):
+            raise ValueError("invalid source clock type or duration")
+        try:
+            a=datetime.fromisoformat(start[:-1]+"+00:00")
+            b=datetime.fromisoformat(end[:-1]+"+00:00")
+            if a.tzinfo is None or b.tzinfo is None or b<a:
+                raise ValueError("source end precedes start")
+        except ValueError as exc:
+            raise ValueError("invalid source UTC clock") from exc
+    return AttemptReceipt("g5-02-attempt-0.4" if source_timing else
+                          "g5-02-attempt-0.3" if execution_provenance else
                           "g5-02-attempt-0.2" if authorization_provenance else
                           "g5-02-attempt-0.1",run_id,
         f"{source_id}-{attempt}",policy.collector_id,source_id,
@@ -129,7 +151,8 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
         exit_code=exit_code,elapsed_seconds=elapsed_seconds,
         timed_out=bool(timed_out),capture_limited=bool(capture_limited),
         authorization_provenance=authorization_provenance,
-        execution_provenance=execution_provenance)
+        execution_provenance=execution_provenance,
+        source_timing=source_timing)
 
 def _safe_private_dir(parent_fd,name):
     try: os.mkdir(name,0o700,dir_fd=parent_fd)
@@ -154,6 +177,8 @@ def commit_attempt(run_directory,receipt):
         del fields["authorization_provenance"]  # Preserve legacy 0.1 receipt envelope.
     if fields["execution_provenance"] is None:
         del fields["execution_provenance"]  # Other source IDs retain exact old shape.
+    if fields["source_timing"] is None:
+        del fields["source_timing"]  # Old schema envelopes remain byte-compatible.
     payload=(json.dumps(fields,sort_keys=True,separators=(",",":"),
                         allow_nan=False)+"\n").encode("utf-8")
     if len(payload)>256*1024:
