@@ -24,6 +24,8 @@ class AdditionalOutcome:
     limited: bool
     exit_code: int | None = None
     execution_provenance: dict | None = None
+    timed_out: bool = False
+    limit_witness: dict | None = None
 
 def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
                        slots:ProbeSlots,calls:SourceCallBudget,
@@ -32,11 +34,14 @@ def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
     # No execution witness is minted on a missing executable or failed spawn.
     executed_code = None
     execution_witness = None
+    observed_timeout = False
+    single_limit_witness = None
     def out(disposition,reason,artifacts=(),targets=(),errors=(),elapsed=0.,limited=False):
         return AdditionalOutcome(request.source_id,disposition,reason,tuple(artifacts),
                                  tuple(targets),tuple(errors),elapsed,limited,
                                  executed_code if request.source_id == "SRC-28" else None,
-                                 execution_witness if request.source_id == "SRC-28" else None)
+                                 execution_witness if request.source_id == "SRC-28" else None,
+                                 observed_timeout,single_limit_witness)
     policy={p.source_id:p for p in initial_source_policies()}.get(request.source_id)
     decision=decide_source(request,
         remaining_seconds=writer.meter.time_remaining(),
@@ -97,6 +102,7 @@ def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
                         8*MIB if request.source_id=="SRC-28" else 1*MIB,
                         1*MIB if request.source_id=="SRC-28" else 128*1024,
                         seconds,8*MIB if request.source_id=="SRC-28" else 2*MIB)
+                    observed_timeout = observed_timeout or transport.timed_out
                     if request.source_id == "SRC-28":
                         cmd_completed_utc = (datetime.now(timezone.utc)
                             .isoformat(timespec="milliseconds").replace("+00:00","Z"))
@@ -119,6 +125,23 @@ def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
                         targets.append(label+":"+name)
                         if seal.receipt.limit_applied:limited=True
                     if errors:break
+                    # F-04: SRC-28's single approved process has one actual
+                    # applied transport deadline. A competing stream/writer
+                    # limit prevents declaring a single dominant dimension.
+                    # Never recast a timeout as an inferred byte threshold.
+                    if (request.source_id=="SRC-28" and transport.timed_out
+                            and not transport.exceeded_limit
+                            and transport.stdout_omitted_at_least==0
+                            and transport.stderr_omitted_at_least==0
+                            and not limited
+                            and not any(r.limit_applied for r in receipts)):
+                        single_limit_witness={
+                            "unit":"seconds","threshold":seconds,
+                            "observed_extent":transport.elapsed_seconds,
+                            "missing_extent":None,
+                            "affected_scope":"SRC-28:call0001:transport",
+                            "reason":"TIME_BUDGET_EXCEEDED",
+                        }
                     if transport.returncode:errors.append("COMMAND_EXIT_NONZERO")
                     if transport.exceeded_limit:
                         limited=True;errors.append("CAPTURE_LIMIT")
