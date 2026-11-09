@@ -35,6 +35,9 @@ class PassiveOutcome:
     missing_extent_known_at_least: int | None
     worker_finished: bool
     unavailable_fields: tuple[str,...] = ()
+    # Only a witnessed process timeout may populate this D0 time-bound fact.
+    timed_out: bool = False
+    limit_witness: dict | None = None
 
 def _transport_decode(payload: bytes, policy):
     records=[]
@@ -86,13 +89,15 @@ def acquire_passive(request: SourceRequest, attempt: str, writer: EvidenceWriter
     paths=[]
     unavailable=[]
     def done(disposition,reason,receipts=(),errors=(),elapsed=0.0,
-             limited=False,missing=None,complete=False):
+             limited=False,missing=None,complete=False,
+             timed_out=False,limit_witness=None):
         bounded_errors=tuple(errors[:63])+(("ADDITIONAL_ERRORS_OMITTED",) if len(errors)>63 else ())
         return PassiveOutcome(request.source_id,disposition,reason,tuple(receipts),
                               tuple(paths),bounded_errors,len(receipts),
                               sum(r.byte_count for r in receipts),elapsed,
                               limited,missing,complete,
-                              tuple(unavailable[:63])+(("ADDITIONAL_OPTIONAL_FIELDS_OMITTED",) if len(unavailable)>63 else ()))
+                              tuple(unavailable[:63])+(("ADDITIONAL_OPTIONAL_FIELDS_OMITTED",) if len(unavailable)>63 else ()),
+                              timed_out,limit_witness)
     decision=decide_source(request,remaining_seconds=writer.meter.time_remaining(),
         remaining_bytes=writer.meter.max_bytes-writer.meter.bytes_reserved)
     if not decision.allowed: return done("DENIED",decision.reason)
@@ -142,17 +147,39 @@ def acquire_passive(request: SourceRequest, attempt: str, writer: EvidenceWriter
             if captured.timed_out: errors.append("TIME_BUDGET_EXCEEDED")
             if captured.exceeded_limit: errors.append("TRANSPORT_LIMIT")
             if not end: errors.append("INCOMPLETE_WORKER_STREAM")
+            # F-04: the actual _capture_child call deadline is a source event
+            # witness. Never infer a source byte ceiling from policy.max_bytes.
+            # One bound is representable by v0.5; ambiguous simultaneous D0
+            # worker, writer and transport ceilings fail closed at canonical.
+            timeout_witness = None
+            if (captured.timed_out and not captured.exceeded_limit
+                    and not any(record_limit for _,_,record_limit in records)
+                    and not any(r.limit_applied for r in receipts)
+                    and not (end and end.get("limited"))
+                    and "SOURCE_LIMIT_REACHED" not in errors
+                    and "EVIDENCE_PERSIST_FAILED" not in errors):
+                timeout_witness = {
+                    "unit":"seconds",
+                    "threshold":cap,
+                    "observed_extent":captured.elapsed_seconds,
+                    "missing_extent":None,
+                    "affected_scope":pol.source_id+":call0001:transport",
+                    "reason":"TIME_BUDGET_EXCEEDED",
+                }
             if not receipts and errors:
                 return done("FAILED","ACQUISITION_ERROR",receipts,errors,
-                            captured.elapsed_seconds,limited,None,False)
+                            captured.elapsed_seconds,limited,None,False,
+                            captured.timed_out,timeout_witness)
             if not receipts:
                 return done("UNAVAILABLE","SOURCE_ABSENT",receipts,errors,
-                            captured.elapsed_seconds,limited,None,complete)
+                            captured.elapsed_seconds,limited,None,complete,
+                            captured.timed_out,timeout_witness)
             if complete:
                 return done("CAPTURED","BYTES_PRESERVED",receipts,errors,
                             captured.elapsed_seconds,False,0,True)
             return done("PARTIAL","SOURCE_INCOMPLETE" if not limited else "CAPTURE_LIMIT",
-                        receipts,errors,captured.elapsed_seconds,limited,None,False)
+                        receipts,errors,captured.elapsed_seconds,limited,None,False,
+                        captured.timed_out,timeout_witness)
     except ProbeCapacityError:
         return done("DENIED","CONCURRENCY_LIMIT")
     finally:
