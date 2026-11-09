@@ -1,0 +1,34 @@
+{
+  "id": "G504-CP03-F04-28",
+  "authority": "CP-01 owner-approved D-04; G4-07 exact source ceilings; CT-05-P1,P2,N1",
+  "preimplementation": true,
+  "provenance": "Only actual _capture_child applied seconds and stream byte caps may create capture-limit dimension witness. No inference from `capture_limited` boolean, no invented missing extent.",
+  "cases": [
+    {
+      "case": "CT-05-P1",
+      "given": "src command real _capture_child timed_out after applied seconds cap",
+      "expected": "CaptureLimit threshold applied seconds, unit seconds, observed factual elapsed_seconds, missing_extent null, affected exact call scope"
+    },
+    {
+      "case": "CT-05-P2",
+      "given": "source artifact limited by known byte cap and known lower-bound omitted bytes",
+      "expected": "CaptureLimit unit bytes; threshold actual approved effective stream limit; observed actual retained bytes; missing_extent only known lower bound"
+    },
+    {
+      "case": "CT-05-N1",
+      "given": "source timed out, existing metadata capture_limited True",
+      "expected": "Never publish byte threshold for a timed-out source; reject missing/wrong effective-cap witness"
+    },
+    {
+      "case": "CT-05-N2",
+      "given": "no captured or truncated evidence or runtime cap event",
+      "expected": "No CaptureLimit record; cannot assume missing bytes"
+    },
+    {
+      "case": "CT-05-N3",
+      "given": "historical receipt without required applied-time-cap evidence",
+      "expected": "Do not fabricate effective ceiling; retain original and mark provisional or fail closed"
+    }
+  ],
+  "scope": "No change to G4-07 source authorization, executed argv or canonical/status version; private operational witness versioned for active limit events; synthetic mock-only tests do not close independent acceptance."
+}
