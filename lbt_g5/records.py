@@ -160,16 +160,16 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                 or not all(math.isfinite(float(v)) for v in (th,observed))
                 or th<=0 or observed<0):
             raise ValueError("invalid measured capture limit")
-        missing=bound["missing_extent"]
+        bound_missing=bound["missing_extent"]
         if bound["unit"]=="seconds":
             per=policy.per_target_seconds or policy.max_seconds
-            if th>per or missing is not None or timed_out is not True:
+            if th>per or bound_missing is not None or timed_out is not True:
                 raise ValueError("unproved actual time ceiling or missing bytes")
         else:
             if (th>policy.max_bytes or type(th) is not int
                     or type(observed) is not int
-                    or observed>th or type(missing) not in (int,type(None))
-                    or (missing is not None and missing<0)):
+                    or observed>th or type(bound_missing) not in (int,type(None))
+                    or (bound_missing is not None and bound_missing<0)):
                 raise ValueError("invalid observed byte ceiling or omitted extent")
     return AttemptReceipt("g5-02-attempt-0.5" if limit_witness else
                           "g5-02-attempt-0.4" if source_timing else
