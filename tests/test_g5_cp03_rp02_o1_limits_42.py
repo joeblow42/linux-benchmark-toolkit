@@ -51,9 +51,9 @@ class O1TimeCountAndHelperOracles(unittest.TestCase):
         writer = EvidenceWriter(str(folder), RUN, RunMeter())
         request, plan = self.request_plan(source)
         with patch("lbt_g5.o1_execution.plan_optional",
-                   return_value=plan), \\
+                   return_value=plan), \
              patch("lbt_g5.o1_execution._resolve_executable",
-                   side_effect=AssertionError("no binary may resolve")), \\
+                   side_effect=AssertionError("no binary may resolve")), \
              patch("lbt_g5.o1_execution._capture_child",
                    side_effect=AssertionError("no direct child may run")):
             outcome = execute_optional(request, "%02d" % (subcall + 1),
