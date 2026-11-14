@@ -104,7 +104,7 @@ class SRC15SourceEntryBoundary(unittest.TestCase):
         build_canonical(folder,run)
 
     def test_36_04_same_run_mountinfo_disproves_extra_candidates(self):
-        folder,receipt,run,calls=self.run_case(129,sealed_mount_count=1)
+        folder,receipt,run,calls=self.run_case(129,sealed_mount_count=128)
         self.assertEqual(receipt["limit_witnesses"][0]["unit"],"entries")
         with self.assertRaisesRegex(CanonicalContractError,
                                      "source entry count not evidenced"):
