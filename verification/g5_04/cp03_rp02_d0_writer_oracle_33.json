@@ -1,0 +1,42 @@
+{
+  "id": "CP03-RP02-F04-D0-WRITER-33",
+  "authority": "Owner-approved RP-02 v0.6 private operational receipt and frozen D-02 CaptureLimit",
+  "assurance": "Synthetic source-first; independent CP-02 and Bodhi operator validation remain OPEN",
+  "cases": [
+    {
+      "id": "D0-W33-01",
+      "stimulus": "Evidence writer reaches actual run byte reserve with remaining source bytes and stream budget",
+      "expect": "Record source-run writer byte witness with actual run budget threshold and observed allocated extent, known omitted lower bound, distinct v0.6 CaptureLimit"
+    },
+    {
+      "id": "D0-W33-02",
+      "stimulus": "Evidence writer hits simultaneous approved stream and source caps",
+      "expect": "Two scoped witnesses with actual identical thresholds and independently supported dimensions; preserved byte prefix and SHA256 unchanged"
+    },
+    {
+      "id": "D0-W33-03",
+      "stimulus": "Writers do not truncate/omit bytes",
+      "expect": "No writer capture-limit evidence, ordinary legacy private receipt"
+    },
+    {
+      "id": "D0-W33-04",
+      "stimulus": "Writer refuses input because time budget expires with bytes still reserved",
+      "expect": "No false byte witness, canonical refuses unverified limitation"
+    },
+    {
+      "id": "D0-W33-05",
+      "stimulus": "Forged or contradictory writer scope, threshold or omitted lower bound",
+      "expect": "Strict private receipt or canonical validation rejection"
+    },
+    {
+      "id": "D0-W33-06",
+      "stimulus": "Truncated bytes stored in private sealed original",
+      "expect": "Only actual written bytes hashed and sealed with incomplete=true and omitted_at_least observed; no re-encoding or false bytes"
+    },
+    {
+      "id": "D0-W33-07",
+      "stimulus": "Multiple active bounds including source and writer",
+      "expect": "All genuinely witnessed dimensions or nonpromotable with limitations, not a guessed dominant dimension"
+    }
+  ]
+}
