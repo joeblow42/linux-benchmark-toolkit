@@ -140,6 +140,8 @@ def acquire_passive(request: SourceRequest, attempt: str, writer: EvidenceWriter
                      or captured.stdout_omitted_at_least>0
                      or captured.stderr_omitted_at_least>0)
             worker_bounds=[]
+            writer_bounds=[]
+            unproved_writer_limit=False
             unproved_worker_limit=False
             for i,(original_path,original,record_limit,events) in enumerate(records,1):
                 artifact=f"item{i:04d}"
@@ -151,6 +153,61 @@ def acquire_passive(request: SourceRequest, attempt: str, writer: EvidenceWriter
                 receipts.append(receipt)
                 paths.append(original_path)
                 limited=limited or record_limit or receipt.limit_applied
+                # The existing EvidenceWriter reports its own atomic-limit
+                # witnesses without altering ArtifactReceipt or original bytes.
+                # Any truncated original lacking an exact witnessed dimension
+                # remains unpromotable to a truthful canonical CaptureLimit.
+                observed_writer_events=getattr(result,"limit_events",())
+                if receipt.limit_applied:
+                    if (type(observed_writer_events) not in (list,tuple)
+                            or not observed_writer_events
+                            or receipt.omitted_at_least<=0):
+                        unproved_writer_limit=True
+                    else:
+                        seen_writer=set()
+                        for event in observed_writer_events:
+                            if (type(event) is not dict or
+                                    set(event)!={"dimension","threshold",
+                                                "observed_extent","omitted_at_least"}):
+                                unproved_writer_limit=True
+                                break
+                            dim=event["dimension"]
+                            if dim in seen_writer:
+                                unproved_writer_limit=True
+                                break
+                            seen_writer.add(dim)
+                            if (event["omitted_at_least"]!=receipt.omitted_at_least
+                                    or type(event["threshold"]) is not int
+                                    or type(event["observed_extent"]) is not int):
+                                unproved_writer_limit=True
+                                break
+                            if dim=="writer_stream_bytes":
+                                valid=(event["threshold"]==pol.max_bytes
+                                    and event["observed_extent"]==receipt.byte_count)
+                                scope=f"item{i:04d}:writer"
+                            elif dim=="writer_source_bytes":
+                                valid=(event["threshold"]==pol.max_bytes
+                                    and event["observed_extent"]==pol.max_bytes)
+                                scope="source:writer"
+                            elif dim=="writer_run_bytes":
+                                valid=(event["threshold"]==writer.meter.max_bytes
+                                    and event["observed_extent"]==
+                                      writer.meter.max_bytes)
+                                scope="run:writer"
+                            else:
+                                valid=False
+                            if not valid:
+                                unproved_writer_limit=True
+                                break
+                            writer_bounds.append({
+                                "unit":"bytes",
+                                "threshold":event["threshold"],
+                                "observed_extent":event["observed_extent"],
+                                "missing_extent":receipt.omitted_at_least,
+                                "affected_scope":pol.source_id+":call0001:"+scope,
+                                "reason":"CAPTURE_LIMIT"})
+                elif observed_writer_events:
+                    unproved_writer_limit=True
                 # Revalidate private worker metadata against immutable source
                 # ceilings, original size and exactly sealed item identity.
                 valid_file=(record_limit and type(events) is list
@@ -292,10 +349,10 @@ def acquire_passive(request: SourceRequest, attempt: str, writer: EvidenceWriter
                   captured.stderr_omitted_at_least):
                 unproved_transport=True
             can_promote=(not unproved_worker_limit and not unproved_transport
-                         and not any(r.limit_applied for r in receipts)
+                         and not unproved_writer_limit
                          and "SOURCE_LIMIT_REACHED" not in errors
                          and "EVIDENCE_PERSIST_FAILED" not in errors)
-            multiple=tuple(worker_bounds+transport_bounds) if can_promote else ()
+            multiple=tuple(worker_bounds+transport_bounds+writer_bounds) if can_promote else ()
             if multiple and captured.timed_out:
                 multiple += ({
                     "unit":"seconds","threshold":cap,
