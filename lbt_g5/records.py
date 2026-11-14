@@ -179,7 +179,7 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
         # schema keys, source safety budgets and reason vocabulary are not.
         if (limit_witness is not None or type(limit_witnesses) not in (list,tuple)
                 or not 1<=len(limit_witnesses)<=64
-                or policy.authorization_class!="D0"
+                or (policy.authorization_class!="D0" and source_id!="SRC-28")
                 or decision!="ALLOW" or outcome not in ("PARTIAL","FAILED")
                 or not (capture_limited or timed_out)):
             raise ValueError("invalid v0.6 multiple-limit source scope")
@@ -206,14 +206,26 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                         (type(omitted) is not int or omitted<0))):
                 raise ValueError("invalid v0.6 measured limit")
             if unit=="seconds":
+                applied_max=(policy.per_target_seconds
+                             if source_id=="SRC-28" else policy.max_seconds)
                 if (scope!=source_id+":call0001:transport"
-                        or th>policy.max_seconds or not timed_out):
+                        or th>applied_max or not timed_out):
                     raise ValueError("invalid v0.6 process deadline")
             else:
                 if (not capture_limited or type(th) is not int
                         or type(observed) is not int):
                     raise ValueError("invalid v0.6 count/byte dimension")
-                if unit=="entries":
+                if source_id=="SRC-28":
+                    if (unit!="bytes" or omitted is None or omitted<=0
+                            or observed!=th
+                            or (scope==source_id+":call0001:stderr" and
+                                th!=1024*1024)
+                            or (scope==source_id+":call0001:transport" and
+                                th!=8*1024*1024)
+                            or scope not in (source_id+":call0001:stderr",
+                                              source_id+":call0001:transport")):
+                        raise ValueError("invalid SRC-28 D1 measured transport cap")
+                elif unit=="entries":
                     if (scope!=source_id+":call0001:source:entries"
                             or th!=policy.max_entries):
                         raise ValueError("invalid v0.6 source entry ceiling")

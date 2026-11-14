@@ -26,6 +26,8 @@ class AdditionalOutcome:
     execution_provenance: dict | None = None
     timed_out: bool = False
     limit_witness: dict | None = None
+    # Private v0.6 measured D1 limits; no public/canonical field change.
+    limit_witnesses: tuple[dict,...] = ()
 
 def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
                        slots:ProbeSlots,calls:SourceCallBudget,
@@ -36,12 +38,14 @@ def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
     execution_witness = None
     observed_timeout = False
     single_limit_witness = None
+    transport_limit_witnesses = ()
     def out(disposition,reason,artifacts=(),targets=(),errors=(),elapsed=0.,limited=False):
         return AdditionalOutcome(request.source_id,disposition,reason,tuple(artifacts),
                                  tuple(targets),tuple(errors),elapsed,limited,
                                  executed_code if request.source_id == "SRC-28" else None,
                                  execution_witness if request.source_id == "SRC-28" else None,
-                                 observed_timeout,single_limit_witness)
+                                 observed_timeout,single_limit_witness,
+                                 transport_limit_witnesses)
     policy={p.source_id:p for p in initial_source_policies()}.get(request.source_id)
     decision=decide_source(request,
         remaining_seconds=writer.meter.time_remaining(),
@@ -142,8 +146,70 @@ def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
                             "affected_scope":"SRC-28:call0001:transport",
                             "reason":"TIME_BUDGET_EXCEEDED",
                         }
+                    if request.source_id=="SRC-28":
+                        # F-04: only independently witnessed, ACTUAL applied
+                        # process caps; never derive thresholds from the source
+                        # policy maximum or choose a guessed dominant event.
+                        events=[]
+                        stdout_missing=transport.stdout_omitted_at_least
+                        stderr_missing=transport.stderr_omitted_at_least
+                        combined_len=len(transport.stdout)+len(transport.stderr)
+                        if transport.exceeded_limit:
+                            # Combined cap has priority where both an individual
+                            # stdout cap and combined cap are exactly 8 MiB.
+                            # This names a real applied bound, not a claim
+                            # about which internal branch caused the stop.
+                            if (combined_len==8*MIB and
+                                    type(stdout_missing) is int and
+                                    type(stderr_missing) is int and
+                                    stdout_missing>=0 and stderr_missing>=0 and
+                                    stdout_missing+stderr_missing>0):
+                                events.append({
+                                    "unit":"bytes","threshold":8*MIB,
+                                    "observed_extent":combined_len,
+                                    "missing_extent":stdout_missing+stderr_missing,
+                                    "affected_scope":"SRC-28:call0001:transport",
+                                    "reason":"CAPTURE_LIMIT"})
+                            elif (type(stderr_missing) is int and stderr_missing>0
+                                    and stdout_missing==0
+                                    and len(transport.stderr)==1*MIB):
+                                events.append({
+                                    "unit":"bytes","threshold":1*MIB,
+                                    "observed_extent":len(transport.stderr),
+                                    "missing_extent":stderr_missing,
+                                    "affected_scope":"SRC-28:call0001:stderr",
+                                    "reason":"CAPTURE_LIMIT"})
+                        elif stdout_missing or stderr_missing:
+                            # Inconsistent transport facts: no promotion.
+                            events=[]
+                        if (transport.timed_out and
+                                not any(r.limit_applied for r in receipts)):
+                            events.append({
+                                "unit":"seconds","threshold":seconds,
+                                "observed_extent":transport.elapsed_seconds,
+                                "missing_extent":None,
+                                "affected_scope":"SRC-28:call0001:transport",
+                                "reason":"TIME_BUDGET_EXCEEDED"})
+                        if (any(r.limit_applied for r in receipts) or
+                                (transport.exceeded_limit and not any(
+                                    ev["unit"]=="bytes" for ev in events)) or
+                                (not transport.exceeded_limit and (
+                                    stdout_missing or stderr_missing))):
+                            # Unwitnessed competing source/writer/transport
+                            # limit makes the whole event nonpromotable.
+                            events=[]
+                        if events and (transport.exceeded_limit or
+                                      len(events)>1):
+                            transport_limit_witnesses=tuple(events)
+                            single_limit_witness=None
                     if transport.returncode:errors.append("COMMAND_EXIT_NONZERO")
-                    if transport.exceeded_limit:
+                    if (transport.exceeded_limit or
+                            transport.stdout_omitted_at_least>0 or
+                            transport.stderr_omitted_at_least>0):
+                        # Even a contradictory transport overflow claim is
+                        # an incomplete source, never a CAPTURED/OK success.
+                        # Without an independently witnessed cap, canonical
+                        # creation must still fail closed.
                         limited=True;errors.append("CAPTURE_LIMIT")
                     if transport.timed_out:
                         limited=True;errors.append("TIME_BUDGET_EXCEEDED")
