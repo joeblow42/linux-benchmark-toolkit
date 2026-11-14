@@ -187,7 +187,7 @@ class O1RunWriterOracles(unittest.TestCase):
         folder, receipt, run, _, _ = self.fixture("SRC-13", retained=7, stale=3)
         self.assertEqual(receipt["schema_version"], "g5-02-attempt-0.6")
         with self.assertRaisesRegex(
-                CanonicalContractError, "run writer aggregate not evidenced"):
+                CanonicalContractError, "run writer aggregate or consent not evidenced"):
             build_canonical(folder, run)
 
     def test_39_09_helper_unknown_effective_transport_limit_not_invented(self):
