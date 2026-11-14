@@ -1029,7 +1029,7 @@ def build_canonical(run_directory, engine_run):
             if (bound is not None or type(bounds06) is not list or not bounds06
                     or len(bounds06)>64 or not evidence_limited
                     or (policy.authorization_class!="D0" and
-                        source_id!="SRC-28")
+                        source_id not in ("SRC-28","SRC-15"))
                     or type(facts) not in (tuple,list)
                     or bounds06!=list(facts)):
                 raise CanonicalContractError("unverified v0.6 source limit events")
