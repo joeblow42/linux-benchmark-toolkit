@@ -108,7 +108,7 @@ class O1TimeCountAndHelperOracles(unittest.TestCase):
     def test_42_04_helper_effective_remaining_bounds_are_private(self):
         helper = root_tests.helper
         original = json.loads(root_tests.msg())
-        usage = {RUN: (helper.MAX_RUN_BYTES - 7,
+        usage = {original["run_id"]: (helper.MAX_RUN_BYTES - 7,
                        helper.MAX_RUN_SECONDS - 0.5)}
         bounded = helper._limit_run_request(original, usage)
         self.assertEqual((bounded["max_bytes"], bounded["max_seconds"]),
@@ -128,7 +128,7 @@ class O1TimeCountAndHelperOracles(unittest.TestCase):
                 with self.assertRaisesRegex(
                     helper.Rejected, "RUN_BUDGET_EXHAUSTED"
                 ):
-                    helper._limit_run_request(original, {RUN: consumed})
+                    helper._limit_run_request(original, {original["run_id"]: consumed})
 
     def test_42_06_shortened_helper_byte_cap_cannot_be_inferred(self):
         captured = TransportCapture(b"H" * 7, b"", 0, 0.1,
