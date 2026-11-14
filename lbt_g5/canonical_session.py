@@ -1116,6 +1116,43 @@ def build_canonical(run_directory, engine_run):
                                 or not (helper or direct_unique)):
                             raise CanonicalContractError(
                                 "O1 applied transport limit or consent not evidenced")
+                    elif (source_id=="SRC-18" and
+                          actual["affected_scope"]==
+                          source_id+":call%04d:source:writer"%ordinal):
+                        # The source-writer's private reservation may contain
+                        # unsealed bytes. Only independently verified sealed
+                        # originals from this exact run and source establish
+                        # a real 8 MiB cumulative threshold.
+                        prefix="private/source_attempt_records/"+source_id+"-"
+                        source_originals=[
+                            a for previous in all_attempts
+                            if (type(previous.receipt_private_path) is str
+                                and previous.receipt_private_path.startswith(prefix))
+                            for a in _artifacts(previous)]
+                        source_bytes=sum(a.byte_count for a in source_originals)
+                        unique_originals=(len({a.evidence_id for a in source_originals})
+                                          ==len(source_originals))
+                        if (not o1_verified or len(bounds06)!=1
+                                or metadata["outcome"]!="PARTIAL"
+                                or metadata["reason"]!="CAPTURE_LIMIT"
+                                or metadata.get("timed_out") is not False
+                                or outcome.get("transport_timed_out") is not False
+                                or outcome.get("transport_exceeded_limit") is not False
+                                or outcome.get("transport_omitted_at_least")!=0
+                                or actual["unit"]!="bytes"
+                                or type(actual["threshold"]) is not int
+                                or actual["threshold"]!=policy.max_bytes
+                                or actual["observed_extent"]!=policy.max_bytes
+                                or not unique_originals
+                                or source_bytes!=policy.max_bytes
+                                or len(clipped)!=1
+                                or type(actual["missing_extent"]) is not int
+                                or actual["missing_extent"]<=0
+                                or clipped[0].omitted_at_least!=actual["missing_extent"]
+                                or metadata.get("missing_extent_known_at_least")
+                                    !=actual["missing_extent"]):
+                            raise CanonicalContractError(
+                                "O1 source writer aggregate or consent not evidenced")
                     else:
                         raise CanonicalContractError(
                             "O1 unapproved limit scope")
