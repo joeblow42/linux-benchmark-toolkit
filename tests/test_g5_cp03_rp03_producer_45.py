@@ -219,7 +219,7 @@ class ProducedD02Contract(unittest.TestCase):
         receipt = json.loads(receipt_file.read_text())
         claimed = attempt["capture_bytes"] + 1
         receipt["acquired_bytes"] = claimed
-        receipt_raw = (json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\\n").encode()
+        receipt_raw = (json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\n").encode()
         receipt_file.write_bytes(receipt_raw)
         attempt["capture_bytes"] = claimed
         attempt["receipt_byte_count"] = len(receipt_raw)
