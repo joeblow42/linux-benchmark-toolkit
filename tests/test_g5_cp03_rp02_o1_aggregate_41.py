@@ -74,9 +74,9 @@ class O1SourceAggregateOracles(unittest.TestCase):
                 # its asserted source total has no corresponding sealed original.
                 writer._source_reserved[(SOURCE,)] = POL[SOURCE].max_bytes
             captured = TransportCapture(data, b"", 0, .04, False, False, 0, 0)
-            with patch("lbt_g5.o1_execution.plan_optional", return_value=plan), \\
+            with patch("lbt_g5.o1_execution.plan_optional", return_value=plan), \
                  patch("lbt_g5.o1_execution._resolve_executable",
-                       return_value="/usr/bin/sg_get_config"), \\
+                       return_value="/usr/bin/sg_get_config"), \
                  patch("lbt_g5.o1_execution._capture_child",
                        return_value=captured):
                 item = capture_and_record(
