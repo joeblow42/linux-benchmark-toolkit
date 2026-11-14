@@ -231,5 +231,24 @@ class SRC15AggregateOracles(unittest.TestCase):
                     capture_limited=True, limit_witnesses=(bad,))
 
 
+    def test_37_09_writer_at_wall_boundary_no_unproved_second_event(self):
+        # A real writer truncation can finish as the source wall expires.
+        # We prove the writer omission; never invent a second event solely
+        # from the unrelated clock observation after stopping acquisition.
+        paths = mounts(4)
+        clock = Clock()
+        folder, receipt, run, called = self.acquire(
+            paths, [capture(b"A" * MIB), capture(b"B" * MIB),
+                    capture(b"OVERFLOW"), capture(b"NEVER")],
+            clock=clock, seal_lag=4.6)
+        self.assertEqual(len(called), 3)
+        self.assertGreaterEqual(clock.now, 15)
+        self.assertEqual(len(receipt["limit_witnesses"]), 1)
+        self.assertEqual(receipt["limit_witnesses"][0]["affected_scope"],
+                         "SRC-15:call0001:source:writer")
+        self.assertFalse(receipt["timed_out"])
+        build_canonical(folder, run)
+
+
 if __name__ == "__main__":
     unittest.main()
