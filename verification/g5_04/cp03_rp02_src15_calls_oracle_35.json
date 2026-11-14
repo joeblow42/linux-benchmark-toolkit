@@ -1,0 +1,57 @@
+{
+  "oracle_id": "CP03-RP02-F04-SRC15-CALLS-35",
+  "authority": [
+    "Owner Choice A private v0.6",
+    "G4-07 FS_STAT max 15 sec / per target 2sec / stdout 1MiB / stderr 128KiB / combined 2MiB; fixed python3 -I local_space.py invocation",
+    "Current G5-03 source14 evidence-bound mount selection",
+    "Frozen D-02 CaptureLimit v1.0.0"
+  ],
+  "status": "SOURCE_FIRST_CANDIDATE_NOT_INDEPENDENTLY_ACCEPTED",
+  "cases": [
+    {
+      "id": "S15-35-01",
+      "given": "First bounded FS_STAT source call returns timed_out with bytes preserved",
+      "expect": "v0.6 seconds bound using exactly applied _capture_child deadline <=2s, scope call0001:transport, preserved bytes original"
+    },
+    {
+      "id": "S15-35-02",
+      "given": "Second of two approved mount calls independently times out after first succeeded",
+      "expect": "v0.6 scope call0002:transport, completed first mount sealed, no invented first-call deadline"
+    },
+    {
+      "id": "S15-35-03",
+      "given": "First call stderr has 128KiB retained and positive observed omission",
+      "expect": "v0.6 actual stderr 131072 bytes limit with missing lower bound and no bytes beyond original"
+    },
+    {
+      "id": "S15-35-04",
+      "given": "Two separately evidenced source call stderr bounds",
+      "expect": "v0.6 separate call0001 and call0002 bound IDs, no duplicate/dominant limit"
+    },
+    {
+      "id": "S15-35-05",
+      "given": "Contradictory overflow (positive omission but retained short stream)",
+      "expect": "fail closed canonical, cannot report CAPTURED"
+    },
+    {
+      "id": "S15-35-06",
+      "given": "No timeout, complete output",
+      "expect": "legacy v0.4 receipt, no new limit and source14 binding intact"
+    },
+    {
+      "id": "S15-35-07",
+      "given": "Untrusted v0.6 source call index 0, >128 or nonapproved scope",
+      "expect": "reject private receipt before persistence"
+    },
+    {
+      "id": "S15-35-08",
+      "given": "Overall 15-second source deadline expires outside an invoked child",
+      "expect": "not inferred as child timeout; defer distinct source-wall fact to subsequent bounded increment"
+    },
+    {
+      "id": "S15-35-09",
+      "given": "Statvfs worker path or permission set modified",
+      "expect": "reject/stop; fixed command and owner consent unaffected"
+    }
+  ]
+}
