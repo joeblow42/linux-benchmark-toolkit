@@ -1049,41 +1049,76 @@ def build_canonical(run_directory, engine_run):
                              actual["reason"]!="CAPTURE_LIMIT"))):
                     raise CanonicalContractError("v0.6 limit evidence contradicted")
                 if policy.authorization_class=="O1":
-                    # A v0.6 O1 private event is allowed only with its
-                    # independently matched operator/target/argv and D0
-                    # evidence chain AND sealed run-wide original aggregate.
-                    # The installed helper can reduce its own cumulative cap:
-                    # a helper transport timeout/overflow is not run-writer proof.
+                    # No receipt field alone proves a transport or writer
+                    # dimension. Match same-run consent/argv/inventory first,
+                    # then original artifacts and the in-memory worker fact.
                     outcome=item.outcome if isinstance(item.outcome,dict) else {}
-                    expected_scope=source_id+":call%04d:run:writer"%int(
-                        attempt_id.rsplit("-",1)[-1])
-                    sealed_run_bytes=sum(
-                        a.byte_count for previous in all_attempts
-                        for a in _artifacts(previous))
+                    ordinal=int(attempt_id.rsplit("-",1)[-1])
+                    writer_scope=source_id+":call%04d:run:writer"%ordinal
+                    transport_scope=source_id+":call%04d:transport"%ordinal
                     clipped=[a for a in artifacts if a.limit_applied]
-                    if (not o1_verified or len(bounds06)!=1
-                            or metadata["outcome"]!="PARTIAL"
-                            or metadata["reason"]!="CAPTURE_LIMIT"
-                            or metadata.get("timed_out") is not False
-                            or outcome.get("transport_timed_out") is not False
-                            or outcome.get("transport_exceeded_limit") is not False
-                            or outcome.get("transport_omitted_at_least")!=0
-                            or actual["affected_scope"]!=expected_scope
-                            or actual["unit"]!="bytes"
-                            or type(actual["threshold"]) is not int
-                            or actual["threshold"]>RUN_BYTES
-                            or actual["observed_extent"]!=actual["threshold"]
-                            or sealed_run_bytes!=actual["threshold"]
-                            or len(clipped)!=1
-                            or type(actual["missing_extent"]) is not int
-                            or actual["missing_extent"]<=0
-                            or clipped[0].omitted_at_least!=actual["missing_extent"]
-                            or metadata.get("missing_extent_known_at_least")
-                                !=actual["missing_extent"]
-                            or any(a.limit_applied and a is not clipped[0]
-                                   for a in artifacts)):
+                    if actual["affected_scope"]==writer_scope:
+                        sealed_run_bytes=sum(
+                            a.byte_count for previous in all_attempts
+                            for a in _artifacts(previous))
+                        if (not o1_verified or len(bounds06)!=1
+                                or metadata["outcome"]!="PARTIAL"
+                                or metadata["reason"]!="CAPTURE_LIMIT"
+                                or metadata.get("timed_out") is not False
+                                or outcome.get("transport_timed_out") is not False
+                                or outcome.get("transport_exceeded_limit") is not False
+                                or outcome.get("transport_omitted_at_least")!=0
+                                or actual["unit"]!="bytes"
+                                or type(actual["threshold"]) is not int
+                                or actual["threshold"]>RUN_BYTES
+                                or actual["observed_extent"]!=actual["threshold"]
+                                or sealed_run_bytes!=actual["threshold"]
+                                or len(clipped)!=1
+                                or type(actual["missing_extent"]) is not int
+                                or actual["missing_extent"]<=0
+                                or clipped[0].omitted_at_least!=actual["missing_extent"]
+                                or metadata.get("missing_extent_known_at_least")
+                                    !=actual["missing_extent"]
+                                or any(a.limit_applied and a is not clipped[0]
+                                       for a in artifacts)):
+                            raise CanonicalContractError(
+                                "O1 run writer aggregate or consent not evidenced")
+                    elif actual["affected_scope"]==transport_scope:
+                        applied=(policy.per_target_bytes or policy.max_bytes)
+                        helper=(outcome.get("transport_helper_used") is True
+                                and source_id=="SRC-13")
+                        stream_bytes={a.artifact.rsplit("-",1)[-1]:a.byte_count
+                                      for a in artifacts}
+                        direct_unique=(len(artifacts)==2
+                            and set(stream_bytes)=={"stdout","stderr"}
+                            and all(0 < x < applied for x in stream_bytes.values()))
+                        if (not o1_verified or len(bounds06)!=1
+                                or metadata["outcome"]!="PARTIAL"
+                                or metadata["reason"]!="CAPTURE_LIMIT"
+                                or metadata.get("timed_out") is not False
+                                or outcome.get("transport_timed_out") is not False
+                                or outcome.get("transport_exceeded_limit") is not True
+                                or outcome.get("transport_helper_used") not in (True,False)
+                                or actual["unit"]!="bytes"
+                                or type(actual["threshold"]) is not int
+                                or actual["threshold"]!=applied
+                                or actual["observed_extent"]!=applied
+                                or type(actual["missing_extent"]) is not int
+                                or actual["missing_extent"]<=0
+                                or outcome.get("transport_omitted_at_least")
+                                    !=actual["missing_extent"]
+                                or metadata.get("missing_extent_known_at_least")
+                                    !=actual["missing_extent"]
+                                or metadata.get("acquired_bytes")!=applied
+                                or sum(a.byte_count for a in artifacts)!=applied
+                                or not artifacts or clipped
+                                or any(not a.complete for a in artifacts)
+                                or not (helper or direct_unique)):
+                            raise CanonicalContractError(
+                                "O1 applied transport limit or consent not evidenced")
+                    else:
                         raise CanonicalContractError(
-                            "O1 run writer aggregate or consent not evidenced")
+                            "O1 unapproved limit scope")
                 if source_id=="SRC-15" and actual["unit"]=="entries":
                     # This is a source-level count, not a child-timeout
                     # inference. Independently require the SAME sealed
