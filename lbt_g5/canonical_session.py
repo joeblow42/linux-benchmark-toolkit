@@ -1506,7 +1506,19 @@ def validate_canonical(run_directory):
         if (hashlib.sha256(raw).hexdigest() != record["sha256"]
                 or len(raw) != record["byte_count"]):
             raise CanonicalContractError("sealed original altered")
-        if eid not in attempt_by_id[record["source_attempt_id"]]["evidence_ids"]:
+        owner = attempt_by_id[record["source_attempt_id"]]
+        discriminator = eid.rsplit(":", 1)[-1]
+        original_prefix = (run_id + "_" + owner["collector_id"] + "_" +
+                           owner["source_id"] + "_" +
+                           owner["attempt_id"].rsplit("-", 1)[-1] + ":")
+        representation = ("STDOUT" if discriminator.endswith("stdout") else
+                          "STDERR" if discriminator.endswith("stderr") else
+                          "FILE_BYTES")
+        if (not eid.startswith(original_prefix)
+                or not re.fullmatch(r"[a-z][a-z0-9-]*", discriminator)
+                or record["representation"] != representation):
+            raise CanonicalContractError("original representation/owner mismatch")
+        if eid not in owner["evidence_ids"]:
             raise CanonicalContractError("unowned original evidence")
     for status in statuses:
         validate_status_record(status, evidence_ids=evidence,
@@ -1540,6 +1552,9 @@ def validate_canonical(run_directory):
                 or receipt.get("target") != attempt["invocation"]["target"]
                 or receipt.get("evidence_ids") != attempt["evidence_ids"]
                 or receipt.get("acquired_bytes") != attempt["capture_bytes"]
+                or attempt["capture_bytes"] != sum(
+                    evidence[eid]["byte_count"] for eid in attempt["evidence_ids"]
+                    if eid in evidence)
                 or receipt.get("exit_code") != attempt["exit_code"]
                 or attempt["tool_version"] is not None
                 or attempt["errno"] is not None
@@ -1595,4 +1610,10 @@ def validate_canonical(run_directory):
                     {attempt_by_id[a]["collector_id"] for a in aids}
                 or any(l not in limit_by_id for l in observation["capture_limit_ids"])):
             raise CanonicalContractError("observation/status provenance mismatch")
+        # A single-source observation cannot cite session/orchestration
+        # status as though it were the supported source-status witness.
+        if len(aids) == 1 and (
+                st["record_id"] != attempt_by_id[aids[0]]["status_record_id"]
+                or not set(eid_refs).issubset(set(st["evidence_refs"]))):
+            raise CanonicalContractError("observation source status not evidenced")
     return manifest
