@@ -1,0 +1,73 @@
+{
+  "oracle_id": "CP03-RP02-F04-SRC28-WRITER-38",
+  "governance": "AI-Assisted Software Engineering Governance Standard v1.0; owner-approved RP-02 private operational v0.6",
+  "assurance_status": "source-first mock-only candidate; CP-02 independent acceptance and FAT host evidence OPEN",
+  "fixed_authority": {
+    "source": "SRC-28 OFFLINE_METADATA",
+    "commands": "One fixed dpkg-query argv only",
+    "source_total_bytes": 33554432,
+    "source_total_seconds": 20,
+    "per_target_seconds": 8,
+    "per_target_bytes": 8388608,
+    "transport_combined_bytes": 8388608,
+    "transport_stderr_bytes": 1048576,
+    "run_max_bytes": 536870912
+  },
+  "feasibility": "One fixed command, combined transport at most 8 MiB, thus cannot independently reach a 32 MiB SRC28 source quota; forbidden to invent an applied source cap. A shared run-wide EvidenceWriter meter may independently truncate an otherwise bounded captured stream below 8 MiB; only that actual writer-run event is in scope.",
+  "safety": [
+    "No changes to source commands, privileges, max ceilings or sealed original bytes",
+    "Do not promote an unobserved 32 MiB source quota",
+    "Run-writer witness requires actual limit event, positive omitted suffix, sealed same-run aggregate at exact applied run meter threshold and no competing transport ambiguity",
+    "Do not mistake an 8 second transport cap for the source 20 second wall ceiling",
+    "Unverified writer/transport overlap fails closed; legacy v0.4/v0.5/v0.6 retained"
+  ],
+  "cases": [
+    {
+      "id": "R28-38-01",
+      "given": "One fixed dpkg-query output exceeds small G4-compliant run-wide meter after source capture, with untouched bounded transport",
+      "expect": "v0.6 one run:writer actual byte threshold, exact sealed prefix/sha, positive missing, canonical D-02 links"
+    },
+    {
+      "id": "R28-38-02",
+      "given": "Bounded output exactly fills run meter without clipped data",
+      "expect": "legacy v0.4, no missing bytes and no fabricated writer cap"
+    },
+    {
+      "id": "R28-38-03",
+      "given": "Run writer limit reached after other sealed same-run sources",
+      "expect": "threshold corroborated against aggregate same-run original bytes, never only SRC-28 bytes"
+    },
+    {
+      "id": "R28-38-04",
+      "given": "Meter quota consumed by an unsealed reservation",
+      "expect": "actual writer limit kept in private attempt but canonical fails closed because sealed originals do not prove run aggregate"
+    },
+    {
+      "id": "R28-38-05",
+      "given": "Transport also reports a clipped stream in the same call as writer truncation",
+      "expect": "No guessed dominant dimension, canonical rejects unpromotable competing facts"
+    },
+    {
+      "id": "R28-38-06",
+      "given": "Attempted SRC28 source:writer 32MiB, source:bytes 32MiB, wrong writer scope, threshold > run cap, nonpositive missing or observed mismatch",
+      "expect": "private v0.6 validator rejects unsupported sources and invalid run-writer extents"
+    },
+    {
+      "id": "R28-38-07",
+      "given": "Original successful transport/legacy timeout and stderr overflow fixtures from Increment 34",
+      "expect": "prior tests remain PASS and unchanged"
+    },
+    {
+      "id": "R28-38-08",
+      "given": "Actual writer-run at a last completed command while source wall passes 20 seconds",
+      "expect": "Do not invent independent SOURCE 20-second reached-event solely from elapsed clock, without omitted operation"
+    }
+  ],
+  "evidence": {
+    "tests": "tests/test_g5_cp03_rp02_src28_writer_38.py",
+    "source": "lbt_g5/additional.py",
+    "private_receipt": "lbt_g5/records.py",
+    "canonical": "lbt_g5/canonical_session.py",
+    "prior": "verification/g5_04/rp02_increment37_verified_checkpoint_20261114.json"
+  }
+}

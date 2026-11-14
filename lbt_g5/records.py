@@ -251,7 +251,13 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                                 observed!=th or th!=applied):
                             raise ValueError("invalid SRC-15 D1 per-call cap")
                 elif source_id=="SRC-28":
-                    if (unit!="bytes" or omitted is None or omitted<=0
+                    if scope==source_id+":call0001:run:writer":
+                        # The run-wide meter can become exhausted by earlier
+                        # sealed sources. It is NOT the 32 MiB SRC-28 cap.
+                        if (unit!="bytes" or th>RUN_BYTES or
+                                observed!=th or omitted is None or omitted<=0):
+                            raise ValueError("invalid SRC-28 run-writer quota")
+                    elif (unit!="bytes" or omitted is None or omitted<=0
                             or observed!=th
                             or (scope==source_id+":call0001:stderr" and
                                 th!=1024*1024)
