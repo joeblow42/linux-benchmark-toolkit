@@ -136,7 +136,9 @@ def acquire_passive(request: SourceRequest, attempt: str, writer: EvidenceWriter
                 captured.stdout,pol,with_events=True)
             unavailable.extend(skipped)
             receipts=[]
-            limited=captured.exceeded_limit or captured.timed_out
+            limited=(captured.exceeded_limit or captured.timed_out
+                     or captured.stdout_omitted_at_least>0
+                     or captured.stderr_omitted_at_least>0)
             worker_bounds=[]
             unproved_worker_limit=False
             for i,(original_path,original,record_limit,events) in enumerate(records,1):
@@ -231,7 +233,9 @@ def acquire_passive(request: SourceRequest, attempt: str, writer: EvidenceWriter
                       and len(records)==end.get("entries") and total==end.get("bytes"))
             if captured.returncode not in (0,None): errors.append("WORKER_EXIT_NONZERO")
             if captured.timed_out: errors.append("TIME_BUDGET_EXCEEDED")
-            if captured.exceeded_limit: errors.append("TRANSPORT_LIMIT")
+            if captured.exceeded_limit or (not captured.exceeded_limit and (
+                    captured.stdout_omitted_at_least or captured.stderr_omitted_at_least)):
+                errors.append("TRANSPORT_LIMIT")
             if not end: errors.append("INCOMPLETE_WORKER_STREAM")
             # F-04: the actual _capture_child call deadline is a source event
             # witness. Never infer a source byte ceiling from policy.max_bytes.
@@ -257,11 +261,41 @@ def acquire_passive(request: SourceRequest, attempt: str, writer: EvidenceWriter
             # Evidence-writer or transport byte overruns remain nonpromotable
             # until individually witnessed. Do not bury an unproved dimension
             # underneath a separately valid worker/time witness.
-            can_promote=(not unproved_worker_limit and not captured.exceeded_limit
+            transport_bounds=[]
+            unproved_transport=False
+            # D0's actual _capture_child applies per-stream stdout/stderr caps;
+            # there is NO optional combined cap for this worker. A reported
+            # omitted lower bound proves overflow only if the retained stream
+            # reached precisely the ceiling passed to the transport.
+            stream_events=(
+                ("stdout",captured.stdout,captured.stdout_omitted_at_least,
+                 transport_cap),
+                ("stderr",captured.stderr,captured.stderr_omitted_at_least,
+                 64*1024))
+            if captured.exceeded_limit:
+                for name,raw,omitted,ceiling in stream_events:
+                    if type(omitted) is not int or omitted<0:
+                        unproved_transport=True
+                    elif omitted>0:
+                        if len(raw)!=ceiling:
+                            unproved_transport=True
+                        else:
+                            transport_bounds.append({
+                                "unit":"bytes","threshold":ceiling,
+                                "observed_extent":len(raw),
+                                "missing_extent":omitted,
+                                "affected_scope":pol.source_id+":call0001:"+name,
+                                "reason":"CAPTURE_LIMIT"})
+                if not transport_bounds:
+                    unproved_transport=True
+            elif (captured.stdout_omitted_at_least or
+                  captured.stderr_omitted_at_least):
+                unproved_transport=True
+            can_promote=(not unproved_worker_limit and not unproved_transport
                          and not any(r.limit_applied for r in receipts)
                          and "SOURCE_LIMIT_REACHED" not in errors
                          and "EVIDENCE_PERSIST_FAILED" not in errors)
-            multiple=tuple(worker_bounds) if can_promote else ()
+            multiple=tuple(worker_bounds+transport_bounds) if can_promote else ()
             if multiple and captured.timed_out:
                 multiple += ({
                     "unit":"seconds","threshold":cap,
