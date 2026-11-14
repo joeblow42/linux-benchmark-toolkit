@@ -205,12 +205,13 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                 if source_id=="SRC-15" else
                 scope.startswith(source_id+":call0001:")))
             if policy.authorization_class=="O1":
-                # Only exact same-attempt shared writer-run proof is
-                # authorized in Increment 39. Transport and helper internal
-                # effective limits have not yet been independently attested.
+                # Exact O1 writer-run or proved transport aggregate only.
+                # SRC-13 helper internal shortened caps remain unprovable.
                 eligible_scope=(source_id in ("SRC-13","SRC-18","SRC-21")
                     and type(scope) is str
-                    and scope==source_id+":call%04d:run:writer"%int(attempt))
+                    and scope in (
+                        source_id+":call%04d:run:writer"%int(attempt),
+                        source_id+":call%04d:transport"%int(attempt)))
             if (unit not in ("seconds","bytes","entries")
                     or type(scope) is not str
                     or not eligible_scope
@@ -241,8 +242,14 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                     raise ValueError("invalid v0.6 count/byte dimension")
                 if policy.authorization_class=="O1":
                     if (unit!="bytes" or type(th) is not int
-                            or th>RUN_BYTES or observed!=th
-                            or type(omitted) is not int or omitted<=0):
+                            or observed!=th or type(omitted) is not int
+                            or omitted<=0):
+                        raise ValueError("invalid O1 original byte limit")
+                    if scope.endswith(":transport"):
+                        applied=(policy.per_target_bytes or policy.max_bytes)
+                        if th!=applied:
+                            raise ValueError("unproved O1 applied transport cap")
+                    elif th>RUN_BYTES:
                         raise ValueError("invalid O1 writer-run original limit")
                 elif source_id=="SRC-15":
                     if unit=="entries":
