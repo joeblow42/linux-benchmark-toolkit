@@ -111,6 +111,8 @@ jobs:
         run: python3 -m unittest discover -s tests -p 'test_g5_cp03_rp02_d0_transport_32.py' -v
       - name: G5-04 RP-02.1 D0 writer measured limit source-first tests
         run: python3 -m unittest discover -s tests -p 'test_g5_cp03_rp02_d0_writer_33.py' -v
+      - name: G5-04 RP-02.2 SRC-28 D1 actual transport and deadline limit tests
+        run: python3 -m unittest discover -s tests -p 'test_g5_cp03_rp02_src28_transport_34.py' -v
       - name: Unified Full validation (unit and acceptance once)
         run: python3 -m validation.suites full --output validation-results/ci
       - name: Upload unified validation report
