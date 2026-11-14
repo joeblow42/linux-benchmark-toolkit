@@ -1524,6 +1524,15 @@ def validate_canonical(run_directory):
         validate_status_record(status, evidence_ids=evidence,
                                attempt_ids=attempt_by_id,
                                limit_ids=limit_by_id)
+    used_status_ids = ({a["status_record_id"] for a in attempts} |
+                       {o["status_record_id"] for o in observations})
+    for status in statuses:
+        if (status["record_id"] not in used_status_ids
+                and not (status["domain"] == "orchestration"
+                         and status["subject_id"] == run_id)):
+            # Future approved normalization statuses are possible, but must
+            # be evidenced by an observation instead of an unattached row.
+            raise CanonicalContractError("orphan status record")
     for attempt in attempts:
         aid = attempt["attempt_id"]
         receipt_path = attempt["receipt_private_path"]
