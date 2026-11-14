@@ -40,7 +40,7 @@ class PassiveOutcome:
     limit_witness: dict | None = None
     limit_witnesses: tuple[dict,...] = ()
 
-def _transport_decode(payload: bytes, policy):
+def _transport_decode(payload: bytes, policy, *, with_events=False):
     records=[]
     errors=[]
     unavailable=[]
@@ -82,12 +82,14 @@ def _transport_decode(payload: bytes, policy):
         if len(records)>=policy.max_entries or total+len(raw)>policy.max_bytes:
             errors.append("SOURCE_LIMIT_REACHED");break
         total+=len(raw)
-        records.append((msg["path"],raw,bool(msg.get("limited")),
-                        msg.get("limit_events",())))
-    # The worker stream itself is NOT preserved as original evidence. It is
-    # restricted operational provenance, accepted only after numeric/source
-    # checks against approved limits and actually decoded/sealed original bytes.
-    return records,errors,end,total,unavailable,attempted_records
+        record=(msg["path"],raw,bool(msg.get("limited")))
+        # Preserve the original five-result/three-item decoder contract for
+        # all older callers. Only the G5-03 adapter consumes v0.6 metadata.
+        records.append(record+(msg.get("limit_events",()),) if with_events else record)
+    # Restricted worker transport is not source-original evidence.
+    if with_events:
+        return records,errors,end,total,unavailable,attempted_records
+    return records,errors,end,total,unavailable
 
 def acquire_passive(request: SourceRequest, attempt: str, writer: EvidenceWriter,
                     slots: ProbeSlots, calls: SourceCallBudget) -> PassiveOutcome:
@@ -130,7 +132,8 @@ def acquire_passive(request: SourceRequest, attempt: str, writer: EvidenceWriter
                     transport_cap,64*1024,cap)
             except OSError as exc:
                 return done("FAILED",type(exc).__name__)
-            records,errors,end,total,skipped,attempted_records=_transport_decode(captured.stdout,pol)
+            records,errors,end,total,skipped,attempted_records=_transport_decode(
+                captured.stdout,pol,with_events=True)
             unavailable.extend(skipped)
             receipts=[]
             limited=captured.exceeded_limit or captured.timed_out
