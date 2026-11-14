@@ -4,6 +4,7 @@ Approved CP-01 D-02 §6 is frozen in rp03_cp01_d02_approved_contract_43.json.
 These tests exercise *produced* files, not sample-shaped input to d02_schema.
 No physical device probing, changes to acquisition policy, or formal CP-02 claim.
 """
+import base64
 import copy
 import hashlib
 import json
@@ -11,14 +12,18 @@ from pathlib import Path
 import tempfile
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 from lbt_g5.canonical_contract import CanonicalContractError, new_status
 from lbt_g5.canonical_session import build_canonical, validate_canonical
 from lbt_g5.d02_schema import validate_d02_file, validate_d02_entity
 from lbt_g5.engine import CollectorRun, EngineRun
 from lbt_g5.evidence import EvidenceWriter
+from lbt_g5.passive_worker import MAX_PER_FILE
+from lbt_g5.receipt_dispatch import capture_and_record
+from lbt_g5.runtime import ProbeSlots, SourceCallBudget, TransportCapture
 from lbt_g5.records import build_attempt, commit_attempt
-from lbt_g5.safety import initial_source_policies
+from lbt_g5.safety import SourceRequest, initial_source_policies
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTROL = json.loads((ROOT / "verification/g5_04/rp03_cp01_d02_approved_contract_43.json").read_text())
@@ -197,7 +202,7 @@ class ProducedD02Contract(unittest.TestCase):
         manifest["status_record_ids"].append("st:orphan")
         manifest["counts"]["statuses"] += 1
         self.reseal_json("session_manifest.json", manifest)
-        with self.assertRaises(CanonicalContractError):
+        with self.assertRaisesRegex(CanonicalContractError, "orphan status"):
             validate_canonical(self.folder)
 
     def test_45_11_rehashed_evidence_representation_must_match_original(self):
@@ -231,6 +236,44 @@ class ProducedD02Contract(unittest.TestCase):
         self.reseal_json("session_manifest.json", manifest)
         with self.assertRaises(CanonicalContractError):
             validate_canonical(self.folder)
+
+    def test_45_13_approved_d0_capture_limit_has_exact_manifest_ids(self):
+        # Reuse the approved D0 worker/transport seam but form this
+        # independent canonical fixture from newly sealed exact bytes.
+        policy = self.policies["SRC-12"]
+        original = b"1" * MAX_PER_FILE
+        notice = {
+            "path": "/sys/class/block/sda/size",
+            "bytes_b64": base64.b64encode(original).decode("ascii"),
+            "limited": True,
+            "limit_events": [{
+                "dimension": "file_bytes", "threshold": MAX_PER_FILE,
+                "observed_extent": MAX_PER_FILE,
+            }],
+        }
+        end = {"end": True, "entries": 1, "bytes": len(original), "limited": False}
+        worker = b"".join((json.dumps(item, sort_keys=True) + "\n").encode()
+                          for item in (notice, end))
+        request = SourceRequest(RUN, "SRC-12", policy.operation_id)
+        captured = TransportCapture(worker, b"", 0, .05, False, False, 0, 0)
+        with patch("lbt_g5.passive._resolve_executable",
+                   return_value="/usr/bin/python3"), patch(
+                       "lbt_g5.passive._capture_child", return_value=captured):
+            recorded = capture_and_record(
+                request, "01", self.writer, ProbeSlots(), SourceCallBudget())
+        manifest, files = self.produce(recorded, collector=policy.collector_id)
+        self.assert_exact_file_and_entities(files)
+        self.assertEqual(manifest["counts"]["capture_limits"], 1)
+        limit = files["system.json"]["capture_limits"][0]
+        attempt = files["source_attempts.json"]["attempts"][0]
+        status = files["status_records.json"]["status_records"][0]
+        self.assertEqual(limit["threshold"], MAX_PER_FILE)
+        self.assertEqual(limit["unit"], "bytes")
+        self.assertEqual(limit["approved_rule_id"], "G4-07:SRC-12")
+        self.assertEqual(manifest["limit_record_ids"], [limit["limit_id"]])
+        self.assertIn(limit["limit_id"], attempt["limit_record_ids"])
+        self.assertIn(limit["limit_id"], status["limit_record_ids"])
+        self.assertEqual(validate_canonical(self.folder), manifest)
 
 
 if __name__ == "__main__":
