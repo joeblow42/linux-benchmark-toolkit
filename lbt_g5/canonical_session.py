@@ -34,7 +34,7 @@ from .normalization import (normalize_sealed_source, parser_available,
                             drm_sysfs_path_identity, net_sysfs_path_identity,
                             thermal_sysfs_path_identity,
                             hwmon_sysfs_path_identity, power_sysfs_path_identity)
-from .safety import initial_source_policies, valid_run_id
+from .safety import initial_source_policies, valid_run_id, RUN_BYTES
 
 PRIVATE_FILES = ("system.json", "source_attempts.json", "status_records.json")
 MANIFEST_NAME = "session_manifest.json"
@@ -524,7 +524,7 @@ def _verified_o1_provenance(folder, run_id, receipt, recorded, all_attempts,
     upstream = {"SRC-13":"SRC-12", "SRC-18":"SRC-17",
                 "SRC-21":"SRC-19"}.get(sid)
     if (upstream is None or receipt.get("authorization_class") != "O1"
-            or receipt.get("schema_version") not in ("g5-02-attempt-0.2","g5-02-attempt-0.4","g5-02-attempt-0.5")
+            or receipt.get("schema_version") not in ("g5-02-attempt-0.2","g5-02-attempt-0.4","g5-02-attempt-0.5","g5-02-attempt-0.6")
             or receipt.get("decision") != "ALLOW"
             or type(p) is not dict or set(p) != fields
             or recorded.authorization_provenance != p
@@ -849,7 +849,9 @@ def build_canonical(run_directory, engine_run):
         o1_verified = False
         if (source_id in ("SRC-13", "SRC-18", "SRC-21")
                 and metadata["outcome"] in ("CAPTURED","PARTIAL")
-                and metadata["reason"] in ("BYTES_PRESERVED","ACQUISITION_ERROR")):
+                and (metadata["reason"] in ("BYTES_PRESERVED","ACQUISITION_ERROR")
+                     or (metadata["schema_version"]=="g5-02-attempt-0.6"
+                         and metadata["reason"]=="CAPTURE_LIMIT"))):
             o1_verified = _verified_o1_provenance(
                 folder, run_id, metadata, item, all_attempts, artifacts)
         # G5-03 O1 transport cannot claim captured success with a nonzero
@@ -1028,7 +1030,7 @@ def build_canonical(run_directory, engine_run):
                    else getattr(item.outcome,"limit_witnesses",None))
             if (bound is not None or type(bounds06) is not list or not bounds06
                     or len(bounds06)>64 or not evidence_limited
-                    or (policy.authorization_class!="D0" and
+                    or (policy.authorization_class not in ("D0","O1") and
                         source_id not in ("SRC-28","SRC-15"))
                     or type(facts) not in (tuple,list)
                     or bounds06!=list(facts)):
@@ -1046,6 +1048,42 @@ def build_canonical(run_directory, engine_run):
                             (metadata.get("capture_limited") is not True or
                              actual["reason"]!="CAPTURE_LIMIT"))):
                     raise CanonicalContractError("v0.6 limit evidence contradicted")
+                if policy.authorization_class=="O1":
+                    # A v0.6 O1 private event is allowed only with its
+                    # independently matched operator/target/argv and D0
+                    # evidence chain AND sealed run-wide original aggregate.
+                    # The installed helper can reduce its own cumulative cap:
+                    # a helper transport timeout/overflow is not run-writer proof.
+                    outcome=item.outcome if isinstance(item.outcome,dict) else {}
+                    expected_scope=source_id+":call%04d:run:writer"%int(
+                        attempt_id.rsplit("-",1)[-1])
+                    sealed_run_bytes=sum(
+                        a.byte_count for previous in all_attempts
+                        for a in _artifacts(previous))
+                    clipped=[a for a in artifacts if a.limit_applied]
+                    if (not o1_verified or len(bounds06)!=1
+                            or metadata["outcome"]!="PARTIAL"
+                            or metadata["reason"]!="CAPTURE_LIMIT"
+                            or metadata.get("timed_out") is not False
+                            or outcome.get("transport_timed_out") is not False
+                            or outcome.get("transport_exceeded_limit") is not False
+                            or outcome.get("transport_omitted_at_least")!=0
+                            or actual["affected_scope"]!=expected_scope
+                            or actual["unit"]!="bytes"
+                            or type(actual["threshold"]) is not int
+                            or actual["threshold"]>RUN_BYTES
+                            or actual["observed_extent"]!=actual["threshold"]
+                            or sealed_run_bytes!=actual["threshold"]
+                            or len(clipped)!=1
+                            or type(actual["missing_extent"]) is not int
+                            or actual["missing_extent"]<=0
+                            or clipped[0].omitted_at_least!=actual["missing_extent"]
+                            or metadata.get("missing_extent_known_at_least")
+                                !=actual["missing_extent"]
+                            or any(a.limit_applied and a is not clipped[0]
+                                   for a in artifacts)):
+                        raise CanonicalContractError(
+                            "O1 run writer aggregate or consent not evidenced")
                 if source_id=="SRC-15" and actual["unit"]=="entries":
                     # This is a source-level count, not a child-timeout
                     # inference. Independently require the SAME sealed

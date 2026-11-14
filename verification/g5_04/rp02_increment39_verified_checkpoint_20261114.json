@@ -1,0 +1,80 @@
+{
+  "record_type": "LBT_G5_04_RP02_CP03_INCREMENT_39_CANDIDATE_CHECKPOINT",
+  "date": "2026-11-14",
+  "authority": {
+    "methodology": "AI-Assisted Software Engineering Governance Standard v1.0",
+    "roadmap": "Owner-approved First Article Test Readiness Roadmap RP-02.3",
+    "owner_decisions": "RP-01 210 mandatory,65 conditional,8 deferred, FR-134/177/186; RP-02 Choice A private operational receipt v0.6",
+    "requirements": "Rev 1.6: 283 NOT_VERIFIED",
+    "boundaries": "Fixed source argv; privilege/consent/root-helper protocol; G4-07 ceilings; canonical 1.0.0 and status 1.0/41 pairs; sealed original evidence unchanged"
+  },
+  "repository": {
+    "name": "joeblow42/linux-benchmark-toolkit",
+    "branch": "g5/cp03-rp02-o1-writer-39",
+    "pull_request": 64,
+    "stacked_on_pr": 63,
+    "previous_checkpoint_head": "bd8e1bd36bcc42a0941070dce7a391e47d3f89f3",
+    "implementation_verified_head": "587f658a32f7330a116ee315588a69b0e65efa91",
+    "implementation_verified_workflow_run": 43630599504,
+    "implementation_workflow_result": "completed/success, exact implementation head",
+    "final_record_commit_note": "This record and detailed handoff were committed after implementation CI. Verify the exact record-commit SHA on a new CI run before declaring the final checkpoint tested.",
+    "pr_status": "DRAFT/OPEN/UNMERGED",
+    "prior_stack": "PRs #55–63 draft open and unmerged at recovery"
+  },
+  "increment": {
+    "title": "O1 optional writer-run evidence and consent provenance",
+    "scope": "SRC-13 SMART/NVMe, SRC-18 optical and SRC-21 VA-API (optional O1)",
+    "actual_event": "Only witnessed run-wide EvidenceWriter writer_run_bytes clipping with positive omitted original suffix, no transport ambiguity",
+    "identity": "source:callNNNN:run:writer, bound to receipt attempt",
+    "provenance": "Exact run/source/target/operation consent, registered argv and same-run sealed D0 inventory SRC-12/SRC-17/SRC-19, verified by canonical independently of receipt assertion",
+    "canonical": "Private v0.6 multiple-limit facts now accept narrow O1 writer-run proof; exact applied meter threshold must equal all sealed same-run evidence bytes, missing extent from actual seal. No public entity/status schema change.",
+    "unsupported": "Per-target transport/timed-out and source-total/call/time events; helper internal run quotas remain unverified and cannot be guessed",
+    "helper": "No modification to privileged helper, authorization, consent or protocol"
+  },
+  "source_first": {
+    "oracle": "verification/g5_04/cp03_rp02_o1_writer_oracle_39.json",
+    "tests": "tests/test_g5_cp03_rp02_o1_writer_39.py",
+    "executable_methods": 7,
+    "result": "PASS, all new and existing CI steps at 43630599504 (prior CI failures diagnosed/fixed)",
+    "positive": "All three O1 source variants with mock/no physical device and exact consent+sealed original",
+    "negatives": "Exact no-omission boundary; missing/forged provenance; invalid limit scope/threshold; competing transport or timeout; unsealed run reservation; helper unknown effective cap",
+    "limitation": "Mock/synthetic candidate only, not independent CP-02 or host FAT"
+  },
+  "change_paths": [
+    ".github/workflows/test.yml",
+    "lbt_g5/o1_execution.py",
+    "lbt_g5/records.py",
+    "lbt_g5/canonical_session.py",
+    "tests/test_g5_cp03_rp02_o1_writer_39.py",
+    "verification/g5_04/cp03_rp02_o1_writer_oracle_39.json",
+    "verification/g5_04/rp02_increment39_continuation_handoff_20261114.md",
+    "verification/g5_04/rp02_increment39_verified_checkpoint_20261114.json"
+  ],
+  "protected_unchanged": [
+    "lbt_g5/safety.py",
+    "lbt_g5/o1.py",
+    "lbt_g5/privilege_contract.py",
+    "lbt_g5/privileged_session.py",
+    "packaging/lbt_root_helper.py",
+    "lbt_g5/evidence.py",
+    "lbt_g5/canonical_contract.py"
+  ],
+  "gate_status": {
+    "G5_04": "OPEN",
+    "RP_02": "PARTIALLY_COMPLETE",
+    "requirements": "283 NOT_VERIFIED",
+    "CP02_original_39": "NOT_ACCEPTED",
+    "independent_assurance": "OPEN",
+    "Bodhi7_AMD64": "NOT_EXECUTED",
+    "F06_D02": "OPEN",
+    "FAT": "NOT_ESTABLISHED",
+    "release": "NOT_AUTHORIZED"
+  },
+  "next": {
+    "handoff": "verification/g5_04/rp02_increment39_continuation_handoff_20261114.md",
+    "increment40": "O1 per-target transport/source-time evidence source-first oracles; verify exact applied threshold and conflicting writer/helper events; stop if protected helper interface change becomes required",
+    "remaining": "Complete RP-02 then RP-03 D-02/F-06, RP-04 independent CP-02 and Bodhi7 FAT",
+    "owner_gates": "Explicit owner approval required for changes to protected privilege, consent, root helper, schema or approved ceilings"
+  },
+  "conversation_safety": "Fresh conversation recommended after complete Increment39 checkpoint due extensive source/CI/context review; preserve this durable repo handoff, no routine decisions re-asked."
+}
