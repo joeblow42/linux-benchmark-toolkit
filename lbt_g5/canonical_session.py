@@ -1059,6 +1059,36 @@ def build_canonical(run_directory, engine_run):
                             or len({a.artifact.split("-")[0] for a in artifacts})
                                !=policy.max_entries):
                         raise CanonicalContractError("source entry count not evidenced")
+                if source_id=="SRC-15":
+                    if actual["affected_scope"]=="SRC-15:call0001:source:time":
+                        # A child transport timeout is not proof that the
+                        # independently measured cumulative source wall expired.
+                        timing=metadata.get("source_timing") or {}
+                        if (actual["unit"]!="seconds"
+                                or actual["threshold"]!=policy.max_seconds
+                                or actual["observed_extent"]<policy.max_seconds
+                                or type(timing.get("elapsed_ms")) is not int
+                                or timing["elapsed_ms"]<policy.max_seconds*1000
+                                or type(metadata.get("elapsed_seconds")) not in
+                                   (int,float)
+                                or metadata["elapsed_seconds"]<policy.max_seconds):
+                            raise CanonicalContractError(
+                                "SRC-15 cumulative deadline not independently evidenced")
+                    elif actual["affected_scope"]=="SRC-15:call0001:source:writer":
+                        # The source byte ceiling is enforced by the existing
+                        # writer; corroborate its *actual* omitted original
+                        # against the complete sealed source attempt extent.
+                        if (actual["unit"]!="bytes"
+                                or actual["threshold"]!=policy.max_bytes
+                                or actual["observed_extent"]!=policy.max_bytes
+                                or metadata.get("acquired_bytes")!=policy.max_bytes
+                                or type(actual["missing_extent"]) is not int
+                                or actual["missing_extent"]<=0
+                                or not any(a.limit_applied and
+                                    a.omitted_at_least==actual["missing_extent"]
+                                    for a in artifacts)):
+                            raise CanonicalContractError(
+                                "SRC-15 writer/source quota not evidenced")
                 identity=(actual["unit"],actual["affected_scope"])
                 if identity in seen:
                     raise CanonicalContractError("duplicate v0.6 limit evidence")
