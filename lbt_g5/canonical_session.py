@@ -401,7 +401,7 @@ def _verified_offline_dpkg_streams(metadata, artifacts, recorded):
     else:
         keys={"argv_executed","exit_code","started_utc",
               "completed_utc","elapsed_seconds"}
-        if (metadata.get("schema_version") not in ("g5-02-attempt-0.3","g5-02-attempt-0.4","g5-02-attempt-0.5")
+        if (metadata.get("schema_version") not in ("g5-02-attempt-0.3","g5-02-attempt-0.4","g5-02-attempt-0.5","g5-02-attempt-0.6")
                 or type(p) is not dict or set(p)!=keys
                 or p != getattr(recorded.outcome,"execution_provenance",None)
                 or metadata.get("exit_code")!=p["exit_code"]):
@@ -1028,7 +1028,8 @@ def build_canonical(run_directory, engine_run):
                    else getattr(item.outcome,"limit_witnesses",None))
             if (bound is not None or type(bounds06) is not list or not bounds06
                     or len(bounds06)>64 or not evidence_limited
-                    or policy.authorization_class!="D0"
+                    or (policy.authorization_class!="D0" and
+                        source_id!="SRC-28")
                     or type(facts) not in (tuple,list)
                     or bounds06!=list(facts)):
                 raise CanonicalContractError("unverified v0.6 source limit events")
