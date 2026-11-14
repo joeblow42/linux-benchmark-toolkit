@@ -789,7 +789,7 @@ def build_canonical(run_directory, engine_run):
         source_timing=metadata.get("source_timing")
         recorded_timing=getattr(item,"source_timing",None)
         if source_timing is not None:
-            if (metadata.get("schema_version") not in ("g5-02-attempt-0.4","g5-02-attempt-0.5")
+            if (metadata.get("schema_version") not in ("g5-02-attempt-0.4","g5-02-attempt-0.5","g5-02-attempt-0.6")
                     or type(source_timing) is not dict
                     or set(source_timing)!={"started_utc","completed_utc","elapsed_ms"}
                     or source_timing != recorded_timing
@@ -809,7 +809,7 @@ def build_canonical(run_directory, engine_run):
                 if b<a: raise ValueError()
             except ValueError as exc:
                 raise CanonicalContractError("actual acquisition clock order invalid") from exc
-        elif metadata.get("schema_version") in ("g5-02-attempt-0.4","g5-02-attempt-0.5") or recorded_timing is not None:
+        elif metadata.get("schema_version") in ("g5-02-attempt-0.4","g5-02-attempt-0.5","g5-02-attempt-0.6") or recorded_timing is not None:
             raise CanonicalContractError("versioned source clock missing")
         attempted.add(attempt_id)
         all_attempt_ids.add(attempt_id)
@@ -1014,17 +1014,57 @@ def build_canonical(run_directory, engine_run):
             metadata, artifacts, parser_state=parser_state,
             o1_provenance_verified=o1_verified)
         status_id = "st:" + attempt_id
-        # F-04: a source/stream limit is a fact, not the source max_bytes.
-        # Only a same-run in-memory transport bound and v0.5 private receipt
-        # may establish the actual trigger dimension and applied threshold.
+        # F-04: v0.6 private operational receipts can witness multiple
+        # independent actual D0 events. The exact approved production D-02
+        # CaptureLimit entity and status schema remain unchanged.
         bound=metadata.get("limit_witness")
+        bounds06=metadata.get("limit_witnesses")
         evidence_limited=(metadata.get("capture_limited")
                           or metadata.get("timed_out")
                           or any(x.limit_applied for x in artifacts))
-        if bound is not None:
+        limit_ids=[]
+        if metadata.get("schema_version")=="g5-02-attempt-0.6":
+            facts=(item.outcome.get("limit_witnesses") if isinstance(item.outcome,dict)
+                   else getattr(item.outcome,"limit_witnesses",None))
+            if (bound is not None or type(bounds06) is not list or not bounds06
+                    or len(bounds06)>64 or not evidence_limited
+                    or policy.authorization_class!="D0"
+                    or type(facts) not in (tuple,list)
+                    or bounds06!=list(facts)):
+                raise CanonicalContractError("unverified v0.6 source limit events")
+            seen=set()
+            for number, actual in enumerate(bounds06,1):
+                if (type(actual) is not dict
+                        or set(actual)!={"unit","threshold","observed_extent",
+                                        "missing_extent","affected_scope","reason"}
+                        or actual["unit"] not in ("seconds","bytes","entries")
+                        or (actual["unit"]=="seconds" and
+                            (metadata.get("timed_out") is not True or
+                             actual["reason"]!="TIME_BUDGET_EXCEEDED"))
+                        or (actual["unit"] in ("bytes","entries") and
+                            (metadata.get("capture_limited") is not True or
+                             actual["reason"]!="CAPTURE_LIMIT"))):
+                    raise CanonicalContractError("v0.6 limit evidence contradicted")
+                identity=(actual["unit"],actual["affected_scope"])
+                if identity in seen:
+                    raise CanonicalContractError("duplicate v0.6 limit evidence")
+                seen.add(identity)
+                limit_id="limit:"+attempt_id+":"+format(number,"04d")
+                limit_ids.append(limit_id)
+                limits.append({
+                    "limit_id":limit_id,"source_attempt_id":attempt_id,
+                    "approved_rule_id":"G4-07:"+source_id,
+                    "threshold":actual["threshold"],"unit":actual["unit"],
+                    "observed_extent":actual["observed_extent"],
+                    "missing_extent":actual["missing_extent"],
+                    "affected_scope":actual["affected_scope"],
+                    "reason":actual["reason"],
+                })
+        elif bound is not None:
             facts=(item.outcome.get("limit_witness") if isinstance(item.outcome,dict)
                    else getattr(item.outcome,"limit_witness",None))
-            if (metadata.get("schema_version")!="g5-02-attempt-0.5"
+            if (bounds06 is not None
+                    or metadata.get("schema_version")!="g5-02-attempt-0.5"
                     or type(bound) is not dict or bound!=facts
                     or set(bound)!={"unit","threshold","observed_extent",
                                     "missing_extent","affected_scope","reason"}
@@ -1039,6 +1079,7 @@ def build_canonical(run_directory, engine_run):
                     or bound["unit"] not in ("seconds","bytes")):
                 raise CanonicalContractError("time/byte capture bound contradicted")
             limit_id="limit:"+attempt_id
+            limit_ids.append(limit_id)
             limits.append({
                 "limit_id":limit_id,"source_attempt_id":attempt_id,
                 "approved_rule_id":"G4-07:"+source_id,
@@ -1048,13 +1089,9 @@ def build_canonical(run_directory, engine_run):
                 "affected_scope":bound["affected_scope"],
                 "reason":bound["reason"],
             })
-        elif evidence_limited:
-            # Historical source attempts are preserved in private receipts.
-            # Without a recorded effective bound, never invent max_bytes for
-            # a timed-out worker or guess the amount omitted.
+        elif evidence_limited or bounds06 is not None:
+            # No witness cannot be interpreted as a successful/complete event.
             raise CanonicalContractError("capture-limit dimension not evidenced")
-        else:
-            limit_id=None
         statuses.append(new_status(
             record_id=status_id, domain="acquisition",
             component_id=policy.collector_id, subject_id=source_id,
@@ -1077,7 +1114,7 @@ def build_canonical(run_directory, engine_run):
             completed_utc=(source_timing["completed_utc"] if source_timing else None),
             elapsed_ms=(source_timing["elapsed_ms"] if source_timing else None),
             evidence_refs=linked, source_attempt_ids=[attempt_id],
-            limit_record_ids=([limit_id] if limit_id else [])))
+            limit_record_ids=limit_ids))
         attempts.append({
             "attempt_id": attempt_id, "receipt_private_path": receipt_path,
             "receipt_sha256": hashlib.sha256(receipt_raw).hexdigest(),
