@@ -1,0 +1,245 @@
+{
+  "record_type": "LBT_CP01_OWNER_APPROVED_D02_EXACT_CONTRACT",
+  "date_extracted": "2026-11-14",
+  "authority": "Approved CP-01 owner decisions D-01–D-05 on 2026-11-02, §6 D-02 annex; not a redesign or contract amendment",
+  "source": {
+    "archive": "LBT_G5_04_CP02_Traceability_and_Test_Specification_Recovery_2026-11-02.zip",
+    "archive_sha256": "75bd8d7f4ad5167449cc63974fdc85650dc364cce0b037d9633a9794c2b157a2",
+    "internal_path": "03_DECISION_AUTHORITY/LBT_G5_04_CP01_Contract_Reconciliation_Approval_Review_2026-11-02.odt",
+    "odt_sha256": "6d836d28af086a0fec7df2ca0949faf9447f9cee29cfabb8751344bd5104c98b",
+    "archive_integrity": "zip CRC PASS; 7 of 7 SHA256SUMS payloads PASS",
+    "annex": "§6 Proposed exact v1.0.0 field contracts — D-02 annex; approved through subsequent D01..D05 owner approval"
+  },
+  "versions": {
+    "canonical": "1.0.0",
+    "status_record": "1.0",
+    "status_pair_count": 41
+  },
+  "notation": "str nonempty; utc ISO8601 UTC; int JSON integer; bool JSON boolean; list required even if empty except 1..N; map required; '?' nullable but required; hash64 lowercase SHA256; unknown keys forbidden; unknown acquired data retained via observed_value or sealed fallback",
+  "files": {
+    "system.json": {
+      "schema_version": "str",
+      "run_id": "str",
+      "header": "SessionHeader",
+      "observations": "list[CanonicalObservation]",
+      "capture_limits": "list[CaptureLimit]",
+      "limitations": "list[str]"
+    },
+    "source_attempts.json": {
+      "schema_version": "str",
+      "run_id": "str",
+      "attempts": "list[SourceAttempt]"
+    },
+    "status_records.json": {
+      "schema_version": "str",
+      "run_id": "str",
+      "status_records": "list[StatusRecord]"
+    },
+    "session_manifest.json": {
+      "schema_version": "str",
+      "manifest_version": "str",
+      "run_id": "str",
+      "completion_state": "enum",
+      "integrity_verified": "bool",
+      "minimum_usable": "bool",
+      "finalized_utc": "utc?",
+      "counts": "Counts",
+      "files": "map[FileDigest]",
+      "evidence": "map[EvidenceArtifact]",
+      "source_receipts": "map[ReceiptDigest]",
+      "observation_ids": "list[str]",
+      "source_attempt_ids": "list[str]",
+      "status_record_ids": "list[str]",
+      "limit_record_ids": "list[str]",
+      "limitations": "list[str]"
+    }
+  },
+  "entities": {
+    "SessionHeader": {
+      "started_utc": "utc?",
+      "completed_utc": "utc?",
+      "platform_scope": "str",
+      "requested_mode": "str",
+      "lifecycle_state": "enum",
+      "collector_ids": "list[str]",
+      "created_by_version": "str?"
+    },
+    "SourceAttempt": {
+      "attempt_id": "str",
+      "source_id": "str",
+      "collector_id": "str",
+      "operation_id": "str",
+      "authorization_class": "enum",
+      "authorization_decision": "enum",
+      "operator_consent": "map?",
+      "invocation": "map",
+      "safety_bounds": "list[str]",
+      "started_utc": "utc?",
+      "completed_utc": "utc?",
+      "elapsed_ms": "int?",
+      "tool_version": "str?",
+      "exit_code": "int?",
+      "errno": "str?",
+      "capture_bytes": "int>=0",
+      "evidence_ids": "list[str]",
+      "status_record_id": "str",
+      "limit_record_ids": "list[str]",
+      "receipt_private_path": "str",
+      "receipt_sha256": "hash64",
+      "receipt_byte_count": "int>=0",
+      "errors": "list[str]",
+      "unavailable_fields": "list[str]"
+    },
+    "EvidenceArtifact": {
+      "evidence_id": "str",
+      "source_attempt_id": "str",
+      "representation": "enum",
+      "restricted_relative_path": "str",
+      "sha256": "hash64",
+      "byte_count": "int>=0",
+      "sealed_utc": "utc?",
+      "completeness": "enum",
+      "encoding": "str?",
+      "limit_record_ids": "list[str]",
+      "limit_applied": "bool",
+      "omitted_at_least": "int>=0"
+    },
+    "CanonicalObservation": {
+      "observation_id": "str",
+      "collector_id": "str",
+      "datum_path": "str",
+      "instance_key": "str?",
+      "ordinal": "int>=0",
+      "observed_value": "JSON-typed-or-bytes-reference",
+      "normalized_value": "JSON-typed?",
+      "value_type": "enum",
+      "unit": "str?",
+      "evidence_refs": "list[str] (1..N)",
+      "source_attempt_ids": "list[str] (1..N)",
+      "transformation_ids": "list[str]",
+      "acquired_utc": "utc?",
+      "capture_limit_ids": "list[str]",
+      "status_record_id": "str",
+      "parser_findings": "list[str]",
+      "limitations": "list[str]"
+    },
+    "CaptureLimit": {
+      "limit_id": "str",
+      "source_attempt_id": "str",
+      "approved_rule_id": "str",
+      "threshold": "number",
+      "unit": "str",
+      "observed_extent": "number?",
+      "missing_extent": "number?",
+      "affected_scope": "str",
+      "reason": "str"
+    },
+    "StatusRecord": {
+      "schema_version": "str",
+      "record_id": "str",
+      "domain": "enum",
+      "component_id": "str",
+      "subject_id": "str",
+      "status": "enum",
+      "reason_code": "enum",
+      "detail": "str",
+      "started_utc": "utc?",
+      "completed_utc": "utc?",
+      "elapsed_ms": "int?",
+      "evidence_refs": "list[str]",
+      "limit_record_ids": "list[str]",
+      "source_attempt_ids": "list[str]"
+    },
+    "Counts": {
+      "attempts": "int>=0",
+      "sources": "int>=0",
+      "observations": "int>=0",
+      "evidence_artifacts": "int>=0",
+      "original_bytes": "int>=0",
+      "statuses": "int>=0",
+      "capture_limits": "int>=0"
+    },
+    "FileDigest": {
+      "sha256": "hash64",
+      "byte_count": "int>=0"
+    },
+    "ReceiptDigest": {
+      "sha256": "hash64",
+      "byte_count": "int>=0",
+      "attempt_id": "str",
+      "restricted_relative_path": "str"
+    }
+  },
+  "enum_sets": {
+    "SourceAttempt.authorization_class": [
+      "D0",
+      "D1",
+      "O1"
+    ],
+    "SourceAttempt.authorization_decision": [
+      "ALLOW",
+      "DENY",
+      "NOT_APPLICABLE"
+    ],
+    "EvidenceArtifact.representation": [
+      "FILE_BYTES",
+      "STDOUT",
+      "STDERR",
+      "API_SNAPSHOT"
+    ],
+    "EvidenceArtifact.completeness": [
+      "COMPLETE",
+      "INCOMPLETE"
+    ],
+    "CanonicalObservation.value_type": [
+      "STRING",
+      "INTEGER",
+      "NUMBER",
+      "BOOLEAN",
+      "OBJECT",
+      "ARRAY",
+      "BYTES_REF",
+      "NULL"
+    ],
+    "SessionHeader.lifecycle_state": [
+      "ALLOCATED",
+      "ACQUIRING",
+      "CANONICAL_PENDING",
+      "COMMITTED",
+      "INCOMPLETE",
+      "INTERRUPTED",
+      "FAILED"
+    ],
+    "session_manifest.json.completion_state": [
+      "COMPLETE",
+      "PARTIAL",
+      "INCOMPLETE",
+      "INTERRUPTED",
+      "FAILED"
+    ]
+  },
+  "linkage": [
+    "Every named field is required; field names not listed are rejected",
+    "StatusRecord uses exact 14-field envelope/schema 1.0 and 41 controlled pairs, status requires factual evidence",
+    "All references and identity/ownership bindings must validate within same run",
+    "Preserve unknown acquired data in typed observed_value or lossless sealed fallback; never tolerate unknown canonical field",
+    "Original sealed raw evidence remains byte-identical",
+    "Missing historical sealed_utc and acquired_utc may be null; never fabricate provenance/time"
+  ],
+  "candidate_discrepancies": {
+    "system": [
+      "candidate top-level platform_scope and normalization_state must migrate under approved header/lifecycle",
+      "candidate lacks header"
+    ],
+    "manifest": [
+      "candidate omits manifest_version,minimum_usable,finalized_utc,counts,source_receipts,observation_ids,source_attempt_ids,limit_record_ids"
+    ],
+    "evidence": [
+      "candidate complete/private_relative_path need D-02 names completeness/restricted_relative_path"
+    ],
+    "source_attempts": [
+      "candidate source_disposition/source_reason/capture_limited are unapproved production fields; production needs operation_id,authorization_decision,consent,invocation,safety_bounds,timing,exit/errno,limit ids"
+    ]
+  },
+  "acceptance": "Source-first contract pinned for RP-03.1 implementation; DOES NOT claim canonical conformance, independent CP-02 acceptance, RP-03 closure, FAT or release."
+}
