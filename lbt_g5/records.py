@@ -198,7 +198,10 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                 (bool(re.fullmatch(re.escape(source_id)+
                     r":call(?:00(?:0[1-9]|[1-9][0-9])|0(?:1[0-1][0-9]|12[0-8])):"
                     r"(transport|stdout|stderr)",scope))
-                 or scope==source_id+":call0001:source:entries")
+                 or scope in (
+                    source_id+":call0001:source:entries",
+                    source_id+":call0001:source:time",
+                    source_id+":call0001:source:writer"))
                 if source_id=="SRC-15" else
                 scope.startswith(source_id+":call0001:")))
             if (unit not in ("seconds","bytes","entries")
@@ -214,12 +217,17 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                         (type(omitted) is not int or omitted<0))):
                 raise ValueError("invalid v0.6 measured limit")
             if unit=="seconds":
-                applied_max=(policy.per_target_seconds
-                             if source_id in ("SRC-28","SRC-15")
-                             else policy.max_seconds)
-                if (not scope.endswith(":transport")
-                        or th>applied_max or not timed_out):
-                    raise ValueError("invalid v0.6 process deadline")
+                if source_id=="SRC-15" and scope==source_id+":call0001:source:time":
+                    # Source wall deadline is separate from per-call transport.
+                    if th!=policy.max_seconds or observed<th or not timed_out:
+                        raise ValueError("invalid SRC-15 cumulative deadline")
+                else:
+                    applied_max=(policy.per_target_seconds
+                                 if source_id in ("SRC-28","SRC-15")
+                                 else policy.max_seconds)
+                    if (not scope.endswith(":transport")
+                            or th>applied_max or not timed_out):
+                        raise ValueError("invalid v0.6 process deadline")
             else:
                 if (not capture_limited or type(th) is not int
                         or type(observed) is not int):
@@ -229,6 +237,11 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                         if (scope!=source_id+":call0001:source:entries" or
                                 th!=policy.max_entries or observed!=th):
                             raise ValueError("invalid SRC-15 source entry ceiling")
+                    elif scope==source_id+":call0001:source:writer":
+                        # Writer owns the existing 2 MiB aggregate ceiling.
+                        if (unit!="bytes" or th!=policy.max_bytes or
+                                observed!=th or omitted is None or omitted<=0):
+                            raise ValueError("invalid SRC-15 writer source quota")
                     else:
                         applied=(1*1024*1024 if scope.endswith(":stdout")
                                  else 128*1024 if scope.endswith(":stderr")
