@@ -88,6 +88,15 @@ class SRC28TransportF04(unittest.TestCase):
         with self.assertRaisesRegex(CanonicalContractError,"dimension not evidenced"):
             build_canonical(folder,run)
 
+    def test_r28_34_04b_omitted_bytes_without_transport_flag_cannot_pass(self):
+        folder,receipt,run,_=self.one(
+            stderr=b"E"*ERR_CAP,exceeded=False,omitted_stderr=1)
+        self.assertEqual(receipt["outcome"],"PARTIAL")
+        self.assertTrue(receipt["capture_limited"])
+        self.assertNotIn("limit_witnesses",receipt)
+        with self.assertRaisesRegex(CanonicalContractError,"dimension not evidenced"):
+            build_canonical(folder,run)
+
     def test_r28_34_05_clean_transport_is_legacy_v04(self):
         folder,receipt,run,_=self.one()
         self.assertEqual(receipt["schema_version"],"g5-02-attempt-0.4")
