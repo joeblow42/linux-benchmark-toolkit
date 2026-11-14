@@ -1,0 +1,61 @@
+{
+  "record_type": "LBT_G5_04_RP02_CP03_INCREMENT_41_CANDIDATE_CHECKPOINT",
+  "date": "2026-11-14",
+  "authority": "AI-Assisted Software Engineering Governance Standard v1.0; FAT Readiness Roadmap RP-02.3; Rev 1.6 283 NOT_VERIFIED; RP-02 receipt v0.6 Choice A",
+  "repository": {
+    "name": "joeblow42/linux-benchmark-toolkit",
+    "branch": "g5/cp03-rp02-o1-aggregate-41",
+    "pr": 66,
+    "stacked_on": 65,
+    "previous_verified_head": "6020bdb64b61f23d5ae6ab8cd42dc96aa1d08728",
+    "implementation_verified_head": "8351e0f4b149f7a94cd6e7a9bf9aaa8904371382",
+    "exact_head_ci_run": 43633380973,
+    "ci_result": "completed/success",
+    "pr_state": "DRAFT/OPEN/UNMERGED",
+    "note": "After record commit, separately verify exact new head CI."
+  },
+  "increment": {
+    "title": "SRC-18 cumulative O1 original writer-source budget assurance",
+    "scope": "Actually reached 8MiB SRC-18 writer-source event only; per-target 4MiB unchanged",
+    "oracle": "verification/g5_04/cp03_rp02_o1_aggregate_oracle_41.json",
+    "test": "tests/test_g5_cp03_rp02_o1_aggregate_41.py",
+    "source_first": "oracle/tests committed and CI failures observed ahead of production source changes",
+    "positive": "Two complete 4MiB authorized source calls, next 17 original bytes omitted by existing source writer; exact private source:writer fact; canonical sealed 8MiB aggregate proof",
+    "negative": "Missing prior original, unsealed source reservation, forged threshold and omission",
+    "unreachable": "SRC-21 source writer after one authorized call; SRC-13 helper reduced internal cumulative effective quota without attestation; source timing/count not independently attested",
+    "original_evidence": "Unchanged, sealed original before normalization"
+  },
+  "changes": [
+    ".github/workflows/test.yml",
+    "lbt_g5/o1_execution.py",
+    "lbt_g5/records.py",
+    "lbt_g5/canonical_session.py",
+    "tests/test_g5_cp03_rp02_o1_aggregate_41.py",
+    "verification/g5_04/cp03_rp02_o1_aggregate_oracle_41.json"
+  ],
+  "protected_unchanged": [
+    "lbt_g5/safety.py",
+    "lbt_g5/o1.py",
+    "lbt_g5/privilege_contract.py",
+    "lbt_g5/privileged_session.py",
+    "packaging/lbt_root_helper.py",
+    "lbt_g5/evidence.py",
+    "lbt_g5/canonical_contract.py"
+  ],
+  "gates": {
+    "G5_04": "OPEN",
+    "RP_02": "PARTIALLY_COMPLETE",
+    "RP_03": "OPEN",
+    "RP_04": "OPEN",
+    "independent_original_39_CP02": "NOT_ACCEPTED",
+    "requirements_283": "NOT_VERIFIED",
+    "Bodhi7_host": "NOT_EXECUTED",
+    "FAT": "NOT_ESTABLISHED",
+    "release": "NOT_AUTHORIZED"
+  },
+  "next": {
+    "increment42": "Assess remaining O1 source time/call count and SRC-13 helper cumulative effective caps against approved protocol; source-first negative proof, decision only if a protected change is necessary",
+    "then": "RP-03 F-06/D-02 and RP-04 independent CP-02 and host FAT"
+  },
+  "conversation_safety": "Safe to continue at completion of Increment 41, with context integrity assessed."
+}
