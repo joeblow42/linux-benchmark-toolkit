@@ -203,7 +203,13 @@ def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
                             transport_limit_witnesses=tuple(events)
                             single_limit_witness=None
                     if transport.returncode:errors.append("COMMAND_EXIT_NONZERO")
-                    if transport.exceeded_limit:
+                    if (transport.exceeded_limit or
+                            transport.stdout_omitted_at_least>0 or
+                            transport.stderr_omitted_at_least>0):
+                        # Even a contradictory transport overflow claim is
+                        # an incomplete source, never a CAPTURED/OK success.
+                        # Without an independently witnessed cap, canonical
+                        # creation must still fail closed.
                         limited=True;errors.append("CAPTURE_LIMIT")
                     if transport.timed_out:
                         limited=True;errors.append("TIME_BUDGET_EXCEEDED")
