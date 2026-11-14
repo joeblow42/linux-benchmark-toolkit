@@ -1089,6 +1089,25 @@ def build_canonical(run_directory, engine_run):
                                     for a in artifacts)):
                             raise CanonicalContractError(
                                 "SRC-15 writer/source quota not evidenced")
+                if (source_id=="SRC-28" and
+                        actual["affected_scope"]=="SRC-28:call0001:run:writer"):
+                    # The shared run meter may include earlier sealed sources.
+                    # Only the *whole same-run sealed original aggregate*
+                    # independently proves an applied writer-run ceiling.
+                    # Unsealed reservations are not sufficient evidence.
+                    sealed_run_bytes=sum(a.byte_count for recorded in all_attempts
+                                         for a in _artifacts(recorded))
+                    if (actual["unit"]!="bytes"
+                            or type(actual["threshold"]) is not int
+                            or actual["observed_extent"]!=actual["threshold"]
+                            or sealed_run_bytes!=actual["threshold"]
+                            or type(actual["missing_extent"]) is not int
+                            or actual["missing_extent"]<=0
+                            or not any(a.limit_applied and
+                                a.omitted_at_least==actual["missing_extent"]
+                                for a in artifacts)):
+                        raise CanonicalContractError(
+                            "SRC-28 run writer aggregate not evidenced")
                 identity=(actual["unit"],actual["affected_scope"])
                 if identity in seen:
                     raise CanonicalContractError("duplicate v0.6 limit evidence")
