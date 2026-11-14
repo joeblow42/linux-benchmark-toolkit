@@ -179,7 +179,8 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
         # schema keys, source safety budgets and reason vocabulary are not.
         if (limit_witness is not None or type(limit_witnesses) not in (list,tuple)
                 or not 1<=len(limit_witnesses)<=64
-                or (policy.authorization_class!="D0" and source_id!="SRC-28")
+                or (policy.authorization_class!="D0" and
+                    source_id not in ("SRC-28","SRC-15"))
                 or decision!="ALLOW" or outcome not in ("PARTIAL","FAILED")
                 or not (capture_limited or timed_out)):
             raise ValueError("invalid v0.6 multiple-limit source scope")
@@ -193,9 +194,15 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
             reason=bound["reason"]
             th=bound["threshold"];observed=bound["observed_extent"]
             omitted=bound["missing_extent"]
+            eligible_scope=(type(scope) is str and (
+                bool(re.fullmatch(re.escape(source_id)+
+                    r":call(?:00(?:0[1-9]|[1-9][0-9])|0(?:1[0-1][0-9]|12[0-8])):"
+                    r"(transport|stdout|stderr)",scope))
+                if source_id=="SRC-15" else
+                scope.startswith(source_id+":call0001:")))
             if (unit not in ("seconds","bytes","entries")
                     or type(scope) is not str
-                    or not scope.startswith(source_id+":call0001:")
+                    or not eligible_scope
                     or (unit=="seconds") != (reason=="TIME_BUDGET_EXCEEDED")
                     or reason not in ("CAPTURE_LIMIT","TIME_BUDGET_EXCEEDED")
                     or type(th) not in (int,float) or type(observed) not in (int,float)
@@ -207,15 +214,24 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                 raise ValueError("invalid v0.6 measured limit")
             if unit=="seconds":
                 applied_max=(policy.per_target_seconds
-                             if source_id=="SRC-28" else policy.max_seconds)
-                if (scope!=source_id+":call0001:transport"
+                             if source_id in ("SRC-28","SRC-15")
+                             else policy.max_seconds)
+                if (not scope.endswith(":transport")
                         or th>applied_max or not timed_out):
                     raise ValueError("invalid v0.6 process deadline")
             else:
                 if (not capture_limited or type(th) is not int
                         or type(observed) is not int):
                     raise ValueError("invalid v0.6 count/byte dimension")
-                if source_id=="SRC-28":
+                if source_id=="SRC-15":
+                    applied=(1*1024*1024 if scope.endswith(":stdout")
+                             else 128*1024 if scope.endswith(":stderr")
+                             else None)
+                    if (unit!="bytes" or applied is None or
+                            omitted is None or omitted<=0 or
+                            observed!=th or th!=applied):
+                        raise ValueError("invalid SRC-15 D1 per-call cap")
+                elif source_id=="SRC-28":
                     if (unit!="bytes" or omitted is None or omitted<=0
                             or observed!=th
                             or (scope==source_id+":call0001:stderr" and
