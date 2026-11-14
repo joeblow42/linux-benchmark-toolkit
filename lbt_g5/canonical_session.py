@@ -1046,6 +1046,19 @@ def build_canonical(run_directory, engine_run):
                             (metadata.get("capture_limited") is not True or
                              actual["reason"]!="CAPTURE_LIMIT"))):
                     raise CanonicalContractError("v0.6 limit evidence contradicted")
+                if source_id=="SRC-15" and actual["unit"]=="entries":
+                    # This is a source-level count, not a child-timeout
+                    # inference. Independently require the SAME sealed
+                    # SRC-14 mountinfo to show an additional eligible mount,
+                    # plus all 128 source call slots in the attempt.
+                    if (actual["affected_scope"]!="SRC-15:call0001:source:entries"
+                            or actual["threshold"]!=policy.max_entries
+                            or actual["observed_extent"]!=policy.max_entries
+                            or verified_local_mounts is None
+                            or len(verified_local_mounts)<=policy.max_entries
+                            or len({a.artifact.split("-")[0] for a in artifacts})
+                               !=policy.max_entries):
+                        raise CanonicalContractError("source entry count not evidenced")
                 identity=(actual["unit"],actual["affected_scope"])
                 if identity in seen:
                     raise CanonicalContractError("duplicate v0.6 limit evidence")
