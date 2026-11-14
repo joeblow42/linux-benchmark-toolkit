@@ -119,6 +119,8 @@ jobs:
         run: python3 -m unittest discover -s tests -p 'test_g5_cp03_rp02_src15_entries_36.py' -v
       - name: G5-04 RP-02.2 SRC-15 cumulative time and source writer byte evidence
         run: python3 -m unittest discover -s tests -p 'test_g5_cp03_rp02_src15_aggregate_37.py' -v
+      - name: G5-04 RP-02.2 SRC-28 writer run-quota and unreachable source-cap tests
+        run: python3 -m unittest discover -s tests -p 'test_g5_cp03_rp02_src28_writer_38.py' -v
       - name: Unified Full validation (unit and acceptance once)
         run: python3 -m validation.suites full --output validation-results/ci
       - name: Upload unified validation report
