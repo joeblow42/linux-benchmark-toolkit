@@ -1,0 +1,88 @@
+{
+  "record_type": "LBT_RP02_CP03_INCREMENT_31_33_ENGINEERING_CHECKPOINT",
+  "owner_approvals": {
+    "rp01": "2026-11-13: 210 FAT-mandatory, 65 conditional, 8 deferred; FR-134 FR-177 FR-186 approved",
+    "rp02": "2026-11-13: Choice A approved — private operational receipt v0.6 for factual multiple D0 limits",
+    "exclusions": "No authority to change fixed source commands, privileges, approved G4-07 ceilings, production canonical schema v1.0.0 or accepted status vocabulary"
+  },
+  "stack": {
+    "rp01_approval": {
+      "pr": 55,
+      "branch": "fat/rp01-owner-applicability-20261113",
+      "base_sha": "5bd31245fc31500cbb9abc2dcb3a65415af18582"
+    },
+    "increments": [
+      {
+        "id": 31,
+        "pr": 56,
+        "branch": "g5/cp03-rp02-f04-d0-limits-31",
+        "sha": "abc2f4307fb20c5a0cdc54b3396c04906d40917c",
+        "workflow_id": 43551904023,
+        "conclusion": "success",
+        "source_first_oracle": "verification/g5_04/cp03_rp02_d0_source_limit_oracle_31.json",
+        "scope": "D0 per-file, source byte and attempted-entry witnessed limits, multiple bound IDs",
+        "test_file": "tests/test_g5_cp03_rp02_d0_limits_31.py",
+        "synthetic_cases_executed": 8
+      },
+      {
+        "id": 32,
+        "pr": 57,
+        "branch": "g5/cp03-rp02-f04-d0-transport-32",
+        "sha": "bf9284c7f2660807f1be9688f2cb84e8d9dc8393",
+        "workflow_id": 43552275602,
+        "conclusion": "success",
+        "source_first_oracle": "verification/g5_04/cp03_rp02_d0_transport_oracle_32.json",
+        "scope": "D0 stdout/stderr overflow measured only when actual bound and observed stream extent agree; simultaneous time/bytes",
+        "test_file": "tests/test_g5_cp03_rp02_d0_transport_32.py",
+        "synthetic_cases_executed": 6
+      },
+      {
+        "id": 33,
+        "pr": 58,
+        "branch": "g5/cp03-rp02-f04-d0-writer-33",
+        "sha": "108abdd679eecb17ec82d702536b68a0aa35a8af",
+        "workflow_id": 43552717804,
+        "conclusion": "success",
+        "source_first_oracle": "verification/g5_04/cp03_rp02_d0_writer_oracle_33.json",
+        "scope": "Writer run/source/stream private quota facts, exact sealed original subset with SHA256 and known lower bound",
+        "test_file": "tests/test_g5_cp03_rp02_d0_writer_33.py",
+        "synthetic_cases_executed": 5
+      }
+    ]
+  },
+  "validation": {
+    "source_first_oracle_cases_designed": 25,
+    "targeted_new_synthetic_tests_executed": 19,
+    "ci": "All three independent exact-head CI runs success, but synthetic tests self-authored and NOT CP-02 independent acceptance",
+    "source_permissions": "Unchanged",
+    "source_command_argv_and_privileges": "Unchanged",
+    "safety_ceiling_values": "Unchanged",
+    "original_artifact_and_digest_wire_format": "Unchanged",
+    "operational_receipt": "Private v0.6 added; prior v0.1-v0.5 usable",
+    "canonical_schema_contract": "Approved 1.0.0 unchanged; exact F-06 producer/validator conformance still OPEN",
+    "status_schema_contract": "Approved v1.0 and 41 status pairs unchanged",
+    "git_merge": "PR 55-58 are draft and unmerged",
+    "original_cp02_39_cases": "NOT_ACCEPTED",
+    "requirement_rtm": "283 NOT_VERIFIED",
+    "Bodhi_7_AMD64_operator_verification": "NOT_EXECUTED",
+    "F04_overall": "PARTIAL"
+  },
+  "known_gaps": [
+    "D0 end-to-end real-host and adversarial external oracles not accepted; exact-boundary does not prove missing bytes",
+    "Per-file and source caps represent reached applied limits without invented omitted counts",
+    "Evidence writer cases with ambiguous time/budget race or uncertain dimensional witnesses remain nonpromotable",
+    "Source-first negative-fixture and independent human review still required for CP-02",
+    "D1 SRC-15 multi-mount aggregate and SRC-28 remaining byte/writer cases OPEN",
+    "O1 SMART/NVMe, optical/VA-API, privileged time/byte/stream cases OPEN",
+    "Canonical F-06 exact D-02 field/type/null conformance and status semantics OPEN",
+    "CP-04 integrity, CP-05 integration, CP-06 Bodhi operator validation, CP-07 owner gate OPEN"
+  ],
+  "next_sequence": [
+    "RP-02.2: bound SRC-15 multi-mount, multi-call, source-total and writer dimensions, plus SRC-28 remaining caps",
+    "RP-02.3: O1 optional SMART/NVMe, optical and VA-API including privileged helper paths under existing consent and approved commands",
+    "RP-03: exact frozen D-02 canonical and F-06 conformance only after factual F-04 treatment",
+    "RP-04: independent CP-02 through CP-07 assurance, owner-controlled disposition"
+  ],
+  "conversation_safety": "New conversation recommended after 3 increments to reduce context/handoff risk. Explicit next-session handoff can use repo draft PRs #55-#58 and this checkpoint. No additional owner decision currently established.",
+  "notes": "Do not mistake passing candidate CI or a draft PR for independent acceptance, verified requirements, merged code, or FAT readiness."
+}

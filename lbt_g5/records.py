@@ -13,7 +13,7 @@ import os
 import re
 import secrets
 import stat
-from .safety import valid_run_id, initial_source_policies, RUN_SECONDS
+from .safety import valid_run_id, initial_source_policies, RUN_SECONDS, RUN_BYTES
 
 @dataclass(frozen=True)
 class AttemptReceipt:
@@ -234,6 +234,19 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                     if (th!=64*1024 or observed!=th or
                             omitted is None or omitted<=0):
                         raise ValueError("invalid v0.6 stderr transport overrun")
+                elif scope==source_id+":call0001:run:writer":
+                    if (th>RUN_BYTES or observed!=th or
+                            omitted is None or omitted<=0):
+                        raise ValueError("invalid v0.6 writer run ceiling")
+                elif scope==source_id+":call0001:source:writer":
+                    if (th!=policy.max_bytes or observed!=th or
+                            omitted is None or omitted<=0):
+                        raise ValueError("invalid v0.6 writer source ceiling")
+                elif re.fullmatch(
+                        re.escape(source_id)+r":call0001:item[0-9]{4}:writer",
+                        scope):
+                    if (th!=policy.max_bytes or omitted is None or omitted<=0):
+                        raise ValueError("invalid v0.6 writer stream ceiling")
                 else:
                     raise ValueError("unapproved v0.6 byte scope")
             if (unit,scope) in witnessed:
