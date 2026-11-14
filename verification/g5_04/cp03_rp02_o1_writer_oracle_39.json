@@ -1,0 +1,120 @@
+{
+  "oracle_id": "CP03-RP02-O1-RUN-WRITER-39",
+  "authority": "Governance Standard v1.0; Rev 1.6; RP-01 FAT scope approved; RP-02 private receipt v0.6 Choice A",
+  "assurance": "Source-first synthetic fixture design; independent CP-02 acceptance and Bodhi 7 AMD64 real-host FAT still OPEN",
+  "invariant": "Prove O1 writer-run clipping from an actual seal event, positive omitted original, exact same-run sealed aggregate, current consent/approved-command/same-run D0 evidence; never infer O1 transport or root-helper internal effective cap.",
+  "protected": [
+    "fixed SRC-13 smartctl/nvme, SRC-18 sg_get_config, SRC-21 vainfo argv",
+    "source/operator privilege/consent/installed helper protocol",
+    "G4-07 per-target/source/run ceilings",
+    "public canonical v1.0.0; status v1.0/41 pairs",
+    "immutable raw evidence"
+  ],
+  "per_source": [
+    {
+      "id": "SRC-13",
+      "operation": "DEVICE_HEALTH",
+      "per_target_bytes": 8388608,
+      "per_target_seconds": 12,
+      "source_bytes": 33554432,
+      "source_seconds": 60,
+      "source_attempts": 32,
+      "inventory": "SRC-12",
+      "helper": "eligible under separately gated installed SRC-13 helper only"
+    },
+    {
+      "id": "SRC-18",
+      "operation": "OPTICAL_MEDIA",
+      "per_target_bytes": 4194304,
+      "per_target_seconds": 8,
+      "source_bytes": 8388608,
+      "source_seconds": 20,
+      "source_attempts": 4,
+      "inventory": "SRC-17",
+      "helper": "not eligible"
+    },
+    {
+      "id": "SRC-21",
+      "operation": "VAINFO",
+      "per_target_bytes": null,
+      "per_target_seconds": null,
+      "source_bytes": 8388608,
+      "source_seconds": 10,
+      "source_attempts": 1,
+      "inventory": "SRC-19",
+      "helper": "not eligible"
+    }
+  ],
+  "support_now": "Only actual run-wide EvidenceWriter writer_run_bytes with run:writer scope; preserve v0.4 legacy when no clipping; v0.6 O1 only for corroborated writer-run event.",
+  "cases": [
+    {
+      "id": "O1-39-01",
+      "given": "SRC-13 consented SMART helper mock, sealed SRC-12 inventory, small run meter clips the already bounded returned original",
+      "expect": "One private v0.6 run writer fact; exact sealed prefix, positive omitted extent; canonical consent, same-run aggregate and status PARTIAL/CAPTURE_LIMIT"
+    },
+    {
+      "id": "O1-39-02",
+      "given": "SRC-18 consented optical direct mock with sealed SRC-17 inventory and writer-run clipping",
+      "expect": "Same run writer proof without permitting SRC-18 helper"
+    },
+    {
+      "id": "O1-39-03",
+      "given": "SRC-21 consented VA-API mock, sealed SRC-19 inventory and writer-run clipping",
+      "expect": "Same run writer proof without broadening VA-API access"
+    },
+    {
+      "id": "O1-39-04",
+      "given": "Writer meter exactly equals preserved original extent; no missing data",
+      "expect": "Legacy receipt and no invented run-writer limit"
+    },
+    {
+      "id": "O1-39-05",
+      "given": "Forged consent, missing D0 inventory, altered command or missing in-memory provenance",
+      "expect": "Canonical fails closed despite any private limit claim"
+    },
+    {
+      "id": "O1-39-06",
+      "given": "Injected O1 source-writer/transport scope or exaggerated threshold, missing byte extent, or invalid attempt slot",
+      "expect": "Private v0.6 validator refuses"
+    },
+    {
+      "id": "O1-39-07",
+      "given": "Writer clipping coincides with transport timeout, transport overflow, or unknown omission",
+      "expect": "No dominant dimension invented; canonical rejects unsupported limit"
+    },
+    {
+      "id": "O1-39-08",
+      "given": "Run meter includes unsealed reservation before O1 writer clipping",
+      "expect": "Actual private event preserved but canonical refuses because same-run sealed aggregate cannot corroborate threshold"
+    },
+    {
+      "id": "O1-39-09",
+      "given": "Helper returns capture clipping due to private cumulative helper ceiling without effective threshold attestation",
+      "expect": "Do not call this O1 writer-run event; refuse canonical promotion"
+    },
+    {
+      "id": "O1-39-10",
+      "given": "Full existing O1, privileged-helper, private receipt, canonical and unified suites",
+      "expect": "All regressions pass on exact implementation head; still not independent CP-02 acceptance"
+    }
+  ],
+  "deferred": {
+    "O1_transport": "Direct-process per-target stdout/stderr/combined limits and precise deadline boundaries require separately proved applied threshold and competing-dimension evidence",
+    "privileged_helper": "Existing helper may internally lower effective capture limits for cumulative budget; reply does not attest applied threshold. No protocol change authorized by Increment 39.",
+    "O1_source_aggregate": "Per-source 60/20/10 second or 32/8/8 MiB accumulated source quotas and call exhaustion require additional independent events or explicit negative proof",
+    "host": "Bodhi 7 AMD64 source, consent and helper host validation NOT EXECUTED"
+  },
+  "expected_paths": [
+    "lbt_g5/o1_execution.py",
+    "lbt_g5/records.py",
+    "lbt_g5/canonical_session.py",
+    "tests/test_g5_cp03_rp02_o1_writer_39.py"
+  ],
+  "gate_status": {
+    "G5_04": "OPEN",
+    "RP_02": "PARTIAL",
+    "CP_02_independent": "NOT_ACCEPTED",
+    "requirements_283": "NOT_VERIFIED",
+    "FAT": "NOT_AUTHORIZED"
+  }
+}
