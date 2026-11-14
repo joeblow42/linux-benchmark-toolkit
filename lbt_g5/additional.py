@@ -202,6 +202,52 @@ def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
                                       len(events)>1):
                             transport_limit_witnesses=tuple(events)
                             single_limit_witness=None
+                    if request.source_id=="SRC-15":
+                        # Source-first v0.6 D1 facts. The existing source loop
+                        # stops on the FIRST limited subcall; do not resume
+                        # later mounts or infer an overall 15s source event.
+                        events=[]
+                        missing_out=transport.stdout_omitted_at_least
+                        missing_err=transport.stderr_omitted_at_least
+                        if transport.exceeded_limit:
+                            for name,raw,omitted,effective in (
+                                    ("stdout",transport.stdout,missing_out,1*MIB),
+                                    ("stderr",transport.stderr,missing_err,128*1024)):
+                                if (type(omitted) is int and omitted>0 and
+                                        len(raw)==effective):
+                                    events.append({
+                                        "unit":"bytes","threshold":effective,
+                                        "observed_extent":len(raw),
+                                        "missing_extent":omitted,
+                                        "affected_scope":("SRC-15:call"+
+                                            format(i+1,"04d")+":"+name),
+                                        "reason":"CAPTURE_LIMIT"})
+                        if transport.timed_out:
+                            events.append({
+                                "unit":"seconds","threshold":seconds,
+                                "observed_extent":transport.elapsed_seconds,
+                                "missing_extent":None,
+                                "affected_scope":("SRC-15:call"+
+                                    format(i+1,"04d")+":transport"),
+                                "reason":"TIME_BUDGET_EXCEEDED"})
+                        # A mismatched output extent, missing overflow proof
+                        # or separate unproven writer truncation blocks ALL
+                        # canonical limit records for this source attempt.
+                        if (any(r.limit_applied for r in receipts)
+                                or (transport.exceeded_limit and
+                                    not any(v["unit"]=="bytes" for v in events))
+                                or (not transport.exceeded_limit and
+                                    (missing_out or missing_err))
+                                or (transport.exceeded_limit and
+                                    ((missing_out>0 and not any(
+                                        v["affected_scope"].endswith(":stdout")
+                                        for v in events)) or
+                                     (missing_err>0 and not any(
+                                        v["affected_scope"].endswith(":stderr")
+                                        for v in events))))):
+                            events=[]
+                        if events:
+                            transport_limit_witnesses=tuple(events)
                     if transport.returncode:errors.append("COMMAND_EXIT_NONZERO")
                     if (transport.exceeded_limit or
                             transport.stdout_omitted_at_least>0 or
