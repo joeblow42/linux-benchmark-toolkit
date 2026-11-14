@@ -224,6 +224,16 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                     # The unchanged private worker applies the 1 MiB file cap.
                     if th!=1024*1024:
                         raise ValueError("invalid v0.6 file ceiling")
+                elif scope==source_id+":call0001:stdout":
+                    actual=min(64*1024*1024,
+                        int(policy.max_bytes*1.5)+policy.max_entries*512+4096)
+                    if (th!=actual or observed!=th or
+                            omitted is None or omitted<=0):
+                        raise ValueError("invalid v0.6 stdout transport overrun")
+                elif scope==source_id+":call0001:stderr":
+                    if (th!=64*1024 or observed!=th or
+                            omitted is None or omitted<=0):
+                        raise ValueError("invalid v0.6 stderr transport overrun")
                 else:
                     raise ValueError("unapproved v0.6 byte scope")
             if (unit,scope) in witnessed:
