@@ -1,0 +1,81 @@
+{
+  "oracle_id": "CP03-RP02-O1-TRANSPORT-40",
+  "phase": "RP-02.3 / Increment 40",
+  "authority": "AI-Assisted Software Engineering Governance Standard v1.0; owner-approved FAT roadmap; RP-02 v0.6 Choice A",
+  "assurance": "source-first synthetic candidate. Independent CP-02 and Bodhi7 FAT remain OPEN.",
+  "protected": [
+    "fixed O1 argv and device allowlist",
+    "operator consent and root-helper wire protocol",
+    "G4-07 call/source/run ceilings",
+    "public canonical v1.0.0 and 41 statuses",
+    "immutable sealed original"
+  ],
+  "proof_rules": [
+    "Direct SRC-18/21 combined-byte overflow: positive original omission, both streams nonempty and individually below same approved per-target cap; preserved sum exactly equals cap, both complete originals sealed; no timeout or writer clip.",
+    "SRC-13 helper byte overflow: only if preserved aggregate reaches full approved 8 MiB per-request cap; this proves the helper did NOT internally lower its applied threshold, despite possible cumulative constraints. Cannot infer any shorter cap.",
+    "All limit witnesses must bind original same-run D0 inventory, approved fixed argv and current operator consent and match in-memory execution witness.",
+    "Timeout and byte overflow, writer and transport clipping, zero-omission boundary, arbitrary or tied stream/combined dimensions must not be labeled as a unique fact.",
+    "Never change installed helper or privilege protocol to expose internal cumulative remaining quotas."
+  ],
+  "cases": [
+    {
+      "id": "40-01",
+      "given": "SRC-18 direct combined overflow 4MiB with stdout+stderr each below cap; positive omitted stderr",
+      "expect": "one exact transport byte witness and canonical PASS"
+    },
+    {
+      "id": "40-02",
+      "given": "SRC-21 direct combined overflow 8MiB with both streams below cap",
+      "expect": "one exact transport witness and canonical PASS"
+    },
+    {
+      "id": "40-03",
+      "given": "SRC-13 helper returned full 8MiB original and positive omission",
+      "expect": "helper applied cap necessarily 8MiB; transport witness PASS"
+    },
+    {
+      "id": "40-04",
+      "given": "SRC-13 helper returned only 100B with exceeded_limit (possible internal cumulative remainder)",
+      "expect": "no claimed threshold; canonical fail closed"
+    },
+    {
+      "id": "40-05",
+      "given": "direct O1 retained only stdout exactly equal to combined cap",
+      "expect": "both stream and combined dimensions tied; no claimed dominant dimension"
+    },
+    {
+      "id": "40-06",
+      "given": "transport overflow at less than full registered cap, timed-out simultaneously, or writer clipping",
+      "expect": "no exact independent transport witness; canonical fail"
+    },
+    {
+      "id": "40-07",
+      "given": "exact-byte boundary without omitted evidence",
+      "expect": "no limit event"
+    },
+    {
+      "id": "40-08",
+      "given": "missing original D0 inventory; forged v0.6 transport scope/threshold/extent",
+      "expect": "canonical and receipt validator reject"
+    },
+    {
+      "id": "40-09",
+      "given": "entire validation workflow",
+      "expect": "exact candidate head CI SUCCESS, not CP-02 acceptance"
+    }
+  ],
+  "deferred": [
+    "Ambiguous direct stdout/stderr tied with combined ceiling",
+    "SRC-13 helper internally reduced byte cap <8MiB and any internally reduced deadline",
+    "O1 timeouts and independent source-total/time/call count events",
+    "real device validation and owner FAT acceptance"
+  ],
+  "gate_status": {
+    "RP_02": "OPEN",
+    "RP_03": "OPEN",
+    "RP_04": "OPEN",
+    "CP_02_independent": "NOT_ACCEPTED",
+    "requirements_283": "NOT_VERIFIED",
+    "FAT": "NOT_AUTHORIZED"
+  }
+}
