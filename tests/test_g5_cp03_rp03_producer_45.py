@@ -12,7 +12,7 @@ import tempfile
 from types import SimpleNamespace
 import unittest
 
-from lbt_g5.canonical_contract import CanonicalContractError
+from lbt_g5.canonical_contract import CanonicalContractError, new_status
 from lbt_g5.canonical_session import build_canonical, validate_canonical
 from lbt_g5.d02_schema import validate_d02_file, validate_d02_entity
 from lbt_g5.engine import CollectorRun, EngineRun
@@ -168,6 +168,66 @@ class ProducedD02Contract(unittest.TestCase):
         manifest = copy.deepcopy(files["session_manifest.json"])
         key = next(iter(manifest["source_receipts"]))
         manifest["source_receipts"][key]["sha256"] = "0" * 64
+        self.reseal_json("session_manifest.json", manifest)
+        with self.assertRaises(CanonicalContractError):
+            validate_canonical(self.folder)
+
+    def test_45_09_rehashed_observation_cannot_cite_session_status(self):
+        _, files = self.produce(self.recorded())
+        system = copy.deepcopy(files["system.json"])
+        system["observations"][0]["status_record_id"] = "st:session"
+        self.reseal_json("system.json", system)
+        with self.assertRaises(CanonicalContractError):
+            validate_canonical(self.folder)
+
+    def test_45_10_rehashed_orphan_acquisition_status_rejected(self):
+        _, files = self.produce(self.recorded())
+        statuses = copy.deepcopy(files["status_records.json"])
+        original = statuses["status_records"][0]
+        added = new_status(
+            record_id="st:orphan", domain="acquisition",
+            component_id=original["component_id"], subject_id=original["subject_id"],
+            status="COMPLETE", reason_code="OK",
+            source_attempt_ids=original["source_attempt_ids"],
+            evidence_refs=original["evidence_refs"])
+        statuses["status_records"].append(added)
+        self.reseal_json("status_records.json", statuses)
+        manifest = copy.deepcopy(json.loads(
+            (self.folder / "private/session_manifest.json").read_text()))
+        manifest["status_record_ids"].append("st:orphan")
+        manifest["counts"]["statuses"] += 1
+        self.reseal_json("session_manifest.json", manifest)
+        with self.assertRaises(CanonicalContractError):
+            validate_canonical(self.folder)
+
+    def test_45_11_rehashed_evidence_representation_must_match_original(self):
+        _, files = self.produce(self.recorded())
+        manifest = copy.deepcopy(files["session_manifest.json"])
+        original = next(iter(manifest["evidence"].values()))
+        self.assertEqual(original["representation"], "FILE_BYTES")
+        original["representation"] = "STDOUT"
+        self.reseal_json("session_manifest.json", manifest)
+        with self.assertRaises(CanonicalContractError):
+            validate_canonical(self.folder)
+
+    def test_45_12_rehashed_receipt_capture_bytes_cannot_exceed_originals(self):
+        _, files = self.produce(self.recorded())
+        attempts = copy.deepcopy(files["source_attempts.json"])
+        attempt = attempts["attempts"][0]
+        aid = attempt["attempt_id"]
+        receipt_file = self.folder / attempt["receipt_private_path"]
+        receipt = json.loads(receipt_file.read_text())
+        claimed = attempt["capture_bytes"] + 1
+        receipt["acquired_bytes"] = claimed
+        receipt_raw = (json.dumps(receipt, sort_keys=True, separators=(",", ":")) + "\\n").encode()
+        receipt_file.write_bytes(receipt_raw)
+        attempt["capture_bytes"] = claimed
+        attempt["receipt_byte_count"] = len(receipt_raw)
+        attempt["receipt_sha256"] = hashlib.sha256(receipt_raw).hexdigest()
+        self.reseal_json("source_attempts.json", attempts)
+        manifest = json.loads((self.folder / "private/session_manifest.json").read_text())
+        manifest["source_receipts"][aid]["byte_count"] = len(receipt_raw)
+        manifest["source_receipts"][aid]["sha256"] = hashlib.sha256(receipt_raw).hexdigest()
         self.reseal_json("session_manifest.json", manifest)
         with self.assertRaises(CanonicalContractError):
             validate_canonical(self.folder)
