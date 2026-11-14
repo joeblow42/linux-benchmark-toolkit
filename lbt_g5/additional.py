@@ -67,6 +67,7 @@ def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
     receipts=[]
     targets=[]
     errors=[]
+    completed_calls=0
     start=time.monotonic()
     # A single source-level wall deadline must span *all* mounts, including
     # process setup and evidence persistence; the call counter tracks only
@@ -259,7 +260,15 @@ def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
                         limited=True;errors.append("CAPTURE_LIMIT")
                     if transport.timed_out:
                         limited=True;errors.append("TIME_BUDGET_EXCEEDED")
-                    if transport.returncode or transport.timed_out or transport.exceeded_limit:
+                    if not (transport.returncode or transport.timed_out or
+                            transport.exceeded_limit or
+                            transport.stdout_omitted_at_least or
+                            transport.stderr_omitted_at_least):
+                        completed_calls+=1
+                    if (transport.returncode or transport.timed_out or
+                            transport.exceeded_limit or
+                            transport.stdout_omitted_at_least or
+                            transport.stderr_omitted_at_least):
                         break
                 except OSError as exc:
                     errors.append(type(exc).__name__);break
@@ -268,6 +277,20 @@ def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
     except ProbeCapacityError:
         return out("DENIED","CONCURRENCY_LIMIT")
     elapsed=time.monotonic()-start
+    if (request.source_id=="SRC-15" and len(mounts)>policy.max_entries
+            and completed_calls==policy.max_entries and not errors
+            and not observed_timeout and not transport_limit_witnesses
+            and len({r.artifact.split("-")[0] for r in receipts})==
+                policy.max_entries):
+        # A verified extra eligible mount, not merely reaching exact 128,
+        # proves that the approved source target-count ceiling applied.
+        # All 128 subcalls must have actually completed and preserved a
+        # distinct source-slot original; otherwise leave the fact unproved.
+        transport_limit_witnesses=({
+            "unit":"entries","threshold":policy.max_entries,
+            "observed_extent":completed_calls,"missing_extent":None,
+            "affected_scope":"SRC-15:call0001:source:entries",
+            "reason":"CAPTURE_LIMIT"},)
     if receipts and not errors and not limited:
         return out("CAPTURED","BYTES_PRESERVED",receipts,targets,errors,elapsed)
     if receipts:
