@@ -34,7 +34,7 @@ from .normalization import (normalize_sealed_source, parser_available,
                             drm_sysfs_path_identity, net_sysfs_path_identity,
                             thermal_sysfs_path_identity,
                             hwmon_sysfs_path_identity, power_sysfs_path_identity)
-from .safety import initial_source_policies, valid_run_id
+from .safety import initial_source_policies, valid_run_id, RUN_BYTES
 
 PRIVATE_FILES = ("system.json", "source_attempts.json", "status_records.json")
 MANIFEST_NAME = "session_manifest.json"
