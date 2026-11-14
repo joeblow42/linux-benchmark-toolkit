@@ -50,6 +50,9 @@ class AttemptReceipt:
     source_timing: dict | None = None
     # Effective bound facts from the worker transport, never guessed.
     limit_witness: dict | None = None
+    # Owner-approved RP-02.1: multiple independently verified D0 facts.
+    # Omitted from legacy v0.1-v0.5 envelopes entirely.
+    limit_witnesses: tuple[dict,...] = ()
 
 def utc_now():
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00","Z")
@@ -59,7 +62,7 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                   invocation="NOT_INVOKED",target=None,source_paths=(),unavailable_fields=(),
                   exit_code=None,elapsed_seconds=None,timed_out=False,capture_limited=False,
                   authorization_provenance=None,execution_provenance=None,
-                  source_timing=None,limit_witness=None):
+                  source_timing=None,limit_witness=None,limit_witnesses=()):
     policy={p.source_id:p for p in initial_source_policies()}.get(source_id)
     if not valid_run_id(run_id) or policy is None:
         raise ValueError("invalid source or run identity")
@@ -171,7 +174,63 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                     or observed>th or type(bound_missing) not in (int,type(None))
                     or (bound_missing is not None and bound_missing<0)):
                 raise ValueError("invalid observed byte ceiling or omitted extent")
-    return AttemptReceipt("g5-02-attempt-0.5" if limit_witness else
+    if limit_witnesses:
+        # A new operational receipt version is permitted; canonical/status
+        # schema keys, source safety budgets and reason vocabulary are not.
+        if (limit_witness is not None or type(limit_witnesses) not in (list,tuple)
+                or not 1<=len(limit_witnesses)<=64
+                or policy.authorization_class!="D0"
+                or decision!="ALLOW" or outcome not in ("PARTIAL","FAILED")
+                or not (capture_limited or timed_out)):
+            raise ValueError("invalid v0.6 multiple-limit source scope")
+        witnessed=set()
+        for bound in limit_witnesses:
+            required={"unit","threshold","observed_extent",
+                      "missing_extent","affected_scope","reason"}
+            if type(bound) is not dict or set(bound)!=required:
+                raise ValueError("invalid v0.6 limit fields")
+            unit=bound["unit"];scope=bound["affected_scope"]
+            reason=bound["reason"]
+            th=bound["threshold"];observed=bound["observed_extent"]
+            omitted=bound["missing_extent"]
+            if (unit not in ("seconds","bytes","entries")
+                    or type(scope) is not str
+                    or not scope.startswith(source_id+":call0001:")
+                    or (unit=="seconds") != (reason=="TIME_BUDGET_EXCEEDED")
+                    or reason not in ("CAPTURE_LIMIT","TIME_BUDGET_EXCEEDED")
+                    or type(th) not in (int,float) or type(observed) not in (int,float)
+                    or not math.isfinite(float(th)) or not math.isfinite(float(observed))
+                    or th<=0 or observed<0 or (unit!="seconds" and observed>th)
+                    or (unit in ("seconds","entries") and omitted is not None)
+                    or (omitted is not None and
+                        (type(omitted) is not int or omitted<0))):
+                raise ValueError("invalid v0.6 measured limit")
+            if unit=="seconds":
+                if (scope!=source_id+":call0001:transport"
+                        or th>policy.max_seconds or not timed_out):
+                    raise ValueError("invalid v0.6 process deadline")
+            else:
+                if (not capture_limited or type(th) is not int
+                        or type(observed) is not int):
+                    raise ValueError("invalid v0.6 count/byte dimension")
+                if unit=="entries":
+                    if (scope!=source_id+":call0001:source:entries"
+                            or th!=policy.max_entries):
+                        raise ValueError("invalid v0.6 source entry ceiling")
+                elif scope==source_id+":call0001:source:bytes":
+                    if th!=policy.max_bytes:
+                        raise ValueError("invalid v0.6 source byte ceiling")
+                elif re.fullmatch(re.escape(source_id)+r":call0001:item[0-9]{4}:file",scope):
+                    # The unchanged private worker applies the 1 MiB file cap.
+                    if th!=1024*1024:
+                        raise ValueError("invalid v0.6 file ceiling")
+                else:
+                    raise ValueError("unapproved v0.6 byte scope")
+            if (unit,scope) in witnessed:
+                raise ValueError("duplicate v0.6 source limit")
+            witnessed.add((unit,scope))
+    return AttemptReceipt("g5-02-attempt-0.6" if limit_witnesses else
+                          "g5-02-attempt-0.5" if limit_witness else
                           "g5-02-attempt-0.4" if source_timing else
                           "g5-02-attempt-0.3" if execution_provenance else
                           "g5-02-attempt-0.2" if authorization_provenance else
@@ -186,7 +245,8 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
         authorization_provenance=authorization_provenance,
         execution_provenance=execution_provenance,
         source_timing=source_timing,
-        limit_witness=limit_witness)
+        limit_witness=limit_witness,
+        limit_witnesses=tuple(limit_witnesses))
 
 def _safe_private_dir(parent_fd,name):
     try: os.mkdir(name,0o700,dir_fd=parent_fd)
@@ -215,6 +275,8 @@ def commit_attempt(run_directory,receipt):
         del fields["source_timing"]  # Old schema envelopes remain byte-compatible.
     if fields["limit_witness"] is None:
         del fields["limit_witness"]
+    if not fields["limit_witnesses"]:
+        del fields["limit_witnesses"]
     payload=(json.dumps(fields,sort_keys=True,separators=(",",":"),
                         allow_nan=False)+"\n").encode("utf-8")
     if len(payload)>256*1024:
