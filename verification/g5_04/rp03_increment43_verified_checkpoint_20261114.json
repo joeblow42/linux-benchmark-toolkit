@@ -1,0 +1,53 @@
+{
+  "record_type": "LBT_G5_04_RP03_CP03_INCREMENT_43_VERIFIED_AUTHORITY_CHECKPOINT",
+  "date": "2026-11-14",
+  "authority": "AI-Assisted Software Engineering Governance Standard v1.0; owner-approved FAT RP-03; approved CP-01 D-01..D-05 and exact D-02 §6; Requirements Rev1.6",
+  "archive_receipt": {
+    "zip_sha256": "75bd8d7f4ad5167449cc63974fdc85650dc364cce0b037d9633a9794c2b157a2",
+    "archive_crc": "PASS",
+    "manifest_file_hashes": "7/7 PASS",
+    "controlling_odt_sha256": "6d836d28af086a0fec7df2ca0949faf9447f9cee29cfabb8751344bd5104c98b",
+    "historical_retention_audit_sha_match": true
+  },
+  "repo": {
+    "full_name": "joeblow42/linux-benchmark-toolkit",
+    "branch": "g5/cp03-rp03-d02-contract-43",
+    "pr": 68,
+    "stacked_on": 67,
+    "previous_head": "74f9873dbacde10fd45a1c9e6268a223533cecf8",
+    "verified_test_head": "aea461d87bd32bc698d2ad90c492e2cd74abff9b",
+    "exact_head_ci_pr": 43651437641,
+    "exact_head_ci_push": 43651419766,
+    "results": "completed/success",
+    "note": "After this checkpoint commit, separately verify exact final head CI."
+  },
+  "increment": {
+    "title": "Recover byte-verified CP-01 D-02 §6 field contract; freeze authoritative source-first tests",
+    "source": "03_DECISION_AUTHORITY/LBT_G5_04_CP01_Contract_Reconciliation_Approval_Review_2026-11-02.odt",
+    "contract": "verification/g5_04/rp03_cp01_d02_approved_contract_43.json",
+    "tests": "tests/test_g5_cp03_rp03_authority_43.py",
+    "test_cases": 7,
+    "scope": "4 exact canonical private file contracts; 9 entity definitions; type/nullability; approved enums; exact status pair registry",
+    "outcome": "AUTHORITATIVE_SOURCE_RECOVERED",
+    "former_blocker": "verification/g5_04/rp03_d02_source_authority_blocker_20261114.json resolved by byte-verified source retrieval; retain historical blocker record unchanged",
+    "limits": "No producer or validator changed; not RP-03.1 functional conformance or independent CP-02 acceptance"
+  },
+  "changed": [
+    ".github/workflows/test.yml",
+    "verification/g5_04/rp03_cp01_d02_approved_contract_43.json",
+    "tests/test_g5_cp03_rp03_authority_43.py"
+  ],
+  "protected_unchanged": true,
+  "gates": {
+    "RP_02": "PARTIAL_WITH_DOCUMENTED_NONPROMOTION",
+    "RP_03": "OPEN_SOURCE_AUTHORITY_RECOVERED",
+    "RP_04": "OPEN",
+    "CP_02": "39/39 NOT_ACCEPTED",
+    "requirements": "283 NOT_VERIFIED",
+    "bodhi7": "NOT_EXECUTED",
+    "FAT": "NOT_ESTABLISHED",
+    "release": "NOT_AUTHORIZED"
+  },
+  "next": "Increment 44 source-first strict approved D-02 private output/validator negative oracles. Preserve 1.0.0, 1.0/41 pairs, exact fields; no reconstruction or candidate extension. Implement in bounded stages and test exact-head CI.",
+  "conversation_safety": "Safe to continue at Increment 43. No material owner decision required; full exact source authority now available."
+}
