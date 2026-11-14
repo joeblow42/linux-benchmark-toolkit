@@ -83,7 +83,7 @@ class RP03ApprovedAuthorityOracles(unittest.TestCase):
                          ["COMPLETE", "PARTIAL", "INCOMPLETE", "INTERRUPTED", "FAILED"])
 
     def test_43_07_source_fallback_not_dropped_for_unknown_canonical_member(self):
-        self.assertIn("unknown canonical field", self.contract["notation"])
+        self.assertIn("unknown keys forbidden", self.contract["notation"])
         self.assertIn("unknown acquired data", " ".join(self.contract["linkage"]))
         self.assertIn("sealed fallback", " ".join(self.contract["linkage"]))
 
