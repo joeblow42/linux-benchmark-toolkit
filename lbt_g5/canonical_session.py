@@ -1348,7 +1348,11 @@ def build_canonical(run_directory, engine_run):
             "platform_scope": "Linux-AMD64",
             "requested_mode": "ACQUISITION",
             "lifecycle_state": "INCOMPLETE",
-            "collector_ids": [c.collector_id for c in engine_run.collectors],
+            # Include every actual source contributor even when a synthetic
+            # EngineRun groups an upstream receipt with its dependent source.
+            "collector_ids": list(dict.fromkeys(
+                [c.collector_id for c in engine_run.collectors] +
+                [a["collector_id"] for a in attempts])),
             "created_by_version": None,
         },
         "observations": observations,
