@@ -211,7 +211,9 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                     and type(scope) is str
                     and scope in (
                         source_id+":call%04d:run:writer"%int(attempt),
-                        source_id+":call%04d:transport"%int(attempt)))
+                        source_id+":call%04d:transport"%int(attempt),
+                        *( (source_id+":call%04d:source:writer"%int(attempt),)
+                           if source_id=="SRC-18" else () )))
             if (unit not in ("seconds","bytes","entries")
                     or type(scope) is not str
                     or not eligible_scope
@@ -249,6 +251,9 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                         applied=(policy.per_target_bytes or policy.max_bytes)
                         if th!=applied:
                             raise ValueError("unproved O1 applied transport cap")
+                    elif scope.endswith(":source:writer"):
+                        if source_id!="SRC-18" or th!=policy.max_bytes:
+                            raise ValueError("unproved O1 source-writer ceiling")
                     elif th>RUN_BYTES:
                         raise ValueError("invalid O1 writer-run original limit")
                 elif source_id=="SRC-15":
