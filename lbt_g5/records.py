@@ -13,7 +13,7 @@ import os
 import re
 import secrets
 import stat
-from .safety import valid_run_id, initial_source_policies, RUN_SECONDS
+from .safety import valid_run_id, initial_source_policies, RUN_SECONDS, RUN_BYTES
 
 @dataclass(frozen=True)
 class AttemptReceipt:
