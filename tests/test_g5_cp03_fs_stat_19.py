@@ -110,7 +110,7 @@ class FSStatSourceOracles(unittest.TestCase):
         self.assertEqual(parsed.values[0].normalized_value["mount"], path)
         with self.session(stdout_mount=path) as (folder, run, artifacts):
             build_canonical(folder, run)
-            self.assertEqual(validate_canonical(folder)["source_count"], 2)
+            self.assertEqual(validate_canonical(folder)["counts"]["sources"], 2)
 
     def test_diagnostic_stderr_retained_but_not_semantically_parsed(self):
         with self.session(names=("call0001-stdout", "call0001-stderr"),
