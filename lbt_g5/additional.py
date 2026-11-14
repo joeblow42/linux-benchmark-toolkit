@@ -86,8 +86,7 @@ def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
                 remaining_wall=deadline-time.monotonic()
                 remaining_calls=calls.remaining(request.run_id,request.source_id)
                 if remaining_wall<=0 or remaining_calls<=0:
-                    if (request.source_id=="SRC-15" and remaining_wall<=0
-                            and remaining_calls>0):
+                    if request.source_id=="SRC-15" and remaining_wall<=0:
                         # Another mount remains unattempted. Clock elapsed
                         # independently of child transport and call accounting.
                         transport_limit_witnesses=(source_wall_witness(start,policy),)
@@ -110,9 +109,7 @@ def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
                         writer.meter.time_remaining())
                     if seconds<=0:
                         if (request.source_id=="SRC-15"
-                                and deadline-time.monotonic()<=0
-                                and calls.remaining(request.run_id,request.source_id)>0
-                                and writer.meter.time_remaining()>0):
+                                and deadline-time.monotonic()<=0):
                             transport_limit_witnesses=(source_wall_witness(start,policy),)
                             observed_timeout=True
                         limited=True;errors.append("TIME_BUDGET_EXCEEDED");break
