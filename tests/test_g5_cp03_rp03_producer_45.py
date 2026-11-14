@@ -192,7 +192,7 @@ class ProducedD02Contract(unittest.TestCase):
         added = new_status(
             record_id="st:orphan", domain="acquisition",
             component_id=original["component_id"], subject_id=original["subject_id"],
-            status="COMPLETE", reason_code="OK",
+            status="COMPLETE", reason_code="OK", detail="orphan status witness",
             source_attempt_ids=original["source_attempt_ids"],
             evidence_refs=original["evidence_refs"])
         statuses["status_records"].append(added)
