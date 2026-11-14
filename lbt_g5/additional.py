@@ -39,6 +39,13 @@ def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
     observed_timeout = False
     single_limit_witness = None
     transport_limit_witnesses = ()
+    def source_wall_witness(started, policy):
+        # Only the actual cumulative monotonic deadline, never the child cap.
+        observed=time.monotonic()-started
+        return {"unit":"seconds","threshold":policy.max_seconds,
+                "observed_extent":observed,"missing_extent":None,
+                "affected_scope":"SRC-15:call0001:source:time",
+                "reason":"TIME_BUDGET_EXCEEDED"}
     def out(disposition,reason,artifacts=(),targets=(),errors=(),elapsed=0.,limited=False):
         return AdditionalOutcome(request.source_id,disposition,reason,tuple(artifacts),
                                  tuple(targets),tuple(errors),elapsed,limited,
@@ -79,6 +86,12 @@ def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
                 remaining_wall=deadline-time.monotonic()
                 remaining_calls=calls.remaining(request.run_id,request.source_id)
                 if remaining_wall<=0 or remaining_calls<=0:
+                    if (request.source_id=="SRC-15" and remaining_wall<=0
+                            and remaining_calls>0):
+                        # Another mount remains unattempted. Clock elapsed
+                        # independently of child transport and call accounting.
+                        transport_limit_witnesses=(source_wall_witness(start,policy),)
+                        observed_timeout=True
                     limited=True;errors.append("TIME_BUDGET_EXCEEDED");break
                 if not calls.begin(request.run_id,request.source_id,i):
                     limited=True
@@ -96,6 +109,12 @@ def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
                         calls.remaining(request.run_id,request.source_id),
                         writer.meter.time_remaining())
                     if seconds<=0:
+                        if (request.source_id=="SRC-15"
+                                and deadline-time.monotonic()<=0
+                                and calls.remaining(request.run_id,request.source_id)>0
+                                and writer.meter.time_remaining()>0):
+                            transport_limit_witnesses=(source_wall_witness(start,policy),)
+                            observed_timeout=True
                         limited=True;errors.append("TIME_BUDGET_EXCEEDED");break
                     actual_argv = (binary,)+argv[1:]
                     # These clock readings bracket the real transport operation.
@@ -118,6 +137,8 @@ def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
                             started_utc=cmd_started_utc,
                             completed_utc=cmd_completed_utc,
                             elapsed_seconds=transport.elapsed_seconds)
+                    writer_stop=False
+                    writer_source_events=[]
                     for name,data,stream_limit in (
                         ("stdout",transport.stdout,8*MIB if request.source_id=="SRC-28" else 1*MIB),
                         ("stderr",transport.stderr,1*MIB if request.source_id=="SRC-28" else 128*1024)):
@@ -128,7 +149,31 @@ def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
                             errors.append("EVIDENCE_PERSIST_FAILED");break
                         receipts.append(seal.receipt)
                         targets.append(label+":"+name)
-                        if seal.receipt.limit_applied:limited=True
+                        if seal.receipt.limit_applied:
+                            limited=True
+                            writer_stop=True
+                            # A source-level writer event is proven only by a
+                            # real omitted suffix and the EXACT 2 MiB aggregate
+                            # accumulated in same-attempt sealed originals.
+                            # Do not confuse a smaller run quota or a tied
+                            # stream cap with the source quota.
+                            if request.source_id=="SRC-15":
+                                source_events=[e for e in seal.limit_events
+                                    if e.get("dimension")=="writer_source_bytes"
+                                    and e.get("threshold")==policy.max_bytes
+                                    and e.get("observed_extent")==policy.max_bytes
+                                    and e.get("omitted_at_least")==seal.receipt.omitted_at_least]
+                                if (len(source_events)==1
+                                        and len(seal.limit_events)==1
+                                        and seal.receipt.omitted_at_least>0
+                                        and sum(r.byte_count for r in receipts)==policy.max_bytes):
+                                    writer_source_events.append({
+                                        "unit":"bytes","threshold":policy.max_bytes,
+                                        "observed_extent":policy.max_bytes,
+                                        "missing_extent":seal.receipt.omitted_at_least,
+                                        "affected_scope":"SRC-15:call0001:source:writer",
+                                        "reason":"CAPTURE_LIMIT"})
+                            break
                     if errors:break
                     # F-04: SRC-28's single approved process has one actual
                     # applied transport deadline. A competing stream/writer
@@ -234,8 +279,15 @@ def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
                         # A mismatched output extent, missing overflow proof
                         # or separate unproven writer truncation blocks ALL
                         # canonical limit records for this source attempt.
-                        if (any(r.limit_applied for r in receipts)
-                                or (transport.exceeded_limit and
+                        if writer_stop:
+                            # Only one independently witnessed source-writer
+                            # limit is promoted; competing transport caps or
+                            # an unknown writer dimension fail closed.
+                            events=(list(writer_source_events)
+                                    if not (transport.timed_out or
+                                            transport.exceeded_limit or
+                                            missing_out or missing_err) else [])
+                        elif ((transport.exceeded_limit and
                                     not any(v["unit"]=="bytes" for v in events))
                                 or (not transport.exceeded_limit and
                                     (missing_out or missing_err))
@@ -249,6 +301,8 @@ def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
                             events=[]
                         if events:
                             transport_limit_witnesses=tuple(events)
+                    if writer_stop:
+                        errors.append("CAPTURE_LIMIT")
                     if transport.returncode:errors.append("COMMAND_EXIT_NONZERO")
                     if (transport.exceeded_limit or
                             transport.stdout_omitted_at_least>0 or
@@ -260,12 +314,12 @@ def acquire_additional(request:SourceRequest,attempt:str,writer:EvidenceWriter,
                         limited=True;errors.append("CAPTURE_LIMIT")
                     if transport.timed_out:
                         limited=True;errors.append("TIME_BUDGET_EXCEEDED")
-                    if not (transport.returncode or transport.timed_out or
+                    if not (writer_stop or transport.returncode or transport.timed_out or
                             transport.exceeded_limit or
                             transport.stdout_omitted_at_least or
                             transport.stderr_omitted_at_least):
                         completed_calls+=1
-                    if (transport.returncode or transport.timed_out or
+                    if (writer_stop or transport.returncode or transport.timed_out or
                             transport.exceeded_limit or
                             transport.stdout_omitted_at_least or
                             transport.stderr_omitted_at_least):
