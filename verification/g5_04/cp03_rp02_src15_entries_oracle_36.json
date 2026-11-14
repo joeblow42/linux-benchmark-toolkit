@@ -1,0 +1,49 @@
+{
+  "oracle_id": "CP03-RP02-F04-SRC15-ENTRIES-36",
+  "authority": "Owner approved private operational v0.6, G4-07 registered SRC15 128 max calls, same-run SRC14 original",
+  "status": "source-first synthetic oracle, CP-02 independent acceptance open",
+  "guardrails": [
+    "No source limit/command/privilege changes",
+    "No more than 128 real source invocations",
+    "Do not assert entry omission merely on reaching 128 without a 129th candidate",
+    "No `TIME_BUDGET_EXCEEDED` status for count limitation",
+    "Canonical accepts only an actual linked source14 mountinfo whose applicable distinct local mounts exceed 128"
+  ],
+  "cases": [
+    {
+      "id": "S15-36-01",
+      "given": "129 distinct same-run source14 eligible local mounts, first 128 ordered calls succeed within source deadline",
+      "expect": "v0.6 entries threshold128 observed128 missing extent null, source scope, exact 128 original call receipts and one linked canonical CaptureLimit"
+    },
+    {
+      "id": "S15-36-02",
+      "given": "Exactly 128 eligible local mounts, all 128 calls succeed",
+      "expect": "No extra candidate, CAPTURED and legacy v0.4; no CaptureLimit"
+    },
+    {
+      "id": "S15-36-03",
+      "given": "129 eligible mounts but worker stops at 2nd call failure or timeout",
+      "expect": "No fabricated source entry witness; preserve actual partial status/source timeout evidence only"
+    },
+    {
+      "id": "S15-36-04",
+      "given": "Private v0.6 entry fact supplied with source14 evidence containing only 1 mount",
+      "expect": "canonical rejects uncorroborated source-level cap"
+    },
+    {
+      "id": "S15-36-05",
+      "given": "Off-by-one entry threshold, observed=129, missing=0 rather than unknown or unapproved scope",
+      "expect": "private validator rejects before persistence"
+    },
+    {
+      "id": "S15-36-06",
+      "given": "Duplicate or out of order source call receipt identities",
+      "expect": "existing same-run FS_STAT validation rejects, no canonical manifest"
+    },
+    {
+      "id": "S15-36-07",
+      "given": "Unknown future source limit or status reason",
+      "expect": "no production schema or status vocabulary changes; fail closed"
+    }
+  ]
+}
