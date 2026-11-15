@@ -94,7 +94,15 @@ class FSStatSourceOracles(unittest.TestCase):
             rows = json.loads((folder / "private/system.json").read_text())["observations"]
             derived = [x for x in rows if x["transformation_ids"] and x["datum_path"] == "storage.fs_stat.snapshot"]
             self.assertEqual(len(derived), 1)
-            self.assertEqual(derived[0]["evidence_refs"], [artifacts[0].evidence_id])
+            # RP-03.2: the original statvfs fields depend on both the
+            # sealed worker result and the sealed mountinfo selection.
+            mountinfo_id = next(
+                eid for eid, record in manifest["evidence"].items()
+                if record["source_attempt_id"] == "SRC-14-01")
+            self.assertEqual(derived[0]["evidence_refs"],
+                             [artifacts[0].evidence_id, mountinfo_id])
+            self.assertEqual(derived[0]["source_attempt_ids"],
+                             ["SRC-15-01", "SRC-14-01"])
             self.assertEqual(derived[0]["normalized_value"], FIELDS)
             self.assertEqual(derived[0]["value_type"], "OBJECT")
             self.assertEqual(artifacts[0].sha256, hashlib.sha256(encoded()).hexdigest())
