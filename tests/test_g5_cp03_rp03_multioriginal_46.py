@@ -16,6 +16,7 @@ from unittest.mock import patch
 from lbt_g5.canonical_contract import CanonicalContractError
 from lbt_g5.canonical_session import build_canonical, validate_canonical
 from lbt_g5.engine import CollectorRun, EngineRun
+from lbt_g5.normalization import PARSERS, normalize_sealed_source
 from lbt_g5.evidence import EvidenceWriter
 from lbt_g5.receipt_dispatch import capture_and_record
 from lbt_g5.records import build_attempt, commit_attempt
@@ -163,6 +164,15 @@ class MultiOriginalProvenance46(unittest.TestCase):
         self.reseal("system.json", system)
         with self.assertRaises(CanonicalContractError):
             validate_canonical(self.folder)
+
+    def test_46_07_all_28_registered_source_family_dispatches_accounted_for(self):
+        # Registry parity is not semantic acceptance of all 28 parsers.
+        registered = {p.source_id for p in initial_source_policies()}
+        self.assertEqual(len(registered), 28)
+        self.assertEqual(set(PARSERS), registered)
+        self.assertTrue(all(callable(parser) for parser in PARSERS.values()))
+        self.assertIsNone(normalize_sealed_source(
+            "SRC-99", b"arbitrary unregistered input"))
 
     def test_46_06_non_utf8_lossless_fallback(self):
         raw = b"ID=ubuntu\nNAME=\xff\n"
