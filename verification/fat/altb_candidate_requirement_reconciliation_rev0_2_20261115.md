@@ -38,9 +38,9 @@ Residual risks are real: failing hardware producing malformed/partial data, run 
 | FR-168 / FR-191 and NFR-070 | Honest parser/absence/error status (CT-01..04) | Retain truthful failures and normal functional error tests |
 | FR-192 and NFR-068 | Acquisition limits and source attribution (CT-05/07/09) | Retain correctness if needed for measured results; drop only adversary-only extensions on owner approval |
 | NFR-018 / NFR-071 / NFR-074 | Commit, counts, interruption and lifecycle (CT-08/10) | Keep ordinary crash/incomplete-output consistency; review hostile tamper scenarios |
-| Other 267-ish IDs | Exact statement unavailable in current recovered source | No speculative per-ID disposition; recover 20-column control first |
+| All other requirement IDs | Exact statement unavailable in current recovered source | No speculative per-ID disposition; recover 20-column control first |
 
-The above identifiers are **candidate triage references**, not judgments that the individual requirement text is security-related. The phrase "other 267-ish" denotes that referenced groups overlap; it is not a controlled count. The attached CSV is the authoritative 283-ID inventory.
+The above identifiers are **candidate triage references**, not judgments that the individual requirement text is security-related. The attached CSV is the authoritative 283-ID inventory.
 
 ## 5. Original CP-02 verification-method review
 | CT family | Recommended handling |
