@@ -1625,25 +1625,144 @@ def validate_canonical(run_directory):
                 or cap["limit_id"] not in attempt_by_id[
                     cap["source_attempt_id"]]["limit_record_ids"]):
             raise CanonicalContractError("orphan source capture limit")
+    # RP-03.2: independently reconstruct FS_STAT contributor identity from
+    # sealed SRC-14 mountinfo and original SRC-15 worker stream labels.
+    # Never trust self-declared canonical references or a rehashed manifest.
+    fsstat_cache = {}
+
+    def fsstat_witness(aid):
+        if aid not in fsstat_cache:
+            source = attempt_by_id[aid]
+            mount_sources = [
+                a for a in attempts if a["source_id"] == "SRC-14"
+                and a["evidence_ids"]
+            ]
+            if (len(mount_sources) != 1
+                    or len(mount_sources[0]["evidence_ids"]) != 1):
+                raise CanonicalContractError(
+                    "FS_STAT mountinfo contributor not unique")
+            mount_attempt = mount_sources[0]
+            mount_eid = mount_attempt["evidence_ids"][0]
+            mount_receipt = _json_load(_read_restricted(
+                folder / mount_attempt["receipt_private_path"],
+                MAX_RECEIPT_BYTES))
+            if (mount_eid not in evidence
+                    or mount_receipt.get("source_paths") !=
+                       ["/proc/self/mountinfo"]
+                    or mount_receipt.get("invocation") != "MOUNTINFO"
+                    or mount_receipt.get("outcome") != "CAPTURED"
+                    or mount_eid.rsplit(":", 1)[-1] != "item0001"):
+                raise CanonicalContractError("FS_STAT unverified mountinfo original")
+            raw_mount = _read_restricted(
+                folder / evidence[mount_eid]["restricted_relative_path"],
+                evidence[mount_eid]["byte_count"])
+            try:
+                parsed_mount = normalize_sealed_source(
+                    "SRC-14", raw_mount, source_path="/proc/self/mountinfo")
+            except SourceParseError as exc:
+                raise CanonicalContractError(
+                    "FS_STAT mountinfo no longer parsable") from exc
+            if parsed_mount is None or not parsed_mount.values:
+                raise CanonicalContractError("FS_STAT mountinfo parser missing")
+            mounts_allowed = tuple(dict.fromkeys(
+                row["mount_point"]
+                for row in parsed_mount.values[0].normalized_value
+                if row["filesystem_type"] in LOCAL_TYPES))
+            fs_receipt = _json_load(_read_restricted(
+                folder / source["receipt_private_path"], MAX_RECEIPT_BYTES))
+            slots = [
+                SimpleNamespace(artifact=eid.rsplit(":", 1)[-1])
+                for eid in source["evidence_ids"]
+            ]
+            fs_mounts, fs_streams = _verified_fsstat_streams(
+                fs_receipt, slots, mounts_allowed,
+                {p.source_id: p for p in initial_source_policies()}["SRC-15"])
+            fsstat_cache[aid] = (
+                mount_eid, mount_attempt["attempt_id"],
+                dict(zip(source["evidence_ids"], zip(fs_mounts, fs_streams)))
+            )
+        return fsstat_cache[aid]
+
     for observation in observations:
         aids = observation["source_attempt_ids"]
         eid_refs = observation["evidence_refs"]
+        primary_eid = observation["instance_key"]
         if (not aids or not eid_refs
                 or any(e not in evidence for e in eid_refs)
                 or any(a not in attempt_by_id for a in aids)
+                or primary_eid not in evidence
+                or eid_refs[0] != primary_eid
+                or evidence[primary_eid]["source_attempt_id"] != aids[0]
                 or any(evidence[e]["source_attempt_id"] not in aids
                        for e in eid_refs)):
-            raise CanonicalContractError("observation provenance failure")
+            raise CanonicalContractError("observation original attribution failure")
+        primary_attempt = attempt_by_id[aids[0]]
         st = status_by_id.get(observation["status_record_id"])
-        if (st is None or not set(aids).issubset(st["source_attempt_ids"])
-                or observation["collector_id"] not in
-                    {attempt_by_id[a]["collector_id"] for a in aids}
-                or any(l not in limit_by_id for l in observation["capture_limit_ids"])):
-            raise CanonicalContractError("observation/status provenance mismatch")
-        # A single-source observation cannot cite session/orchestration
-        # status as though it were the supported source-status witness.
-        if len(aids) == 1 and (
-                st["record_id"] != attempt_by_id[aids[0]]["status_record_id"]
-                or not set(eid_refs).issubset(set(st["evidence_refs"]))):
-            raise CanonicalContractError("observation source status not evidenced")
+        if (st is None or st["record_id"] != primary_attempt["status_record_id"]
+                or st["domain"] != "acquisition"
+                or primary_eid not in st["evidence_refs"]
+                or observation["collector_id"] != primary_attempt["collector_id"]
+                or any(l not in limit_by_id or
+                       limit_by_id[l]["source_attempt_id"] not in aids
+                       for l in observation["capture_limit_ids"])):
+            raise CanonicalContractError("observation primary status/provenance mismatch")
+
+        semantic = bool(observation["transformation_ids"])
+        expected_id = ("obs:" + primary_eid +
+                       (":sem:" + str(observation["ordinal"]) if semantic else ""))
+        if observation["observation_id"] != expected_id:
+            raise CanonicalContractError("observation original identity mismatch")
+        raw = _read_restricted(
+            folder / evidence[primary_eid]["restricted_relative_path"],
+            evidence[primary_eid]["byte_count"])
+        if primary_attempt["source_id"] == "SRC-15" and semantic:
+            mount_eid, mount_aid, associated = fsstat_witness(aids[0])
+            if (primary_eid not in associated
+                    or associated[primary_eid][1] != "stdout"
+                    or eid_refs != [primary_eid, mount_eid]
+                    or aids != [primary_attempt["attempt_id"], mount_aid]):
+                raise CanonicalContractError("FS_STAT semantic contributor mismatch")
+            try:
+                parsed = normalize_sealed_source(
+                    "SRC-15", raw, source_path=associated[primary_eid][0],
+                    source_stream="stdout")
+            except SourceParseError as exc:
+                raise CanonicalContractError(
+                    "FS_STAT semantic unsupported by sealed bytes") from exc
+            idx = observation["ordinal"]
+            if parsed is None or idx >= len(parsed.values):
+                raise CanonicalContractError("FS_STAT semantic ordinal unsupported")
+            raw_artifact = SimpleNamespace(
+                evidence_id=primary_eid, collector_id=primary_attempt["collector_id"])
+            expected = _semantic_observation(
+                raw_artifact, aids[0], parsed.values[idx], idx, parsed.parser_id,
+                supporting_originals=((mount_eid, mount_aid),))
+            if observation != expected:
+                raise CanonicalContractError("FS_STAT semantic original/value mismatch")
+        elif semantic:
+            # Other registered single-source parsers remain individually
+            # attributable; full per-family semantic reparse is later RP-03.2.
+            if aids != [primary_attempt["attempt_id"]] or eid_refs != [primary_eid]:
+                raise CanonicalContractError("unsupported semantic contributor set")
+        else:
+            if (aids != [primary_attempt["attempt_id"]]
+                    or eid_refs != [primary_eid]
+                    or observation["ordinal"] != 0
+                    or observation["normalized_value"] is not None
+                    or observation["datum_path"] !=
+                       "unclassified.source." + primary_attempt["source_id"] +
+                       "." + primary_eid.rsplit(":", 1)[-1]):
+                raise CanonicalContractError("raw observation attribution mismatch")
+            try:
+                if len(raw) > MAX_LITERAL_TEXT:
+                    raise UnicodeDecodeError("utf-8", raw, 0, 1, "literal bound")
+                literal = raw.decode("utf-8", "strict")
+            except UnicodeDecodeError:
+                literal = None
+            expected_value = (literal if literal is not None
+                              else {"sealed_bytes_ref": primary_eid})
+            if (observation["observed_value"] != expected_value
+                    or observation["value_type"] !=
+                       ("STRING" if literal is not None else "BYTES_REF")):
+                raise CanonicalContractError("raw observation differs from sealed bytes")
     return manifest
