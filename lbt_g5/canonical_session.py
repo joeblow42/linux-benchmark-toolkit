@@ -1683,6 +1683,44 @@ def validate_canonical(run_directory):
             )
         return fsstat_cache[aid]
 
+    # RP-03.2 Increment 47: independent, read-only D0 semantic witnesses.
+    # Reparse each actual sealed original, not the canonical value or its
+    # digest, and require an exact 1:1 match for the entire parser output.
+    # Only these four simple fixed-format D0 families are covered here.
+    d0_families_47 = frozenset(("SRC-02", "SRC-08", "SRC-09", "SRC-10"))
+    d0_expected_47 = {}
+    d0_semantic_seen_47 = {}
+    d0_raw_seen_47 = {}
+    for candidate in attempts:
+        sid = candidate["source_id"]
+        if sid not in d0_families_47:
+            continue
+        aid = candidate["attempt_id"]
+        receipt = _json_load(_read_restricted(
+            folder / candidate["receipt_private_path"], MAX_RECEIPT_BYTES))
+        for eid in candidate["evidence_ids"]:
+            original = evidence[eid]
+            sealed = _read_restricted(
+                folder / original["restricted_relative_path"],
+                original["byte_count"])
+            parsed = None
+            if receipt.get("outcome") in ("CAPTURED", "PARTIAL"):
+                try:
+                    parsed = normalize_sealed_source(sid, sealed)
+                except SourceParseError:
+                    # A failed pure parser cannot justify typed observations.
+                    pass
+            artifact = SimpleNamespace(
+                evidence_id=eid, collector_id=candidate["collector_id"])
+            expected = tuple(
+                _semantic_observation(
+                    artifact, aid, datum, index, parsed.parser_id)
+                for index, datum in enumerate(parsed.values)
+            ) if parsed is not None else ()
+            d0_expected_47[eid] = expected
+            d0_semantic_seen_47[eid] = set()
+            d0_raw_seen_47[eid] = 0
+
     for observation in observations:
         aids = observation["source_attempt_ids"]
         eid_refs = observation["evidence_refs"]
@@ -1739,6 +1777,14 @@ def validate_canonical(run_directory):
                 supporting_originals=((mount_eid, mount_aid),))
             if observation != expected:
                 raise CanonicalContractError("FS_STAT semantic original/value mismatch")
+        elif semantic and primary_attempt["source_id"] in d0_families_47:
+            expected_rows = d0_expected_47.get(primary_eid)
+            idx = observation["ordinal"]
+            if (expected_rows is None or idx >= len(expected_rows)
+                    or observation != expected_rows[idx]):
+                raise CanonicalContractError(
+                    "D0 semantic row not supported by sealed original")
+            d0_semantic_seen_47[primary_eid].add(idx)
         elif semantic:
             # Other registered single-source parsers remain individually
             # attributable; full per-family semantic reparse is later RP-03.2.
@@ -1765,4 +1811,11 @@ def validate_canonical(run_directory):
                     or observation["value_type"] !=
                        ("STRING" if literal is not None else "BYTES_REF")):
                 raise CanonicalContractError("raw observation differs from sealed bytes")
+            if primary_eid in d0_raw_seen_47:
+                d0_raw_seen_47[primary_eid] += 1
+    for eid, expected_rows in d0_expected_47.items():
+        if (d0_raw_seen_47[eid] != 1 or
+                d0_semantic_seen_47[eid] != set(range(len(expected_rows)))):
+            raise CanonicalContractError(
+                "D0 sealed original parser output incomplete or duplicated")
     return manifest
