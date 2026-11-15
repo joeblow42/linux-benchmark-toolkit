@@ -16,6 +16,7 @@ import json
 import math
 import os
 from pathlib import Path
+from types import SimpleNamespace
 import re
 import secrets
 import stat
@@ -718,8 +719,13 @@ def _observation(artifact, raw, attempt_id, *, status_record_id,
     }
 
 
-def _semantic_observation(artifact, attempt_id, datum, index, parser_id):
-    """One typed observation derived from a precisely identified sealed original."""
+def _semantic_observation(artifact, attempt_id, datum, index, parser_id,
+                          *, supporting_originals=()):
+    """Typed value with each actually sealed original contributing to derivation.
+
+    supporting_originals is an ordered sequence of (evidence_id, attempt_id)
+    already verified by the producer; it is not inferred from an input label.
+    """
     return {
         "observation_id": "obs:" + artifact.evidence_id + ":sem:" + str(index),
         "collector_id": artifact.collector_id,
@@ -731,8 +737,10 @@ def _semantic_observation(artifact, attempt_id, datum, index, parser_id):
         "normalized_value": datum.normalized_value,
         "value_type": datum.value_type,
         "unit": datum.unit,
-        "evidence_refs": [artifact.evidence_id],
-        "source_attempt_ids": [attempt_id],
+        "evidence_refs": [artifact.evidence_id] +
+                         [eid for eid, _ in supporting_originals],
+        "source_attempt_ids": [attempt_id] +
+                              [aid for _, aid in supporting_originals],
         "transformation_ids": [parser_id],
         "acquired_utc": None,
         "capture_limit_ids": [],
@@ -767,6 +775,7 @@ def build_canonical(run_directory, engine_run):
     all_original_bytes = 0
     semantic_field_count = 0
     verified_local_mounts = None
+    verified_mountinfo = None
     all_attempts = [item for collector in engine_run.collectors
                     for item in collector.source_attempts]
     for item in all_attempts:
@@ -988,6 +997,9 @@ def build_canonical(run_directory, engine_run):
             if parsed is not None:
                 if source_id == "SRC-14" and metadata["outcome"] == "CAPTURED":
                     # Registered original grammar, not a new live mount read.
+                    if verified_mountinfo is not None:
+                        raise CanonicalContractError("ambiguous mountinfo contributor")
+                    verified_mountinfo = (eid, attempt_id)
                     ordered = (rec["mount_point"] for rec in
                                parsed.values[0].normalized_value
                                if rec["filesystem_type"] in LOCAL_TYPES)
@@ -997,8 +1009,17 @@ def build_canonical(run_directory, engine_run):
                     parser_findings=("ORIGINAL_PRESERVED", "SOURCE_PARSER_SUCCEEDED"),
                     limitations=()))
                 for index, datum in enumerate(parsed.values):
+                    support = ()
+                    if source_id == "SRC-15":
+                        # A statvfs record is valid for the mount selected by
+                        # a separately sealed same-run SRC-14 original.
+                        if verified_mountinfo is None:
+                            raise CanonicalContractError(
+                                "FS_STAT missing sealed selection contributor")
+                        support = (verified_mountinfo,)
                     observations.append(_semantic_observation(
-                        artifact, attempt_id, datum, index, parsed.parser_id))
+                        artifact, attempt_id, datum, index, parsed.parser_id,
+                        supporting_originals=support))
                     semantic_field_count += 1
             else:
                 observations.append(_observation(
