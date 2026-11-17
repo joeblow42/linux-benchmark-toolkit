@@ -14,7 +14,7 @@ The live Linux USB is isolated/offline; explicitly authorized optional network/S
 - Approved exceptions retained: FR-134 later-release TUI report viewing, FR-177 FAT mandatory execution selection, FR-186 FAT mandatory interactive test-group/individual selection where practical.
 - Frozen canonical schema 1.0.0, status-record schema 1.0/41 combinations and G5-03 source/privilege/consent/capture boundaries are not silently amended.
 - Current engineering anchor: draft PR #72, head `16a50ba2dbe570f4790ac7d0cfcd8d63601d6b49`, verified PR CI 43764211945 and push CI 43764206376, both SUCCESS. Draft PRs stay unmerged.
-- Baseline applicability **per ID** and original 20-column controlled requirement CSV are not in the identified GitHub current tree; only their hashes, aggregate classifications and 283-ID CP-02 trace are available. This candidate cannot legitimately amend per-ID dispositions without recovering those source bytes.
+- **Authoritative source recovery completed.** Both original controlled CSVs are committed byte-exact under `verification/fat/authority/` and checked by the GitHub recovery workflow. The 283-ID additive reconciliation copies all 20 original requirement cells, all 17 owner-approved applicability cells (shared ID once) and all 12 existing CP-02 trace cells (shared ID once), joining by exact `Requirement_ID`. There are 1,981 controlled overlapping-field matches and zero mismatches. Note that the CP-02 trace has a different row order from the original sources in 141 positions; positional joining is prohibited.
 
 ## 3. Priority order and execution slices
 The 13 owner-approved RP identifiers are retained. The proposed work is scheduled in six **functional slices**, not an artificial new numbered stage model. Each increment is bounded, follows a real functional dependency, and ends with code/test/output/host evidence where applicable.
@@ -51,8 +51,8 @@ The 13 owner-approved RP identifiers are retained. The proposed work is schedule
 ### Slice F — Product cutover and FAT (RP-12 / RP-13)
 **F1**: Integrate CLI and Dialog TUI with the unified engine, the four modes, optional selection, progress and understandable errors. Preserve no-TUI-report-viewer approval.
 **F2**: Relocatable offline AMD64 package with clear required dependencies, checksums, notices and operator guidance. Approve actual launcher cutover before switching.
-**F3**: Execute real Bodhi Linux 7 live-USB first article and representative second computer tests: inventory accuracy, core/specialized measurements on applicable fixtures, safety cleanup, reboot/relocation, offline reporting and limited selected peer-connected trials.
-**Exit:** A frozen candidate runs start-to-finish on physical machines; user reviews documented exceptions and explicitly authorizes FAT entry. Passing CI is not a substitute for actual FAT.
+**F3**: Complete real Bodhi Linux 7 live-USB **pre-FAT host readiness** and second-computer shakedown, verify inventory, applicable workloads, non-destructive cleanup, reboot/relocation and offline reporting. Obtain **owner FAT-entry authorization before formal first-article acceptance execution**; then execute and independently record formal FAT, including any separately approved peer-connected cases.
+**Exit:** Frozen candidate passes real physical-host readiness, owner authorizes FAT entry, and formal FAT is independently executed and documented. Passing CI is not a substitute for physical-host acceptance.
 
 ## 4. Original roadmap package reconciliation
 | RP | Keep or change | Reason |
@@ -78,7 +78,7 @@ The 13 owner-approved RP identifiers are retained. The proposed work is schedule
 
 ## 6. Owner review gates before implementation resumes
 1. Approve or amend this Rev 0.2 **candidate** roadmap and its threat-assumption corrective overlay. Alternative B scope itself is already approved.
-2. Recover the original 20-column Rev 1.6 CSV and the owner-approved per-ID RP-01 applicability crosswalk (source hashes above); do not invent missing requirement wording/dispositions. Reconcile all 283 IDs against the linked worksheet.
+2. **COMPLETE:** recover and byte-hash-check original Rev 1.6 and approved RP-01 matrix; preserve originals unchanged. The 283-ID derived crosswalk and 39-case review remain candidate planning products subject to independent CI checks.
 3. Approve any requirement modification, relaxation of a frozen D-02/status contract, source/privilege change, output-count change, or removal of original CP-02 test cases that materially changes acceptance.
 4. Later: CP-07 stage decision, launcher cutover, and FAT entry remain separate authorization checkpoints.
 
@@ -90,3 +90,7 @@ The 13 owner-approved RP identifiers are retained. The proposed work is schedule
 - Approved RP-01 aggregate: `verification/fat/rp01_owner_scope_approval_20261113.json`.
 - Current trace: `verification/g5_04/requirements_traceability_rev1_6.csv` (283 IDs; 12 appended trace fields, **not original 20-column source**).
 - Functional proposals: `docs/ROADMAP.md` and `docs/TEST_SPECIFICATION.md` (context; neither supersedes owner approval).
+
+## 8. Recovered per-ID authority and case-by-case method review (2026-11-16)
+
+Both authoritative CSVs are now available under `verification/fat/authority/` with their pinned exact hashes. The reconciled 283-ID CSV is a **derived 53-column candidate**: 20 controlled Rev 1.6 fields + 16 RP-01 fields + 11 CP-02 trace fields + six review fields, with a shared ID once. The original and matrix order coincide; the CP-02 trace has a different order in 141 positions and is joined by ID. All 283 approval states and 210/65/8 FAT classifications remain intact; all 283 verification states remain NOT_VERIFIED. Original 39 CP-02 cases: 35 retain functional, one CT-07-N1 ordinary-fault input wording proposed for owner review, three downstream not executed; **zero proposed deletion** and **zero formally accepted**. See `altb_cp02_39case_method_review_20261116.csv`, `altb_planning_impact_review_20261116.md`, and `scripts/verify_altb_reconciliation.py`. Increment 48 remains blocked pending owner approval.

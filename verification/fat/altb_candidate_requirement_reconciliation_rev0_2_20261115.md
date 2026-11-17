@@ -1,71 +1,34 @@
-# LBT — FAT Requirements and Verification-Method Reconciliation Rev 0.2 (CANDIDATE)
-**Date:** 2026-11-15 | **Authority:** Alternative B approved; *only the intended operating model and inclusion of specialized workloads have been approved*. This reconciliation does not revise the controlled 283 requirements, the per-ID FAT classifications, D-02/consent/limits, or original acceptance evidence.
+# LBT — FAT Requirements and CP-02 Method Reconciliation Rev 0.2 (CANDIDATE)
+**Status:** owner approval pending; planning-only; no Increment 48, merge or FAT acceptance. **Dated:** 2026-11-16.
 
-## 1. Recoverable authority
-| Item | Recovered fact |
-|---|---|
-| Baseline | Requirements Rev 1.6; 283 IDs = 209 FR + 74 NFR |
-| Approved original 20-column CSV SHA256 | `04849cd13ecc75c803839ab7c59a1015c5b92d1f05bf31422b54406c188e2702` |
-| Approved RP-01 scope count | 210 FAT mandatory; 65 conditionally applicable; 8 explicit later release; 0 pending |
-| Approved per-ID scope matrix SHA256 | `deb4ea158491d980e7ff57d6ac9bc58560316edf3adfb8d3e9c37c59f9266092` |
-| Verified per-ID exceptions | FR-134 later TUI report viewing; FR-177 FAT mandatory TUI execution selection; FR-186 FAT mandatory individual/group selection where practical |
-| CP-02 current source | `verification/g5_04/requirements_traceability_rev1_6.csv` |
-| G5-04 CP-02 trace classes | 33 DIRECT; 11 BOUNDARY; 6 DOWNSTREAM; 233 UNASSESSED_FOR_G5_04 |
-| Formal CP-02 acceptance evidence | Original 39 cases NOT formally accepted (0/39); no actual host FAT |
-| Requirement state | 283 NOT_VERIFIED, including apparently implemented candidates |
+## 1. Recovered authority and validity
+The protected source files are `authority/Requirements_Rev1_6.csv` (283×20; SHA-256 `04849cd13ecc75c803839ab7c59a1015c5b92d1f05bf31422b54406c188e2702`) and `authority/LBT_RP01_283_Requirement_FAT_Applicability_Approved_20261113.csv` (283×17; SHA-256 `deb4ea158491d980e7ff57d6ac9bc58560316edf3adfb8d3e9c37c59f9266092`). Their original bytes remain unchanged. The exact hashes are checked by the GitHub recovery workflow. Seven overlapping approved attributes × 283 IDs = **1,981 exact matches, zero mismatches**.
 
-**Critical limitation:** Current GitHub revision contains the **283-ID 12-column CP-02 overlay**, not the original 20-column requirement text or the approved per-ID RP-01 classification worksheet. Therefore the companion full-row CSV **does not claim new per-ID FAT dispositions**. It faithfully carries the 12 known CP-02 fields and appends explicitly marked review columns. Do not conflate G5-04 Trace_Scope with FAT applicability.
+All **283 ID classifications are recovered and owner-approved** (`OWNER_APPROVED_2026-11-13`): **210 FAT_MANDATORY, 65 CONDITIONALLY_APPLICABLE, 8 EXPLICIT_LATER_RELEASE**. All 283 remain `NOT_VERIFIED`. The matrix's historical narrative `Trace_Gap_or_Decision_Need` still contains some pre-approval wording; it is original protected data, not a current owner decision request.
 
-## 2. Corrected operating assumption
-A **single trusted operator** runs LBT from a **live Linux USB**, normally offline/isolated, on hardware being inspected. There is no assumed malicious second operator, record forger, co-tenant, or hostile administrator. DVD/Jellyfin and backup test profiles remain first-article objectives under Alternative B. Explicit peer-connected SMB/Jellyfin/network paths require operator choice and do not convert default offline discovery into an online service.
+## 2. 283-ID derived crosswalk and join defect avoided
+`altb_candidate_requirement_reconciliation_283_20261115.csv` now contains **53 columns**: all 20 original requirement cells unchanged, 16 approved RP-01 additional columns (`RP01_` prefix; shared `Requirement_ID` once), 11 unchanged CP-02 trace columns (`CP02_` prefix), and six proposed review-only columns. No per-ID disposition, source text, original release target, platform scope or verification evidence is rewritten.
 
-Residual risks are real: failing hardware producing malformed/partial data, run interruption, wrong path/drive selection, insufficient disk space, overheating, uncontrolled writes, missing dependencies, incorrect units/results, inaccurate suitability judgments and report disclosure **when copied elsewhere**.
+**Critical:** original Rev 1.6 and approved RP-01 matrix have the same ID sequence, but the 12-column CP-02 trace has a **different row order for 141 positions**. All three contain the same 283 unique IDs. Joining by row position would misattribute trace evidence; the crosswalk instead joins strictly by `Requirement_ID`. The CI verifier enforces exact per-ID cell preservation and checks every original CP-02 case linkage. Neither CP-02 `Trace_Scope` nor its old 'unassessed' values determine approved FAT applicability.
 
-## 3. Reconciliation rules (separate product obligation from test technique)
-**KEEP IN SCOPE:** All currently approved FAT-mandatory or conditional functional obligations until an authorized requirement change; core + specialized benchmarks; true fault handling; unprivileged default; non-destructive temporary data; bounded thermal/disk tests; truthful report statuses; approved schema; operational consent; privacy controls appropriate to exporting reports; real host FAT.
+## 3. Exact requirement impact and later release
+**No controlled requirement-text change, per-ID applicability change, or production-contract change is proposed.** Alternative B retains core CPU/memory/storage/thermal/network, optical/DVD, FFmpeg/Jellyfin and backup/rsync/SMB workloads. The eight approved later-release requirements are **LBT-FR-001, -002, -003, -004** (host security posture), **-008, -009** (cluster), **-010** (local AI inference), **-134** (TUI viewing of prior reports). FR-177/FR-186 stay FAT mandatory for operator execution and test selection; FR-208 forbids a TUI report viewer.
 
-**REMOVE AS A DEVELOPMENT OBJECTIVE:** Further invented-attacker rehashed-manifest, substituted-original, malicious-field, spoofed status, forged parser ID or similar hostile-record campaigns. This is a **test-method proposal** and shall not unilaterally erase an approved requirement or a check that also catches ordinary file corruption.
+Exact source text supports normal operational controls under **FR-121** (withhold raw-source pointers from public outputs), **FR-168** (do not equate presence with execution), **FR-191** (truthful authorized collection), **FR-192** (bounded original observations), **NFR-068** (lossless provenance), **NFR-070** (correct status domain), **NFR-018** (preserve completed data after interruption without session resume), **NFR-071** (single current session format), and **NFR-074** (earlier-run preservation). These functions are not evidence of a hostile local operator.
 
-**RETAIN/STREAMLINE:** Format and schema validation, counts, file incompleteness, safe atomic writes and recovery after power loss or interruption, parser correctness, checksums for the operator's own backup/media *test fixtures*, and cross-file links necessary to avoid wrong measurements. Prefer representative normal/error cases over exhaustive adversarial combinations.
+## 4. Exact original 39-case CP-02 method review
+The original input/expected-result/trace fields remain unchanged in `verification/g5_04/cp02_39case_coverage_review_25.csv`. A separate additive case-by-case overlay `altb_cp02_39case_method_review_20261116.csv` classifies:
 
-**NOT AN AUTOMATIC DEFERRAL:** Security-posture assessment of the computer (e.g., firewall/update-readiness) may be a genuine *measured system fact*, distinct from hostile-actor defense of LBT. Evaluate it against the actual 20-column requirement wording before disposition. Likewise, no unilateral removal of the approved nine conditional publication outputs.
+| Proposed treatment | Count | Case detail |
+|---|---:|---|
+| KEEP_FUNCTIONAL | 35 | Ordinary parser, missing-tool, status, measurement, canonical-schema, corruption, interrupted-write and safe-UI checks retained; no attack permutations |
+| REPLACE_WITH_ORDINARY_FAILURE | 1 | CT-07-N1 input narrative: accidental stale/wrong-run or missing provenance instead of forged identity; **owner approval required before rewording**; reject outcome unchanged |
+| DOWNSTREAM_NOT_EXECUTED | 3 | CT-08-N2 report regeneration; CT-11-N2 public raw-pointer suppression; CT-11-N3 prohibited TUI report/diagnostics viewer |
+| PROPOSE_REMOVAL_ATTACK_ONLY | 0 | No originally approved test recommended for removal |
 
-## 4. Requirement impact groups for exact-text review
-| Group | Candidate impact | Required review |
-|---|---|---|
-| Existing FR-134 / FR-177 / FR-186 decisions | No change | Preserve exactly |
-| FR-020 / FR-121 / FR-127 / FR-208 and NFR-016 / NFR-031 | Functional single-engine, evidence/publication/TUI boundary (CT-11) | Preserve genuine operation and sharing constraints; review attack-language separately |
-| FR-168 / FR-191 and NFR-070 | Honest parser/absence/error status (CT-01..04) | Retain truthful failures and normal functional error tests |
-| FR-192 and NFR-068 | Acquisition limits and source attribution (CT-05/07/09) | Retain correctness if needed for measured results; drop only adversary-only extensions on owner approval |
-| NFR-018 / NFR-071 / NFR-074 | Commit, counts, interruption and lifecycle (CT-08/10) | Keep ordinary crash/incomplete-output consistency; review hostile tamper scenarios |
-| All other requirement IDs | Exact statement unavailable in current recovered source | No speculative per-ID disposition; recover 20-column control first |
+**All 39 cases remain formally unaccepted.** A malformed input, unexpected D-02 key, broken digest, missing original or wrong run ID can result from ordinary faults. It is legitimate to reject such faults without inventing an attacker. Do not extend Increment 47's rehashed-manifest, forged-record, replay or tampering campaigns; conduct a bounded independent impact review before removing any existing dual-purpose test in draft PR #72.
 
-The above identifiers are **candidate triage references**, not judgments that the individual requirement text is security-related. The attached CSV is the authoritative 283-ID inventory.
+## 5. Protected boundaries and required owner gates
+Preserve G5-03 source/consent/privilege/capture policy, canonical D-02 1.0.0, status schema 1.0 and 41 approved status/reason pairs, privacy.yaml/outputs.yaml, 1 combined HTML report plus nine approved conditional outputs, original evidence retention, and approved TUI boundaries. Actual physical-host FAT has not occurred; GitHub CI is not a substitute.
 
-## 5. Original CP-02 verification-method review
-| CT family | Recommended handling |
-|---|---|
-| CT-01: allowed status vocabulary | Retain standard status correctness; no combinatorial attack rationale |
-| CT-02/03/04: parser absent/failed/permission/missing tool | Retain normal error cases |
-| CT-05/06: actual limits and time | Retain practical safety/correctness checks, no speculative limit hierarchy |
-| CT-07: contributing-original record relationships | Retain sufficient association to correct data; no attacker-led substitution campaign |
-| CT-08: zero-observation and incomplete runs | Retain |
-| CT-09: unknown data and schema keys | Retain malformed-input/unknown-data fallback; avoid invented hostile field forging |
-| CT-10: atomic commit, counts, interrupted run | Retain crash/incomplete-output checks; review tamper-only negative methods |
-| CT-11: single path/privacy/TUI | Retain actual operation and approved UI/output behavior; avoid hostile-party construction |
-
-Original 39 cases must be individually classified against the recovered test specification: **KEEP_FUNCTIONAL**, **REPLACE_WITH_ORDINARY_FAILURE**, **PROPOSE_REMOVAL_ATTACK_ONLY**, or **DOWNSTREAM_NOT_EXECUTED**. Until accepted, 0/39 formal acceptances remain unchanged. No blanket deletion or acceptance is claimed.
-
-## 6. Working 283-ID reconciliation CSV
-File: `verification/fat/altb_candidate_requirement_reconciliation_283_20261115.csv`.
-- Exactly one row for every ID from the current CP-02 trace, in source order.
-- Carries all current 12 trace fields unchanged.
-- Appended candidate columns explicitly distinguish current approved information, missing owner-approved per-ID scope, proposed test-scope review, and owner-action status.
-- Source truth not recovered is `NOT_RECOVERED_PER_ID`, not guessed.
-- All current requirement Verification_State remain `NOT_VERIFIED` and no original baseline cells are edited.
-
-## 7. Exit criteria before implementation
-1. Recover and checksum-verify the 20-column Requirements Rev 1.6 source and per-ID RP-01 scope matrix; reconcile by ID and preserve control cells.
-2. Review the functional impact of each proposed change: user-visible benefit, measurement integrity, safety, approved interface and test method. Neither "security" nor "hash" alone is grounds for removal.
-3. Owner approve revised roadmap and any actual changes to mandatory/conditional requirements or original CP-02 acceptance methods.
-4. Keep draft PR #72 unmerged, resume with a useful source-to-consumer integration increment rather than an adversary-based test.
+Owner review requested only for **(1) the detailed Rev 0.2 six-slice roadmap and Alternative B practical test-method rationale**, and **(2) the optional CT-07-N1 ordinary-fault wording change**. No silent change to any requirement, test expected result, schema, source command, status pair or publication contract is authorized. Remain draft/unmerged; **Increment 48 paused** until approval.

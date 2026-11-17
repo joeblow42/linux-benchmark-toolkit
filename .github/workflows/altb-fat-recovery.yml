@@ -17,6 +17,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Independently verify 283-ID authority join and 39-case method overlay
+        run: python3 verification/fat/scripts/verify_altb_reconciliation.py --source-root .
       - name: Build self-contained authoritative ODT and ZIP
         run: python3 verification/fat/scripts/build_altb_recovery.py --source-root . --outdir dist/lbt-recovery
       - name: Publish GitHub recovery archive

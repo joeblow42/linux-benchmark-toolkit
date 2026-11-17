@@ -47,7 +47,7 @@ def main():
         for n in ("authority","handoff","planning","validation"):(stage/n).mkdir()
         for n in SHA:shutil.copyfile(fat/"authority"/n,stage/"authority"/n)
         shutil.copyfile(handoff,stage/"handoff"/handoff.name);shutil.copyfile(a.outdir/ODT,stage/"handoff"/ODT)
-        for n in ("altb_candidate_fat_roadmap_rev0_2_20261115.md","altb_candidate_requirement_reconciliation_rev0_2_20261115.md","altb_candidate_requirement_reconciliation_283_20261115.csv"):shutil.copyfile(fat/n,stage/"planning"/n)
+        for n in ("altb_candidate_fat_roadmap_rev0_2_20261115.md","altb_candidate_requirement_reconciliation_rev0_2_20261115.md","altb_candidate_requirement_reconciliation_283_20261115.csv","altb_cp02_39case_method_review_20261116.csv","altb_planning_impact_review_20261116.md"):shutil.copyfile(fat/n,stage/"planning"/n)
         shutil.copyfile(fat/"altb_source_recovery_verification_20261116.json",stage/"validation"/"altb_source_recovery_verification_20261116.json")
         (stage/"README_RECOVERY.md").write_text("LBT Alternative B recovery. Read handoff/altb_source_recovery_handoff_20261116.md first.\nAll source CSVs are byte-exact and SHA-256 checked. Rev 0.2 planning is CANDIDATE. Increment 48 remains PAUSED.\n",encoding="utf-8")
         items=sorted(x for x in stage.rglob("*") if x.is_file())
