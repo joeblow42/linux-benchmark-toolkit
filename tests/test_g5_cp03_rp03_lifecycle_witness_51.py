@@ -4,6 +4,8 @@ No host probes or command execution. A FINISHED traversal only establishes
 attempt coverage, never successful acquisition, benchmark or publication.
 """
 from datetime import datetime
+from pathlib import Path
+import tempfile
 from types import SimpleNamespace
 from unittest.mock import patch
 import unittest
@@ -23,11 +25,15 @@ def dummy():
 class SessionExecutionWitness51(unittest.TestCase):
     def setUp(self):
         self.calls = []
+        workspace = tempfile.TemporaryDirectory()
+        self.addCleanup(workspace.cleanup)
+        self.folder = Path(workspace.name) / RUN
+        self.folder.mkdir(mode=0o700)
 
     def engine(self):
-        # The source dispatcher is mocked: no EvidenceWriter, subprocess,
-        # privileged helper or physical host collection is touched.
-        return UnifiedCollectorEngine("/tmp/lbt-increment51-unused", RUN)
+        # The engine has a valid run directory, but its source dispatcher is
+        # mocked: no subprocess, helper or physical collection occurs.
+        return UnifiedCollectorEngine(str(self.folder), RUN)
 
     def record(self, request, attempt, *args, **kwargs):
         self.calls.append((request.source_id, attempt, kwargs["subcall"]))
