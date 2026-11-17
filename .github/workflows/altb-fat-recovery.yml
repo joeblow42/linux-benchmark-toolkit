@@ -1,0 +1,30 @@
+name: LBT Alternative B recovery package
+on:
+  push:
+    branches:
+      - planning/fat-rebaseline-altb-20261115
+    paths:
+      - 'verification/fat/**'
+      - '.github/workflows/altb-fat-recovery.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-authoritative-recovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Build self-contained authoritative ODT and ZIP
+        run: python3 verification/fat/scripts/build_altb_recovery.py --source-root . --outdir dist/lbt-recovery
+      - name: Publish GitHub recovery archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: LBT-FAT-Alternative-B-Recovery-20261116
+          path: |
+            dist/lbt-recovery/*.odt
+            dist/lbt-recovery/*.zip
+          if-no-files-found: error
+          retention-days: 90
