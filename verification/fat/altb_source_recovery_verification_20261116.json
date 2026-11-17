@@ -1,0 +1,38 @@
+{
+  "record_type": "LBT_ALTERNATIVE_B_SOURCE_RECOVERY_AND_CANDIDATE_HANDOFF",
+  "date_local": "2026-11-16",
+  "owner_scope": "ALTERNATIVE_B_APPROVED",
+  "operator_model": "SINGLE_TRUSTED_OPERATOR_LIVE_USB_OFFLINE_DEFAULT",
+  "original_requirement_csv": {
+    "sha256": "04849cd13ecc75c803839ab7c59a1015c5b92d1f05bf31422b54406c188e2702",
+    "rows": 283,
+    "columns": 20
+  },
+  "approved_fat_matrix": {
+    "sha256": "deb4ea158491d980e7ff57d6ac9bc58560316edf3adfb8d3e9c37c59f9266092",
+    "rows": 283,
+    "columns": 17,
+    "approved_counts": {
+      "FAT_MANDATORY": 210,
+      "CONDITIONALLY_APPLICABLE": 65,
+      "EXPLICIT_LATER_RELEASE": 8
+    }
+  },
+  "approved_relations": {
+    "matching_requirement_ids": 283,
+    "repeated_controlled_fields": 7,
+    "mismatch_count": 0
+  },
+  "prior_planning_head": "5d4dceec64b858c60136bb4514778dc0a17273dc",
+  "previous_review_ci": {
+    "pull_request": 43776736223,
+    "push": 43776730165,
+    "conclusion": "SUCCESS"
+  },
+  "scope": "PLANNING_ONLY",
+  "revised_roadmap": "CANDIDATE_OWNER_REVIEW_PENDING",
+  "cp02_original_39_cases": "NOT_FORMALLY_ACCEPTED",
+  "requirement_verification": "283_NOT_VERIFIED",
+  "increment_48": "PAUSED",
+  "binary_handoff_delivery": "ZIP_AND_ODT_CREATED_LOCALLY; full source inputs and handoff Markdown stored in GitHub; binary packages distributed separately in conversation"
+}
