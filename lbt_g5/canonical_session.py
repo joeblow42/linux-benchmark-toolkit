@@ -1378,8 +1378,8 @@ def build_canonical(run_directory, engine_run):
         "schema_version": CANONICAL_SCHEMA_VERSION,
         "run_id": run_id,
         "header": {
-            # EngineRun has no durable whole-run clock. SourceAttempt clock
-            # facts are preserved individually; run clock stays nullable.
+            # Use only witnessed actual engine clocks; historical source
+            # fixtures without a session witness remain nullable.
             "started_utc": witnessed["started_utc"] if witnessed else None,
             "completed_utc": witnessed["completed_utc"] if witnessed else None,
             "platform_scope": "Linux-AMD64",
@@ -1406,7 +1406,7 @@ def build_canonical(run_directory, engine_run):
                         ("Registered semantic parsers: " +
                          str(sum(1 for source in policies if parser_available(source))) +
                          " of " + str(len(policies)) + " source families; " +
-                         "this is not complete acquisition or validation"),
+                         "unselected sources and benchmark validation are not inferred"),
                         "Zero observations permitted; no benchmark measurements inferred"],
     }
     outputs = {
