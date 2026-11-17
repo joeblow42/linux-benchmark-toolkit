@@ -66,6 +66,28 @@ def _check_run(path, run_id):
         _check_private_dir(path / "private" / "evidence")
 
 
+def _initialize_zero_attempt_session(folder, run_id):
+    """Create only empty private journals for an actual zero-attempt run.
+
+    The existing evidence writer materializes its private directories when
+    the first source is sealed/recorded. Cooperative cancellation before the
+    first source must still produce the owner-approved zero-observation
+    minimum-usable canonical session. No evidence directory or fake source
+    receipt is created. Every directory is owner-only and checked in order.
+    """
+    if (not valid_run_id(run_id) or folder.name != run_id
+            or not folder.is_absolute()
+            or os.path.realpath(folder) != str(folder)):
+        raise CanonicalContractError("invalid zero-attempt run identity")
+    _check_private_dir(folder)
+    for path in (folder / "private", folder / "private" / "source_attempt_records"):
+        try:
+            path.mkdir(mode=0o700)
+        except FileExistsError:
+            pass
+        _check_private_dir(path)
+
+
 def _read_restricted(path, ceiling):
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
     try:
@@ -758,9 +780,11 @@ def build_canonical(run_directory, engine_run):
     """
     folder = Path(run_directory)
     run_id = engine_run.run_id
-    _check_run(folder, run_id)
     if engine_run.canonical_status_pending is not True:
         raise CanonicalContractError("unexpected engine canonical state")
+    if engine_run.source_attempt_count == 0:
+        _initialize_zero_attempt_session(folder, run_id)
+    _check_run(folder, run_id)
     if (folder / "private" / MANIFEST_NAME).exists():
         raise FileExistsError("canonical session already finalized")
     private = folder / "private"
