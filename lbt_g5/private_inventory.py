@@ -67,6 +67,12 @@ def read_private_inventory(run_directory):
         per_source_semantics[primary] += 1
         facts.append({
             "source_id": attempt["source_id"],
+            # Preserve D-02's verified co-contributor source identities
+            # without exposing attempt/evidence IDs or restricted paths.
+            "supporting_source_ids": [
+                by_attempt[aid]["source_id"]
+                for aid in row["source_attempt_ids"][1:]
+            ],
             "datum_path": row["datum_path"],
             "ordinal": row["ordinal"],
             "observed_value": row["observed_value"],
