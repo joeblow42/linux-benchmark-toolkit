@@ -12,6 +12,9 @@ import sys
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
+# A script invoked as python3 scripts/... needs repository-root imports explicitly.
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 MODULE_PATH = ROOT / "tests/test_g5_cp03_rp04_ct01_55.py"
 CASE_METHODS = {
     "test_55_01_CT_01_P1_pinned_41_pair_acceptance": "CT-01-P1",
