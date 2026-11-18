@@ -153,8 +153,17 @@ jobs:
         run: python3 -m unittest discover -s tests -p 'test_g5_cp03_rp03_host_lifecycle_53.py' -v
       - name: G5-04 RP-04 Increment 54 original 39-case execution readiness plan audit (NOT acceptance)
         run: python3 -m unittest discover -s tests -p 'test_g5_cp03_rp04_case_plan_54.py' -v
+      - name: G5-04 RP-04 Increment 55 exact CT-01 offline development checks (NOT CP-02 acceptance)
+        run: python3 scripts/rp04_ct01_case_runner_55.py --output validation-results/ci/rp04_ct01_candidate_55.json
       - name: Unified Full validation (unit and acceptance once)
         run: python3 -m validation.suites full --output validation-results/ci
+      - name: Upload RP-04 CT-01 bounded candidate evidence (NOT formal acceptance)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rp04-ct01-candidate-55
+          path: validation-results/ci/rp04_ct01_candidate_55.json
+          if-no-files-found: warn
       - name: Upload unified validation report
         if: always()
         uses: actions/upload-artifact@v4
