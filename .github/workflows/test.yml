@@ -165,6 +165,8 @@ jobs:
         run: python3 scripts/rp04_ct05_case_runner_59.py --output validation-results/ci/rp04_ct05_candidate_59.json
       - name: G5-04 RP-04 Increment 60 CT-06 actual source timing and null boundary (NOT acceptance)
         run: python3 scripts/rp04_ct06_case_runner_60.py --output validation-results/ci/rp04_ct06_candidate_60.json
+      - name: G5-04 RP-04 Increment 61 CT-07 source provenance candidate checks (NOT acceptance)
+        run: python3 scripts/rp04_ct07_case_runner_61.py --output validation-results/ci/rp04_ct07_candidate_61.json
       - name: Unified Full validation (unit and acceptance once)
         run: python3 -m validation.suites full --output validation-results/ci
       - name: Upload RP-04 CT-01 bounded candidate evidence (NOT formal acceptance)
@@ -208,6 +210,13 @@ jobs:
         with:
           name: rp04-ct06-candidate-60
           path: validation-results/ci/rp04_ct06_candidate_60.json
+          if-no-files-found: warn
+      - name: Upload RP-04 CT-07 provenance candidate evidence (NOT formal acceptance)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rp04-ct07-candidate-61
+          path: validation-results/ci/rp04_ct07_candidate_61.json
           if-no-files-found: warn
       - name: Upload unified validation report
         if: always()
