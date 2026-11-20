@@ -24,7 +24,7 @@ from lbt_g5.receipt_dispatch import capture_and_record
 from lbt_g5.runtime import ProbeSlots, SourceCallBudget
 from lbt_g5.safety import SourceRequest, initial_source_policies
 
-RUN="run-2026320206000"
+RUN="run-2026320205900"
 POL={p.source_id:p for p in initial_source_policies()}
 
 def utc(text):
