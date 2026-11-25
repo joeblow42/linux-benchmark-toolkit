@@ -14,6 +14,11 @@ from .workload_runtime import Unavailable
 class ProcessLimit(Exception):
     """A workload tool reached a declared wall time or output limit."""
 
+    def __init__(self, reason, buffers):
+        super().__init__(reason)
+        self.stdout = bytes(buffers["stdout"])
+        self.stderr = bytes(buffers["stderr"])
+
 
 @dataclass(frozen=True)
 class ProcessResult:
@@ -48,7 +53,7 @@ def capture(context, argv, *, seconds, output_bytes=1024 * 1024):
                     context.check_stop()
                     remaining = seconds - (time.monotonic() - started)
                     if remaining <= 0:
-                        raise ProcessLimit("COMMAND_DEADLINE")
+                        raise ProcessLimit("COMMAND_DEADLINE", buffers)
                     for key, _ in selector.select(min(.1, remaining)):
                         try:
                             data = os.read(key.fd, 65536)
@@ -58,7 +63,7 @@ def capture(context, argv, *, seconds, output_bytes=1024 * 1024):
                             selector.unregister(key.fileobj)
                             continue
                         if sum(map(len, buffers.values())) + len(data) > output_bytes:
-                            raise ProcessLimit("COMMAND_OUTPUT_LIMIT")
+                            raise ProcessLimit("COMMAND_OUTPUT_LIMIT", buffers)
                         buffers[key.data].extend(data)
         except BaseException:
             try:
