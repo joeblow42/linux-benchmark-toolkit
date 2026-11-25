@@ -1,13 +1,17 @@
 """Run the G5 development workload registry with owner-only output."""
 import argparse
+import json
 from pathlib import Path
 
 from .core_workloads import MIB, ShortParameters, short_workloads
+from .jellyfin_workloads import (
+    ClientProfile, CONCURRENT, JELLYFIN_CASES, direct_play, import_session_evidence, jellyfin_workloads,
+)
 from .optical_workload import DVD, dvd_workload
 from .peer_workload import Peer, peer_workload
 from .sustained_workloads import SustainedParameters, sustained_workloads
 from .video_workload import Video, VideoCase, video_workloads
-from .workload_runtime import Mode, Resources, Runtime
+from .workload_runtime import Mode, Resources, Runtime, Workload
 
 
 def main(argv=None):
@@ -30,7 +34,18 @@ def main(argv=None):
     parser.add_argument("--video-seconds", type=int)
     parser.add_argument("--video-deadline", type=int)
     parser.add_argument("--vaapi-render-device", help="explicit render node for comparison")
+    parser.add_argument("--jellyfin-fixture", action="append", default=[], metavar="CASE=FILE")
+    parser.add_argument("--jellyfin-streams", type=int, choices=(1, 2, 4), default=2)
+    parser.add_argument("--direct-play-fixture", type=Path)
+    parser.add_argument("--direct-play-profile", type=Path,
+                        help="JSON with container, video_codecs, audio_codecs and subtitle_codecs")
+    parser.add_argument("--jellyfin-session-export", type=Path)
+    parser.add_argument("--jellyfin-transcode-log", type=Path)
     args = parser.parse_args(argv)
+    if bool(args.direct_play_fixture) != bool(args.direct_play_profile):
+        parser.error("provide both --direct-play-fixture and --direct-play-profile")
+    if args.jellyfin_transcode_log and not args.jellyfin_session_export:
+        parser.error("--jellyfin-transcode-log requires --jellyfin-session-export")
     if args.vaapi_render_device and args.video_source is None:
         parser.error("--vaapi-render-device requires --video-source")
     dvd_flags = (bool(args.dvd_device), args.dvd_bytes is not None, args.confirm_unencrypted_dvd)
@@ -72,11 +87,40 @@ def main(argv=None):
                                  max_celsius=args.max_celsius, render_device=args.vaapi_render_device)
                 workloads += video_workloads(hardware)
             memory_bytes = 512 * MIB
+        videos = {}
+        valid_cases = {case.id for case in (*JELLYFIN_CASES, CONCURRENT)}
+        if args.jellyfin_fixture:
+            for selection in args.jellyfin_fixture:
+                case, equal, file = selection.partition("=")
+                if not equal or not file or case not in valid_cases or case in videos:
+                    raise ValueError("provide one CASE=FILE per registered Jellyfin case")
+                videos[case] = Video(Path(file), extended_seconds, extended_deadline,
+                                     max_celsius=args.max_celsius)
+        workloads += jellyfin_workloads(videos, args.jellyfin_streams)
+        if any(selection in valid_cases for selection in args.select):
+            selected_streams = args.jellyfin_streams if CONCURRENT.id in args.select else 1
+            memory_bytes = max(memory_bytes, selected_streams * 512 * MIB)
+        if args.direct_play_fixture:
+            with args.direct_play_profile.open(encoding="utf-8") as stream:
+                data = stream.read(16385)
+            if len(data) > 16384:
+                raise ValueError("Direct Play profile exceeds the size limit")
+            profile = ClientProfile(**json.loads(data))
+            workloads += (Workload("jf-direct-play", "jellyfin", Mode.EXTENDED,
+                                   Resources(cpu_workers=1, memory_bytes=128 * MIB),
+                                   lambda context: direct_play(context, Video(args.direct_play_fixture), profile),
+                                   requires_selection=True),)
+        if args.jellyfin_session_export:
+            workloads += (Workload("jf-session-evidence", "jellyfin", Mode.EXTENDED,
+                                   Resources(memory_bytes=8 * MIB),
+                                   lambda context: import_session_evidence(
+                                       context, args.jellyfin_session_export, args.jellyfin_transcode_log),
+                                   requires_selection=True),)
         runtime = Runtime(workloads,
                           limits=Resources(parameters.cpu_workers, memory_bytes, disk_bytes),
                           disk_reserve_bytes=args.disk_reserve_mib * MIB)
         session = runtime.execute(args.output_root, Mode(args.mode), selections=args.select)
-    except (OSError, ValueError) as error:
+    except (OSError, TypeError, ValueError) as error:
         parser.exit(2, f"Workload runtime: {error}\n")
     print(f"{session.state} {session.directory}")
     return {"COMPLETE": 0, "PARTIAL": 3, "FAILED": 1, "INTERRUPTED": 130}[session.state]

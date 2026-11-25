@@ -6,10 +6,11 @@ import os
 from pathlib import Path
 import re
 import stat
+import time
 
 from .core_workloads import MIB, check_pressure
 from .sustained_workloads import Monitor
-from .workload_process import capture, tool_path
+from .workload_process import ProcessLimit, capture, tool_path
 from .workload_runtime import Context, Mode, Resources, Unavailable, Workload
 
 FORMATS = {".vob": "mpeg", ".mpg": "mpeg", ".mpeg": "mpeg", ".mp4": "mov",
@@ -153,7 +154,7 @@ def _first_video(metadata):
     return next((row for row in metadata.get("streams", []) if row.get("codec_type") == "video"), {})
 
 
-def transcode(context, case, video):
+def transcode(context, case, video, *, synchronize=None):
     if video.path is None or not Path(video.path).is_file():
         raise Unavailable("VIDEO_FIXTURE_MISSING")
     check_pressure("cpu", 15)
@@ -184,23 +185,36 @@ def transcode(context, case, video):
         raise Unavailable("IMAGE_SUBTITLE_FIXTURE_REQUIRED")
     ffmpeg = tool_path("ffmpeg")
     argv, encoder = video_command(ffmpeg, path, demuxer, case, video, subtitle_index=subtitle)
-    available = capture(context, (ffmpeg, "-hide_banner", "-encoders"), seconds=10)
-    if available.returncode or not any(line.split()[1:2] == [encoder.encode()]
-                                      for line in available.stdout.splitlines()):
-        raise Unavailable("VIDEO_ENCODER_UNAVAILABLE")
+    for flag, codec, missing in (("-decoders", stream["codec_name"], "VIDEO_DECODER_UNAVAILABLE"),
+                                  ("-encoders", encoder, "VIDEO_ENCODER_UNAVAILABLE")):
+        available = capture(context, (ffmpeg, "-hide_banner", flag), seconds=10)
+        if available.returncode or not any(line.split()[1:2] == [codec.encode()]
+                                           for line in available.stdout.splitlines()):
+            raise Unavailable(missing)
     version = capture(context, (ffmpeg, "-version"), seconds=10)
     _keep(context, "ffmpeg.version", version.stdout)
     digest = _digest(context, path)
     monitor = Monitor(context, video.max_celsius)
     guarded = Context(context.scratch, monitor.poll, context.inventory, context.evidence)
-    result = capture(guarded, argv, seconds=video.wall_seconds, output_bytes=512 * 1024)
+    if synchronize is not None:
+        synchronize()
+    capture_start = time.monotonic()
+    try:
+        result = capture(guarded, argv, seconds=video.wall_seconds, output_bytes=512 * 1024)
+    except ProcessLimit as error:
+        _keep(context, "ffmpeg.partial.stdout", error.stdout)
+        _keep(context, "ffmpeg.partial.stderr", error.stderr)
+        raise
+    capture_end = time.monotonic()
     _keep(context, "ffmpeg.stdout", result.stdout)
     _keep(context, "ffmpeg.stderr", result.stderr)
     if result.returncode:
         raise RuntimeError("FFmpeg transcode failed")
     frames, seconds = _progress(result.stdout)
     monitor.poll(force=True)
-    return {"fixture_sha256": digest, "encoder": encoder, "threads": video.threads,
+    interval = {"capture_start_monotonic": capture_start,
+                "capture_end_monotonic": capture_end} if synchronize is not None else {}
+    return {**interval, "fixture_sha256": digest, "encoder": encoder, "threads": video.threads,
             "tool_version": version.stdout.splitlines()[0].decode(errors="replace") if version.stdout else None,
             "input_codec": stream["codec_name"], "input_height": stream.get("height"),
             "output_height": case.output_height or stream.get("height"),
