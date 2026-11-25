@@ -1,0 +1,11 @@
+# B/C DVD media baseline amendment
+
+On November 25, 2026, the owner approved using movie decryption in the B/C development verification baseline. The owner confirmed the inserted movie DVD is known-good, stated that it is probably encrypted, and authorized the software needed to decrypt owned media.
+
+- **DVD-Video decoding and transcoding** may use an owner-authorized, known-good encrypted movie DVD. The test may load a locally installed decryption library and use the optical drive as read-only input. Record the input title number, decoded frame count, measured media time, elapsed time, any observed encryption or decryption evidence, and the outcome. A successful decode with unverified encryption demonstrates playback. A verified encrypted case also needs evidence that encryption was detected and that the authorized decryption path was active.
+- The development decode check defaults to guarded 1× input pacing. Pass `--native-speed` to read at the optical drive's available speed. This mode reports host I/O pressure and does not stop at the normal 75% I/O threshold, allowing the selected decode or fixture extraction to finish. The existing command deadline, cancellation, and temperature guard still apply. The report records whether pressure telemetry was available and its peak observed value.
+- **Raw DVD image and verification** retain the existing known-good unencrypted media method. Report its physical status independently from the decoded playback result. A decoded stream has a different representation from the original disc sectors.
+- Keep output and tool logs private. The short decode check sends frames to a null output. The owner also authorized retaining up to 120 seconds of video as an encoding fixture. The fixture is capped at 256 MiB, contains only the selected MPEG-2 video stream, and is retained after a complete decode check. Record its digest and keep it outside Git and CI artifacts. Use an ordinary user, explicit media selection, the existing load and temperature guards, and deadlines.
+- LBT-NFR-021 in Requirements Rev 1.6 is the original unencrypted baseline requirement. This owner decision is the B/C execution-method supplement for DVD playback on owned media. Formal CP-02, CP-07, and FAT acceptance remain separate.
+
+Use `python3 -m scripts.rp08_dvd_decode_check --help` for the development check.
