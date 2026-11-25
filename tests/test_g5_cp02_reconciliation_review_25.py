@@ -106,8 +106,9 @@ class CP02ReconciliationReviewGuards(unittest.TestCase):
         self.assertEqual(limit["unit"],"seconds")
         self.assertEqual(limit["threshold"],20)
 
-    @unittest.expectedFailure
-    def test_known_gap_f06_exact_owner_approved_d02_entities_and_manifest(self):
+    # Increment 45 candidate production shape corrected. This is NOT
+    # independent execution/acceptance of any original CP-02 case.
+    def test_candidate_f06_exact_owner_approved_d02_entities_and_manifest(self):
         tmp,folder,run=make_sealed_run(source_id="SRC-08")
         self.addCleanup(tmp.cleanup)
         build_canonical(folder,run)
