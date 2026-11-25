@@ -3,6 +3,18 @@ set -Eeuo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 source "$ROOT/lib/common.sh"
 source "$ROOT/lib/discovery.sh"
+case "${1:-}" in
+ --development-workloads|--development-menu|--development-report)
+  case "$1" in
+   --development-workloads) module=lbt_g5.workload_cli;;
+   --development-menu) module=lbt_g5.workload_menu;;
+   --development-report) module=lbt_g5.workload_report;;
+  esac
+  shift
+  require_command python3
+  PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m "$module" "$@"
+  ;;
+esac
 usage() {
  cat <<'HELP'
 Linux Benchmark Toolkit — Phase 1
@@ -12,6 +24,9 @@ Usage: ./benchmark [--mode discovery|standard|extended] [--no-tui]
        ./benchmark --validate [--validation-profile quick|standard|full]
                    [--results-dir DIR]
        ./benchmark --validation-report-only SESSION_DIR
+       ./benchmark --development-workloads --mode MODE --output-root DIR [OPTIONS]
+       ./benchmark --development-menu --output-root DIR
+       ./benchmark --development-report SESSION_DIR [OPTIONS]
 Without arguments launches Dialog when interactive.
 Benchmark modes implement Discovery only; other benchmark modes are planned.
 Software validation is separate from benchmark workload modes.

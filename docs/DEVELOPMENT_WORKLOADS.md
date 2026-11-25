@@ -102,3 +102,20 @@ selected: [json, csv]
 Validate with `python3 -m lbt_g5.workload_report --check-config`. Use
 `--config DIRECTORY` for an alternate configuration directory. Non-JSON YAML
 syntax requires PyYAML.
+
+## Candidate launcher and relocatable archive
+
+The candidate entry points are `./benchmark --development-workloads`,
+`./benchmark --development-menu` and `./benchmark --development-report`.
+The Dialog candidate supports Discovery, Standard, Extended and interactive
+selection of local workloads. Use the CLI for cases requiring explicit devices,
+destination paths, or peer consent.
+
+Build the source archive and its SHA-256 checksum with
+`./packaging/build.sh DESTINATION`. Verify with `sha256sum -c *.sha256` in the
+destination directory, then extract it. The candidate uses Bash and Python 3
+on Linux, with Dialog for the menu. Optional workloads use rsync, FFmpeg/ffprobe,
+iperf3 or libsmbclient as applicable. PyYAML enables non-JSON YAML configuration.
+The archive includes the toolkit license and excludes checkout-local
+configuration and the results tree. Provide an external owner-only output
+directory when running an extracted copy.
