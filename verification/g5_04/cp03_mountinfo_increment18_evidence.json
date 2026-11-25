@@ -1,0 +1,110 @@
+{
+  "record_id": "LBT-G504-CP03-INCREMENT18-EVIDENCE-20261107",
+  "date_local": "2026-11-07",
+  "date_utc_of_ci": "2026-11-08",
+  "checkpoint": "CP-03 Increment 18 — SRC-14 /proc/self/mountinfo",
+  "disposition": "CANDIDATE_IMPLEMENTED_SCOPED_CI_PASS",
+  "authority": {
+    "requirements": "Rev1.6 283-row controlled baseline",
+    "source": "SRC-14 COL-FS D0 MOUNTINFO /proc/self/mountinfo",
+    "fixed_bounds": {
+      "max_bytes": 16777216,
+      "max_entries": 1,
+      "max_seconds": 3
+    },
+    "parent_pr": 40,
+    "parent_head": "aeb7e1e8d4811571da0786132c66398e6575a8c6",
+    "canonical_schema": "1.0.0 unchanged",
+    "status_schema": "1.0 14-field unchanged",
+    "no_extensions": "No source scope, authorization class, executable, privilege, acquisition worker or public publication behavior changes"
+  },
+  "source_first": {
+    "oracle": "verification/g5_04/cp03_mountinfo_oracle_18.json",
+    "executable": "tests/test_g5_cp03_mountinfo_18.py",
+    "authorship": "AI-assisted implementation and source-first tests; NOT independently human reviewed",
+    "sources": [
+      "https://cdn.kernel.org/doc/html/latest/filesystems/proc.html",
+      "https://man.archlinux.org/man/proc_pid_mountinfo.5.en"
+    ],
+    "semantics": "Proc mountinfo fields ordered, optional-field separator -, four octal pathname escapes, parent IDs can point outside snapshot, anonymous optional tags opaque"
+  },
+  "implementation": {
+    "files": [
+      "lbt_g5/mountinfo_normalization.py",
+      "lbt_g5/normalization.py",
+      "lbt_g5/canonical_session.py",
+      "tests/test_g5_cp03_mountinfo_18.py",
+      ".github/workflows/test.yml",
+      "three legacy parser-availability fixture updates"
+    ],
+    "behaviors": [
+      "Pure mountinfo parser accepts max 1MiB, 4096 records, bounded token/line length, strict UTF8",
+      "Trusted one-to-one SRC14 D0 fixed worker /proc/self/mountinfo source-path and item0001 ordinal required",
+      "Exact operation receipt label MOUNTINFO and no target required; no host filesystem access or path traversal by parser",
+      "Private typed ARRAY record includes mount ID, parent ID, device major/minor, root, mount point, mount options, optional tags, filesystem type, source and super options",
+      "Opaque mount and super options, no unsupported filesystem-health, writeability, capacity or medium identity inference",
+      "Malformed record -> attributed parser error with preserved unmodified original, CAPTURE_LIMIT priority kept",
+      "No original raw-source pointer introduced into public outputs"
+    ],
+    "limitations": [
+      "G5-02 source bound is 16MiB while conservative semantic parser bound is 1MiB; larger valid captures remain sealed originals but cannot yield semantic COMPLETE",
+      "SRC-14 provides mount topology reported by kernel, not used/free space or proof of USB/internal/network physical attachment",
+      "Parent ID may legitimately be outside current mount namespace view",
+      "No independent reviewer or Bodhi Linux 7 AMD64 live target acceptance",
+      "No complete requirement-wide verification, CP-03 closure, CP-04/05/06/07 gates"
+    ]
+  },
+  "verification": {
+    "code_head": "2212d3bddb81a67d9ce20cd855dc20f840d9c9e6",
+    "github_actions_run_id": 42443561204,
+    "github_actions_url": "https://github.com/joeblow42/linux-benchmark-toolkit/actions/runs/42443561204",
+    "job_id": 128617666367,
+    "result": "SUCCESS",
+    "src14_source_first_tests": "12 PASS / 0 FAIL",
+    "unified_full": "21 PASS / 0 FAIL / 0 SKIP / 0 BLOCKED / 0 NOT_APPLICABLE",
+    "legacy_suite": "Workflow succeeded across previous CP-03 / O1 fixtures; not independent acceptance",
+    "claim_boundary": "Linux CI synthetic evidence only, not live Bodhi 7 host"
+  },
+  "rtm": {
+    "file": "LBT_CP03_Trace_20261107_Increment18.csv",
+    "sha256": "cc600c6f3edc2d839468e8393bc1fbafbb16c1eb55d036f75316c246706cf810",
+    "previous_sha256": "26f2c5a28439934ce80a6a39aa0c964513c5b0d00c007746616bc44f4e554b53",
+    "rows": 283,
+    "columns": 31,
+    "controlled_20_column_cells_preserved": 5660,
+    "scoped_rows": [
+      "LBT-FR-049",
+      "LBT-FR-168",
+      "LBT-NFR-068",
+      "LBT-NFR-070"
+    ],
+    "changed_extended_cells": 8,
+    "verification_states": {
+      "NOT_VERIFIED": 283
+    },
+    "exclude": "LBT-FR-048 used/free capacity not satisfied by SRC-14"
+  },
+  "gate_state": {
+    "cp03": "IN_PROGRESS — 22 candidate parsers / 28 initial source families",
+    "remaining": [
+      "SRC-15",
+      "SRC-18",
+      "SRC-20",
+      "SRC-21",
+      "SRC-23",
+      "SRC-28"
+    ],
+    "g5_04": "OPEN",
+    "pr42": "DRAFT UNMERGED",
+    "next_increment": "CP03-19 SRC-15 FS_STAT bounded D1 or owner-authority question if fixed plan demands new source scope",
+    "pending": [
+      "Complete SRC-15,18,20,21,23,28 normalization",
+      "CP-02 39-case cumulative requirements reconciliation",
+      "CP-03 full negative/independent review",
+      "CP-04 strict canonical integrity",
+      "CP-05 integrated verification",
+      "CP-06 Bodhi Linux 7 AMD64 real host verification",
+      "CP-07 owner acceptance"
+    ]
+  }
+}

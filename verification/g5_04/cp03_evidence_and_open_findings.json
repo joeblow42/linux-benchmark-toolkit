@@ -1,0 +1,91 @@
+{
+  "schema": "lbt-g504-cp03-progress-1",
+  "checkpoint": "CP-03",
+  "increment": "01",
+  "date_utc": "2026-11-02",
+  "scope": "Source-specific pure semantic normalization of already sealed evidence",
+  "authority": [
+    "Requirements Rev 1.6",
+    "IC Rev 1.3",
+    "G4-02/G4-06 approved statuses",
+    "D-01..D-05 approved",
+    "CP-02 CT-02/03/04/09"
+  ],
+  "branch": "g5/cp03-semantic-normalization-04",
+  "source_baseline_commit": "7877d33b5b69fe044e6c42cea700930c08cb1b71",
+  "independent_test_result": {
+    "code_commit": "6767c2ffdeba1d1ef588725573748fd72a36a6fd",
+    "ci_workflow_run": 422,
+    "ci_url": "https://github.com/joeblow42/linux-benchmark-toolkit/actions/runs/41574119544",
+    "ci_conclusion": "success",
+    "test_file": "tests/test_g5_cp03_normalization.py",
+    "test_cases_executed": 12,
+    "cp02_expected_failure_removed": true
+  },
+  "supported_parsers": [
+    {
+      "source_id": "SRC-02",
+      "basis": "/etc/os-release",
+      "parser": "linux-os-release-v1"
+    },
+    {
+      "source_id": "SRC-08",
+      "basis": "/proc/meminfo",
+      "parser": "linux-proc-meminfo-v1"
+    },
+    {
+      "source_id": "SRC-09",
+      "basis": "/proc/swaps",
+      "parser": "linux-proc-swaps-v1"
+    },
+    {
+      "source_id": "SRC-10",
+      "basis": "/proc/pressure/memory",
+      "parser": "linux-psi-memory-v1"
+    }
+  ],
+  "source_family_coverage": {
+    "implemented": 4,
+    "initial_registered": 28,
+    "remaining": 24
+  },
+  "guardrails": [
+    "Pure parsing of SHA-256 verified sealed originals; no secondary source collection",
+    "Captured with no parser fails canonical finalization rather than fabricating PARSE_FAILED/COMPLETE",
+    "Actual parser failure records attributable error plus lossless fallback",
+    "Unknown source disposition/reason rejects classification",
+    "Numeric conversions bounded; no arbitrary shell or subprocess",
+    "No new public output, sudo function, diagnostic TUI or PR merge"
+  ],
+  "trace_register": {
+    "path": "verification/g5_04/requirements_traceability_rev1_6.csv",
+    "total_requirements": 283,
+    "incremental_implementation_refs_added": 6,
+    "requirements_declared_verified": 0,
+    "note": "Scoped implementation references do not establish satisfaction of the entire requirement"
+  },
+  "findings": {
+    "F-01": "RESOLVED_FOR_SUPPORTED_FOUR_SOURCE_SEMANTICS; unsupported CAPTURED source now fail-closed; remaining 24 parser families open",
+    "F-02": "OPEN; actual UTC source start/end/elapsed instrumentation not yet completed",
+    "F-03": "PARTIALLY_CORRECTED; unknown outcomes/reasons reject rather than coercion; source-family-wide taxonomy remains pending",
+    "F-04": "OPEN; time/byte limit dimension and actual measured fields",
+    "F-05": "OPEN; operational completion manifest separate from integrity",
+    "F-06": "OPEN; strict D-02 exact canonical files/entity fields",
+    "F-07": "OPEN; exhaustive cross-file manifest verification",
+    "F-08": "PARTIAL; four source parsers only, all-source inventory not complete"
+  },
+  "acceptance": {
+    "checkpoint_status": "IN_PROGRESS",
+    "g5_04_gate_status": "OPEN",
+    "bodhi_host_verification": "NOT_PERFORMED",
+    "all_39_cp02_cases_executed": false,
+    "owner_gate_acceptance": false,
+    "next_steps": [
+      "Extend independently specified source normalizers by cohesive source group",
+      "Enforce exact D-02 CanonicalObservation/source attempt schema",
+      "Add tested source attempt UTC timing in IC-02 path",
+      "Accumulate test case and requirement evidence without claiming premature completion",
+      "CP-04 owns final manifest/integrity closure"
+    ]
+  }
+}
