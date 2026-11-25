@@ -1,12 +1,12 @@
-"""Approved Revision 1.2 requirement identity and conservative validation links.
+"""Approved Revision 1.3 requirement identity and conservative validation links.
 
-The 2026-10-22 authoritative CSV defines contiguous FR-001..190 and
-NFR-001..066. This is an ID register, NOT copied or altered requirement text.
+The owner-approved 2026-10-23 Revision 1.3 CSV retains contiguous
+FR-001..190 and NFR-001..066, with targeted NFR-018 wording only. This is an ID register, NOT copied or altered requirement text.
 Evidence from a linked check is always partial until independently reviewed.
 """
 import re
 
-BASELINE = "Approved Requirements Baseline Revision 1.2"
+BASELINE = "Approved Requirements Baseline Revision 1.3"
 APPROVED_IDS = frozenset(
     [f"LBT-FR-{i:03d}" for i in range(1, 191)] +
     [f"LBT-NFR-{i:03d}" for i in range(1, 67)]
