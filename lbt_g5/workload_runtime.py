@@ -58,6 +58,7 @@ class Context:
     scratch: Path
     check_stop: Callable[[], None]
     inventory: dict
+    evidence: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -186,7 +187,8 @@ class Runtime:
                 check_stop()
                 with tempfile.TemporaryDirectory(prefix=f"{item.id}-", dir=session.directory) as staging:
                     self._reserve(item.resources, staging)
-                    measurements = item.run(Context(Path(staging), check_stop, inventory))
+                    evidence = session.directory / f"{item.id}-evidence"
+                    measurements = item.run(Context(Path(staging), check_stop, inventory, evidence))
                     if not isinstance(measurements, dict) or not measurements:
                         raise ValueError("workloads must return measured values")
                     json.dumps(measurements, allow_nan=False)
