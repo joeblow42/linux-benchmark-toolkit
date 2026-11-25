@@ -88,8 +88,10 @@ class PlatformParserTests(unittest.TestCase):
             self.assertTrue(parser_available(sid))
         # Increment 17 registers SRC-13 with strict O1 stdout attribution.
         self.assertTrue(parser_available("SRC-13"))
-        for sid in ("SRC-14", "SRC-15", "SRC-28"):
-            self.assertFalse(parser_available(sid))
+        self.assertTrue(parser_available("SRC-14"))  # CP03-18 fixed D0 proc source
+        self.assertTrue(parser_available("SRC-15"))  # CP03-19 local D1 FS_STAT
+        self.assertTrue(parser_available("SRC-28"))
+        self.assertFalse(parser_available("SRC-29"))
 
 
 class PlatformCanonicalIntegrationTests(unittest.TestCase):
@@ -121,8 +123,8 @@ class PlatformCanonicalIntegrationTests(unittest.TestCase):
         b, b_original = self._record("SRC-03", b"present\n")
         run = EngineRun(RUN, (CollectorRun("COL-OS", (a, b)),))
         manifest = build_canonical(self.folder, run)
-        self.assertEqual(manifest["attempt_count"], 2)
-        self.assertEqual(manifest["observation_count"], 6)
+        self.assertEqual(manifest["counts"]["attempts"], 2)
+        self.assertEqual(manifest["counts"]["observations"], 6)
         self.assertEqual(validate_canonical(self.folder), manifest)
         data = json.loads((self.folder / "private/system.json").read_text())
         known = {x["datum_path"]: x for x in data["observations"]}
@@ -151,7 +153,7 @@ class PlatformCanonicalIntegrationTests(unittest.TestCase):
                               receipt_private_path=path)
         manifest = build_canonical(
             self.folder, EngineRun(RUN, (CollectorRun("COL-TOOLS", (rec,)),)))
-        self.assertEqual(manifest["observation_count"], 4)
+        self.assertEqual(manifest["counts"]["observations"], 4)
         observations = json.loads((self.folder / "private/system.json")
                                   .read_text())["observations"]
         fields = {v["datum_path"]: v for v in observations}

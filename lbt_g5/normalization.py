@@ -12,6 +12,13 @@ import json
 import re
 import shlex
 from .src13_normalization import parse_src13, SRC13ParseError
+from .mountinfo_normalization import parse_mountinfo, MountinfoParseError
+from .fs_stat_normalization import parse_fs_stat_stdout, FSStatParseError
+from .optical_media_normalization import parse_optical_media, OpticalMediaParseError
+from .lspci_normalization import parse_lspci_nn, LspciParseError
+from .vainfo_normalization import parse_vainfo, VainfoParseError
+from .ip_local_normalization import parse_ip_local, IpLocalParseError
+from .offline_dpkg_normalization import parse_offline_dpkg, OfflineDpkgParseError
 
 
 MAX_PARSER_BYTES = 1024 * 1024
@@ -1014,9 +1021,106 @@ def _parse_src13_stdout(raw, *, source_command, source_target):
         for path, observed, normalized, kind, unit in rows))
 
 
+# SRC-14: a single fixed G5-02/03 D0 worker file; identity is validated
+# by the private canonical producer before any original bytes are parsed.
+def _parse_mountinfo_file(raw):
+    try:
+        records = parse_mountinfo(raw)
+    except MountinfoParseError as exc:
+        raise SourceParseError(str(exc)) from exc
+    return ParseResult("linux-mountinfo-proc-bounded-v1", (
+        ParsedDatum("storage.mountinfo.records", "MOUNTINFO_KERNEL_ROWS",
+                    list(records), "ARRAY"),
+    ))
+
+
+
+# SRC-15 fixed G5-03 D1 local-only FS_STAT serialized statvfs worker result.
+# Verified private receipt mount and stream attribution is required upstream.
+def _parse_fsstat_stdout(raw, *, source_path):
+    try:
+        observed = parse_fs_stat_stdout(raw, source_path=source_path)
+    except FSStatParseError as exc:
+        raise SourceParseError(str(exc)) from exc
+    return ParseResult("linux-fs-stat-worker-json-v1", (
+        ParsedDatum("storage.fs_stat.snapshot", observed, observed, "OBJECT"),
+    ))
+
+
+# SRC-18: O1 only. Receipt+consent+same-run SRC-17 binding is checked before
+# entering this source parser. Opaque feature lines do not establish health.
+def _parse_optical_media_stdout(raw, *, source_target):
+    try:
+        value = parse_optical_media(raw, source_target=source_target)
+    except OpticalMediaParseError as exc:
+        raise SourceParseError(str(exc)) from exc
+    return ParseResult("linux-sg-get-config-current-v1", (
+        ParsedDatum("optical.mmc.current_configuration",
+                    "SG_GET_CONFIG_CURRENT", value, "OBJECT"),
+    ))
+
+
+# SRC-20 D1 lspci -nn human-readable snapshot; only parsed reported PCI IDs.
+def _parse_lspci_stdout(raw):
+    try:
+        records = parse_lspci_nn(raw)
+    except LspciParseError as exc:
+        raise SourceParseError(str(exc)) from exc
+    return ParseResult("linux-lspci-nn-bounded-v1", (
+        ParsedDatum("gpu.pci.lspci.devices", "LSPCI_NN_HUMAN_ROWS",
+                    records, "ARRAY"),
+    ))
+
+
+# SRC-21 O1: only source-reported VA-API profiles and entrypoints.
+# Consent and verified SRC-19 witness remain canonical-session responsibilities.
+def _parse_vainfo_stdout(raw, *, source_target):
+    try:
+        values = parse_vainfo(raw, source_target=source_target)
+    except VainfoParseError as exc:
+        raise SourceParseError(str(exc)) from exc
+    return ParseResult("linux-vainfo-profile-entrypoints-v1", (
+        ParsedDatum("gpu.vaapi.reported_capabilities",
+                    "VAINFO_REPORTED_PROFILE_ROWS", values, "OBJECT"),
+    ))
+
+
+# SRC-23: exact D1 local netlink command strings differentiate two receipts.
+def _parse_ip_local_stdout(raw, *, source_command):
+    try:
+        kind, rows = parse_ip_local(raw, source_command=source_command)
+    except IpLocalParseError as exc:
+        raise SourceParseError(str(exc)) from exc
+    label = ("network.ip.local_addresses.reported" if kind == "addr"
+             else "network.ip.local_routes.reported")
+    return ParseResult("linux-iproute2-json-local-v1", (
+        ParsedDatum(label, "IP_LOCAL_JSON_REPORT", rows, "ARRAY"),
+    ))
+
+
+# SRC-28: package/version fields from existing fixed local dpkg-query only.
+# The prior AdditionalOutcome does not attest exact argv or process exit.
+def _parse_offline_dpkg_stdout(raw):
+    try:
+        records = parse_offline_dpkg(raw)
+    except OfflineDpkgParseError as exc:
+        raise SourceParseError(str(exc)) from exc
+    return ParseResult("linux-dpkg-query-package-records-v1", (
+        ParsedDatum("software.dpkg.reported_package_db_records",
+                    "DPKG_REPORTED_DATABASE_ROWS", records, "ARRAY"),
+    ))
+
+
 # Intentional bounded list. Unsupported source families are not normalized
 # by interpreting raw bytes as arbitrary meaningful inventory fields.
 PARSERS = {
+    "SRC-28": _parse_offline_dpkg_stdout,
+    "SRC-23": _parse_ip_local_stdout,
+    "SRC-21": _parse_vainfo_stdout,
+    "SRC-20": _parse_lspci_stdout,
+    "SRC-18": _parse_optical_media_stdout,
+    "SRC-15": _parse_fsstat_stdout,
+    "SRC-14": _parse_mountinfo_file,
     "SRC-13": _parse_src13_stdout,
     "SRC-11": _parse_lsblk_stdout,
     "SRC-05": _parse_lscpu_stdout,
@@ -1052,6 +1156,24 @@ def normalize_sealed_source(source_id, raw, *, source_path=None,
     parser = PARSERS.get(source_id)
     if parser is None:
         return None
+    if source_id == "SRC-14":
+        if (source_path != "/proc/self/mountinfo"
+                or source_stream is not None
+                or source_command is not None or source_target is not None):
+            raise SourceParseError("SRC14_UNVERIFIED_FIXED_FILE")
+        return parser(raw)
+    if source_id == "SRC-21":
+        if (source_path is not None or source_stream != "stdout"
+                or source_command != "vainfo"
+                or type(source_target) is not str):
+            raise SourceParseError("VAINFO_O1_UNVERIFIED_STREAM")
+        return parser(raw, source_target=source_target)
+    if source_id == "SRC-18":
+        if (source_path is not None or source_stream != "stdout"
+                or source_command != "sg_get_config"
+                or type(source_target) is not str):
+            raise SourceParseError("OPTICAL_O1_UNVERIFIED_STREAM")
+        return parser(raw, source_target=source_target)
     if source_id == "SRC-13":
         if (source_path is not None or source_stream != "stdout"
                 or source_command not in ("smartctl", "nvme")
@@ -1059,9 +1181,24 @@ def normalize_sealed_source(source_id, raw, *, source_path=None,
             raise SourceParseError("O1_UNVERIFIED_DATA_STREAM")
         return parser(raw, source_command=source_command,
                       source_target=source_target)
+    if source_id == "SRC-28":
+        if (source_path != "installed-packages" or source_stream != "stdout"
+                or source_command != "dpkg-query" or source_target is not None):
+            raise SourceParseError("OFFLINE_DPKG_UNVERIFIED_SOURCE_STREAM")
+        return parser(raw)
+    if source_id == "SRC-23":
+        if (source_path is not None or source_target is not None
+                or source_stream != "stdout"
+                or source_command not in ("ip -j addr show", "ip -j route show")):
+            raise SourceParseError("IP_LOCAL_UNVERIFIED_D1_STREAM")
+        return parser(raw, source_command=source_command)
     if source_command is not None or source_target is not None:
         raise SourceParseError("SOURCE_COMMAND_NOT_APPLICABLE")
-    if source_id in ("SRC-05", "SRC-11"):
+    if source_id == "SRC-15":
+        if source_stream != "stdout" or type(source_path) is not str:
+            raise SourceParseError("FSSTAT_UNVERIFIED_DATA_STREAM")
+        return parser(raw, source_path=source_path)
+    if source_id in ("SRC-05", "SRC-11", "SRC-20"):
         if source_path is not None or source_stream != "stdout":
             raise SourceParseError("D1_UNVERIFIED_DATA_STREAM")
         return parser(raw)

@@ -100,8 +100,10 @@ class CpuOpticalParsers(unittest.TestCase):
         for source in ("SRC-06", "SRC-16"):
             self.assertTrue(parser_available(source))
         self.assertTrue(parser_available("SRC-13"))  # CP03-17 approved O1 stdout only
-        for source in ("SRC-14", "SRC-15", "SRC-28"):
-            self.assertFalse(parser_available(source))
+        self.assertTrue(parser_available("SRC-14"))  # CP03-18 fixed D0 proc source
+        self.assertTrue(parser_available("SRC-15"))  # CP03-19 bounded D1 FS_STAT
+        self.assertTrue(parser_available("SRC-28"))
+        self.assertFalse(parser_available("SRC-29"))
 
 
 class CpuOpticalIntegration(unittest.TestCase):
@@ -130,8 +132,8 @@ class CpuOpticalIntegration(unittest.TestCase):
     def test_cpu_canonical_trace_and_original_integrity(self):
         cpu, original = self.capture("SRC-06", CPU, "COL-CPU")
         manifest = build_canonical(self.folder, EngineRun(RUN, (cpu,)))
-        self.assertEqual(manifest["observation_count"], 3)
-        self.assertEqual(manifest["original_byte_count"], len(CPU))
+        self.assertEqual(manifest["counts"]["observations"], 3)
+        self.assertEqual(manifest["counts"]["original_bytes"], len(CPU))
         data = json.loads((self.folder / "private/system.json").read_text())
         for obs in data["observations"]:
             self.assertEqual(obs["evidence_refs"], [original.evidence_id])
@@ -144,7 +146,7 @@ class CpuOpticalIntegration(unittest.TestCase):
     def test_optical_canonical_does_not_conflate_capability_with_media_test(self):
         optical, original = self.capture("SRC-16", CDROM, "COL-OPTICAL")
         manifest = build_canonical(self.folder, EngineRun(RUN, (optical,)))
-        self.assertEqual(manifest["observation_count"], 2)
+        self.assertEqual(manifest["counts"]["observations"], 2)
         values = json.loads((self.folder / "private/system.json")
                             .read_text())["observations"]
         self.assertEqual(values[1]["normalized_value"]["device_count"], 2)
