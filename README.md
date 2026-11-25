@@ -2,6 +2,8 @@
 
 **Phase 1 discovery with integrated software validation.** Portable Linux terminal toolkit with read-only discovery, Dialog menu, canonical JSON data, CSV exports and a self-contained offline HTML report.
 
+Operation requires persistent writable storage, such as a persistence-enabled live USB or a writable SSD with enough free space for the selected workloads and their results.
+
 ## Quick start
 
 ```bash

@@ -19,3 +19,8 @@ dist/
 
 # Automated acceptance results
 acceptance-results/
+
+/config/privacy.yaml
+/config/outputs.yaml
+/config/.publication-config.lock
+/config/backup.local.json

@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 
+from .publication_policy import OUTPUTS, editable_settings, load_policy, save_settings
 from .core_workloads import ShortParameters, short_workloads
 from .sustained_workloads import SustainedParameters, sustained_workloads
 from .workload_cli import main as run
@@ -22,9 +23,36 @@ def choose(dialog, *args):
     return response.stdout.strip()
 
 
+def edit(dialog, config, filename):
+    from copy import deepcopy
+
+    existing = editable_settings(load_policy(config))
+    proposed = deepcopy(existing)
+    document = proposed[filename]
+    privacy = filename == "privacy.yaml"
+    flags = document["mask" if privacy else "exports"]
+    choices = {key: (key if privacy else OUTPUTS[key]) for key in flags}
+    if privacy:
+        choices = {"global_privacy_enabled": "Enable privacy", **choices}
+        flags["global_privacy_enabled"] = document["global_privacy_enabled"]
+    items = [part for key, label in choices.items()
+             for part in (key, label, "on" if flags[key] else "off")]
+    selected = choose(dialog, "--separate-output", "--checklist",
+                      "Privacy Options" if privacy else "Output Options", "21", "88", "13", *items)
+    if selected is None:
+        return
+    enabled = set(selected.splitlines())
+    for key in flags:
+        flags[key] = key in enabled
+    if privacy:
+        document["global_privacy_enabled"] = flags.pop("global_privacy_enabled")
+    save_settings(config, filename, existing, proposed)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-root", required=True, type=Path)
+    parser.add_argument("--config", type=Path, default=Path(__file__).resolve().parents[1] / "config")
     args = parser.parse_args(argv)
     dialog = shutil.which("dialog")
     if dialog is None or not sys.stdin.isatty() or not sys.stderr.isatty():
@@ -32,10 +60,15 @@ def main(argv=None):
     choices = ("discovery", "Read-only inventory",
                "standard", "Short CPU, memory, and storage workloads",
                "extended", "Short and sustained workloads",
-               "interactive", "Select local workloads")
+               "interactive", "Select local workloads",
+               "privacy", "Privacy Options",
+               "outputs", "Output Options")
     try:
         mode = choose(dialog, "--menu", "Select a mode", "16", "76", "6", *choices)
         if mode is None:
+            return 0
+        if mode in ("privacy", "outputs"):
+            edit(dialog, args.config, mode + ".yaml")
             return 0
         dispatch = ["--mode", mode, "--output-root", str(args.output_root)]
         if mode == Mode.INTERACTIVE.value:
@@ -54,7 +87,7 @@ def main(argv=None):
             if confirmation is None:
                 return 0
         return run(dispatch)
-    except RuntimeError as error:
+    except (OSError, RuntimeError, ValueError) as error:
         parser.exit(2, f"Development menu: {error}\n")
 
 
