@@ -213,8 +213,8 @@ class O1ApprovedOwnerOracles(unittest.TestCase):
                 approved_argv=["nvme","smart-log","/dev/nvme0"]),
             o1_changes=dict(target="/dev/nvme0",
                             invocation="nvme smart-log /dev/nvme0"))
-        self.assertEqual(build_canonical(folder,run)["attempt_count"],2)
-        self.assertEqual(validate_canonical(folder)["attempt_count"],2)
+        self.assertEqual(build_canonical(folder,run)["counts"]["attempts"],2)
+        self.assertEqual(validate_canonical(folder)["counts"]["attempts"],2)
 
     def test_rejected_stream_ordinal_and_modified_receipt(self):
         folder,run,*_=self.canonical_fixture(original_name="call0002-stdout")
@@ -279,7 +279,7 @@ class O1ApprovedOwnerOracles(unittest.TestCase):
             run=engine.run(("COL-BLOCK",),o1_requests={"SRC-13":req})
         o1=run.collectors[0].source_attempts[-1]
         meta=json.loads((folder/o1.receipt_private_path).read_text())
-        self.assertEqual(meta["schema_version"],"g5-02-attempt-0.2")
+        self.assertEqual(meta["schema_version"],"g5-02-attempt-0.4")
         self.assertEqual(meta["authorization_provenance"]["inventory_source_path"],INVPATH)
         self.assertEqual(meta["authorization_provenance"]["consent_target"],TARGET)
         self.assertEqual(meta["exit_code"],2)
