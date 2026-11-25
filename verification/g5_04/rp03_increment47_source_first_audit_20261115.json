@@ -1,0 +1,111 @@
+{
+  "record_type": "LBT_G5_04_RP03_2_INCREMENT47_INDEPENDENT_D0_SOURCE_FIRST_AUDIT",
+  "date": "2026-11-15",
+  "candidate_only": true,
+  "governing_authority": "AI-Assisted Software Engineering Governance Standard v1.0; approved FAT Roadmap RP-03.2; Requirements Rev 1.6; frozen CP-01 D-02 §6",
+  "parent": {
+    "branch": "g5/cp03-rp03-multioriginal-46",
+    "draft_pr": 71,
+    "head": "391ba75a28b1f396ad28f89e951b135d01edeb02",
+    "exact_head_pr_ci": 43752194895,
+    "exact_head_push_ci": 43752190351
+  },
+  "current": {
+    "branch": "g5/cp03-rp03-d0-semantic-47",
+    "draft_pr": 72,
+    "base_pr": 71,
+    "implementation_head": "b0d012a57b496d8dd36a35a701fe5c91a24022ad",
+    "verified_implementation_pr_ci": 43763957465,
+    "verified_implementation_push_ci": 43763953297,
+    "ci": "SUCCESS/SUCCESS"
+  },
+  "scope": {
+    "authorization_class": "D0",
+    "newly_individually_witnessed_families": [
+      {
+        "source_id": "SRC-02",
+        "operation": "OS_RELEASE",
+        "parser": "linux-os-release-v1"
+      },
+      {
+        "source_id": "SRC-08",
+        "operation": "MEMINFO",
+        "parser": "linux-proc-meminfo-v1"
+      },
+      {
+        "source_id": "SRC-09",
+        "operation": "SWAPS",
+        "parser": "linux-proc-swaps-v1"
+      },
+      {
+        "source_id": "SRC-10",
+        "operation": "MEM_PRESSURE",
+        "parser": "linux-psi-memory-v1"
+      }
+    ],
+    "source_family_count": 4,
+    "fixture_data": "synthetic input sealed through original G5 EvidenceWriter and normal source receipt; no live host access",
+    "witness": "Independent hand-specified per-value original datum path, observed_value, normalized_value, value_type, unit, ordinal and parser ID, including unit conversion; session validator reparses actual sealed bytes"
+  },
+  "test_first": {
+    "test_file": "tests/test_g5_cp03_rp03_d0_semantics_47.py",
+    "total_cases": 8,
+    "initial_head": "302eaeea77aa9f8d0e7b37f3611df38829b6578b",
+    "expected_red_push_ci": 43763828270,
+    "expected_red_pr_ci": 43763844953,
+    "expected_red_failures": [
+      "47_02_OS_RELEASE_rehashed_typed_value",
+      "47_03_MEMINFO_rehashed_bytes_conversion",
+      "47_04_SWAPS_rehashed_array_entry",
+      "47_05_MEM_PRESSURE_rehashed_metric",
+      "47_06_rehashed_missing_semantic_row_and_manifest_identity",
+      "47_07_rehashed_parser_identity"
+    ],
+    "positive_controls": [
+      "47_01_four_family_independent_values_and_attribution",
+      "47_08_non_utf8_lossless_byte_reference"
+    ],
+    "all_six_failures_in_red": "CanonicalContractError not raised",
+    "initial_red_is_intentional": true
+  },
+  "remediation": {
+    "path": "lbt_g5/canonical_session.py",
+    "description": [
+      "Reparse each actual sealed eligible D0 original for SRC-02/08/09/10 using registered pure parsers, not asserted canonical semantic fields or digests",
+      "Reconstruct complete exact expected canonical semantic records including identity, parser, values and attributed original",
+      "Fail closed on forged semantic value/units/identity, missing/duplicate semantic rows and missing raw original",
+      "Preserve parse-failure lossless fallback; no source execution or extra source attempts"
+    ]
+  },
+  "protected_boundaries": {
+    "unchanged_production_schema": "1.0.0",
+    "unchanged_status_schema": "1.0; 14 fields; 41 combinations",
+    "unchanged_approvals": "RP-02 v0.6 Choice A; frozen D-02; Rev 1.6",
+    "not_modified": [
+      "approved source argv, allowlists or authorization class",
+      "privileged helper/sudo and consent",
+      "source, attempt or wall-time/byte/count ceilings",
+      "sealed source evidence or receipts",
+      "production status vocabulary",
+      "engine architecture",
+      "public evidence exclusion and publication/TUI design"
+    ]
+  },
+  "audit_caveat": "Production and read-only validator share pure parser implementations; independent test oracle manually specifies expected output from sealed byte fixtures. This is adversarial semantic consistency assurance, not independent CP-02 acceptance or full source-family correctness proof.",
+  "remaining": {
+    "d0_other_families": "15 of 19 not individually covered by Increment 47 tests; SRC-14 has an Increment 46 mountinfo contributor check but independent full family tests remain open",
+    "d1": "SRC-15 verified in Increment 46; other D1 remain",
+    "o1": "optional O1 provenance/consent and semantic byte checks remain",
+    "RP03_2": "OPEN",
+    "original_cp02_formal_acceptances": 0,
+    "requirements_not_verified": 283,
+    "bodhi7_fat": "NOT_EXECUTED",
+    "release": "NOT_AUTHORIZED"
+  },
+  "changed_files": [
+    ".github/workflows/test.yml",
+    "lbt_g5/canonical_session.py",
+    "tests/test_g5_cp03_rp03_d0_semantics_47.py"
+  ],
+  "final_head_ci_note": "Final commit adds audit/checkpoint/handoff after the implementation head. Verify final exact-head PR and push CI and record in draft PR #72 comment before handoff acceptance."
+}

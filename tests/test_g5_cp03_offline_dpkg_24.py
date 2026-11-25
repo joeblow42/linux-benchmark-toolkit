@@ -45,14 +45,30 @@ class OfflineDpkgSourceFirstOracles(unittest.TestCase):
             artifacts.append(a)
         if source_paths is None:
             source_paths=tuple("installed-packages:"+name.rsplit("-",1)[-1] for name,_ in items)
+        # Synthetic exact v0.3 witness models an already executed trusted D1
+        # worker; this fixture does not execute dpkg or create live evidence.
+        actual_exit = (exit_code if exit_code is not None else
+                       2 if reason == "SOURCE_INCOMPLETE" else 0)
+        witness=dict(argv_executed=["/usr/bin/dpkg-query",*_DPKG_ARGV[1:]],
+                     exit_code=actual_exit,
+                     started_utc="2026-11-08T12:00:00.000Z",
+                     completed_utc="2026-11-08T12:00:00.100Z",
+                     elapsed_seconds=0.1)
         receipt=build_attempt(RUN,"SRC-28",attempt,"ALLOW",outcome,reason,
                               evidence=tuple(artifacts),bytes_count=sum(a.byte_count for a in artifacts),
-                              invocation=invocation,source_paths=source_paths,
-                              target=target,exit_code=exit_code,
+                              invocation="OFFLINE_METADATA",source_paths=source_paths,
+                              target=target,exit_code=actual_exit,
+                              execution_provenance=witness,
                               timed_out=timed_out,capture_limited=capture_limited)
         path=commit_attempt(str(folder),receipt)
         recorded=SimpleNamespace(receipt_private_path=path,
-                                 outcome=SimpleNamespace(artifacts=tuple(artifacts)))
+                      outcome=SimpleNamespace(artifacts=tuple(artifacts),
+                                              execution_provenance=witness))
+        if invocation != "OFFLINE_METADATA":
+            # Simulate tampered persisted metadata, not an unapproved worker.
+            payload=json.loads((folder/path).read_text())
+            payload["invocation"]=invocation
+            (folder/path).write_text(json.dumps(payload)+"\\n")
         if tamper:
             (folder/artifacts[0].private_relative_path).write_bytes(b"tampered\n")
         return folder,EngineRun(RUN,(CollectorRun("COL-SOFTCODEC",(recorded,)),)),tuple(artifacts)
@@ -120,13 +136,13 @@ class OfflineDpkgSourceFirstOracles(unittest.TestCase):
         source=next(x for x in statuses if x["subject_id"]=="SRC-28")
         self.assertEqual((source["status"],source["reason_code"]),("COMPLETE","OK"))
 
-    def test_partial_source_incomplete_without_forged_exit(self):
+    def test_partial_source_incomplete_with_actual_nonzero_exit(self):
         folder,run,_=self.make(outcome="PARTIAL",reason="SOURCE_INCOMPLETE")
         build_canonical(folder,run)
         st=json.loads((folder/"private/status_records.json").read_text())["status_records"]
         source=next(x for x in st if x["subject_id"]=="SRC-28")
         self.assertEqual((source["status"],source["reason_code"]),("PARTIAL","SOURCE_INCOMPLETE"))
-        self.assertNotIn("exit_code=2",source["detail"])
+        self.assertIn("exit_code=2",source["detail"])
 
     def test_malformed_captured_bytes_retain_original_and_mark_parse_failed(self):
         raw=b"not a package database listing\n"
