@@ -37,6 +37,7 @@ from .normalization import (normalize_sealed_source, parser_available,
                             thermal_sysfs_path_identity,
                             hwmon_sysfs_path_identity, power_sysfs_path_identity)
 from .safety import initial_source_policies, valid_run_id, RUN_BYTES
+from .session_lifecycle import reconcile_execution, validate_persisted_lifecycle
 
 PRIVATE_FILES = ("system.json", "source_attempts.json", "status_records.json")
 MANIFEST_NAME = "session_manifest.json"
@@ -63,6 +64,28 @@ def _check_run(path, run_id):
     # Denied-only and zero-observation runs need not have an evidence folder.
     if os.path.lexists(path / "private" / "evidence"):
         _check_private_dir(path / "private" / "evidence")
+
+
+def _initialize_zero_attempt_session(folder, run_id):
+    """Create only empty private journals for an actual zero-attempt run.
+
+    The existing evidence writer materializes its private directories when
+    the first source is sealed/recorded. Cooperative cancellation before the
+    first source must still produce the owner-approved zero-observation
+    minimum-usable canonical session. No evidence directory or fake source
+    receipt is created. Every directory is owner-only and checked in order.
+    """
+    if (not valid_run_id(run_id) or folder.name != run_id
+            or not folder.is_absolute()
+            or os.path.realpath(folder) != str(folder)):
+        raise CanonicalContractError("invalid zero-attempt run identity")
+    _check_private_dir(folder)
+    for path in (folder / "private", folder / "private" / "source_attempt_records"):
+        try:
+            path.mkdir(mode=0o700)
+        except FileExistsError:
+            pass
+        _check_private_dir(path)
 
 
 def _read_restricted(path, ceiling):
@@ -626,8 +649,14 @@ def _status_for(receipt, artifacts, *, parser_state="NOT_RUN",
     if state == "CAPTURED":
         if reason != "BYTES_PRESERVED":
             raise CanonicalContractError("captured source has unapproved reason")
-        if not artifacts or parser_state == "NOT_RUN":
-            raise CanonicalContractError("captured source has no supported parser result")
+        if not artifacts:
+            raise CanonicalContractError("captured source has no original evidence")
+        if parser_state == "NOT_RUN":
+            # G5-02 receipt remains durably status_record_pending; source
+            # evidence is preserved, but no production status is emitted.
+            raise CanonicalContractError(
+                "NORMALIZATION_PENDING: captured source preserved; "
+                "parser not executed; production acquisition status withheld")
         if parser_state == "FAILED":
             return "PARTIAL", "PARSE_FAILED"
         return "COMPLETE", "OK"
@@ -757,9 +786,11 @@ def build_canonical(run_directory, engine_run):
     """
     folder = Path(run_directory)
     run_id = engine_run.run_id
-    _check_run(folder, run_id)
     if engine_run.canonical_status_pending is not True:
         raise CanonicalContractError("unexpected engine canonical state")
+    if engine_run.source_attempt_count == 0:
+        _initialize_zero_attempt_session(folder, run_id)
+    _check_run(folder, run_id)
     if (folder / "private" / MANIFEST_NAME).exists():
         raise FileExistsError("canonical session already finalized")
     private = folder / "private"
@@ -1349,40 +1380,63 @@ def build_canonical(run_directory, engine_run):
         raise CanonicalContractError("engine attempt count mismatch")
     if any(a["source_id"] not in source_ids for a in attempts):
         raise CanonicalContractError("invalid source allocation")
-    orchestrated_state = "PARTIAL"
-    orchestrated_reason = "MINIMUM_WITH_GAPS"
+    # The selected plan/terminal clock comes ONLY from the actual single
+    # engine, never from source presence or a completed parser alone.
+    witnessed = reconcile_execution(
+        getattr(engine_run, "execution", None), run_id,
+        tuple(c.collector_id for c in engine_run.collectors),
+        tuple(a["attempt_id"] for a in attempts),
+        tuple((s["status"], s["reason_code"]) for s in statuses
+              if s["domain"] == "acquisition"))
+    orchestrated_state = (witnessed["orchestration"] if witnessed else "PARTIAL")
+    orchestrated_reason = (witnessed["reason"] if witnessed else "MINIMUM_WITH_GAPS")
     statuses.append(new_status(
         record_id="st:session", domain="orchestration",
         component_id="SES-CANONICAL", subject_id=run_id,
         status=orchestrated_state, reason_code=orchestrated_reason,
-        detail=("Raw originals validated; semantic normalization incomplete; " +
-                str(len(observations)) + " original/semantic observation records; " +
-                str(len(attempts)) + " source attempts")[:1024],
-        evidence_refs=[], source_attempt_ids=sorted(all_attempt_ids)))
+        detail=(witnessed["detail"] if witnessed else
+                ("Raw originals validated; semantic normalization incomplete; " +
+                 str(len(observations)) + " original/semantic observation records; " +
+                 str(len(attempts)) + " source attempts")[:1024]),
+        started_utc=(witnessed["started_utc"] if witnessed else None),
+        completed_utc=(witnessed["completed_utc"] if witnessed else None),
+        elapsed_ms=(witnessed["elapsed_ms"] if witnessed else None),
+        evidence_refs=[],
+        source_attempt_ids=([a["attempt_id"] for a in attempts]
+                            if witnessed else sorted(all_attempt_ids))))
     system = {
         "schema_version": CANONICAL_SCHEMA_VERSION,
         "run_id": run_id,
         "header": {
-            # EngineRun has no durable whole-run clock. SourceAttempt clock
-            # facts are preserved individually; run clock stays nullable.
-            "started_utc": None, "completed_utc": None,
+            # Use only witnessed actual engine clocks; historical source
+            # fixtures without a session witness remain nullable.
+            "started_utc": witnessed["started_utc"] if witnessed else None,
+            "completed_utc": witnessed["completed_utc"] if witnessed else None,
             "platform_scope": "Linux-AMD64",
             "requested_mode": "ACQUISITION",
-            "lifecycle_state": "INCOMPLETE",
-            # Include every actual source contributor even when a synthetic
-            # EngineRun groups an upstream receipt with its dependent source.
-            "collector_ids": list(dict.fromkeys(
+            "lifecycle_state": witnessed["lifecycle"] if witnessed else "INCOMPLETE",
+            # Witnessed selection includes collectors not yet reached by a
+            # cancelled run; legacy fixtures keep original owned contributors.
+            "collector_ids": (list(witnessed["selected_collectors"])
+                              if witnessed else list(dict.fromkeys(
                 [c.collector_id for c in engine_run.collectors] +
-                [a["collector_id"] for a in attempts])),
+                [a["collector_id"] for a in attempts]))),
             "created_by_version": None,
         },
         "observations": observations,
         "capture_limits": limits,
-        "limitations": ["Lifecycle/completeness reconciliation pending RP-03.3",
+        "limitations": [(
+            "Selected acquisition scope completed; not a benchmark or hardware-wide result"
+            if witnessed and witnessed["completion"] == "COMPLETE" else
+            "Selected acquisition was interrupted; unattempted sources not acquired"
+            if witnessed and witnessed["completion"] == "INTERRUPTED" else
+            "Selected acquisition has incomplete/denied/unavailable results"
+            if witnessed else
+            "Lifecycle/completeness reconciliation pending RP-03.3"),
                         ("Registered semantic parsers: " +
                          str(sum(1 for source in policies if parser_available(source))) +
                          " of " + str(len(policies)) + " source families; " +
-                         "this is not complete acquisition or validation"),
+                         "unselected sources and benchmark validation are not inferred"),
                         "Zero observations permitted; no benchmark measurements inferred"],
     }
     outputs = {
@@ -1409,11 +1463,13 @@ def build_canonical(run_directory, engine_run):
         "schema_version": CANONICAL_SCHEMA_VERSION,
         "manifest_version": "1.0",
         "run_id": run_id,
-        # RP-03.3 must establish final D-05 lifecycle; avoid claiming COMPLETE.
-        "completion_state": "INCOMPLETE",
+        # Only witnessed, fully reconciled selected acquisition may be COMPLETE.
+        "completion_state": witnessed["completion"] if witnessed else "INCOMPLETE",
         "integrity_verified": True,
         "minimum_usable": True,
-        "finalized_utc": None,
+        "finalized_utc": (datetime.now(timezone.utc).isoformat(
+            timespec="milliseconds").replace("+00:00", "Z")
+            if witnessed else None),
         "counts": {
             "attempts": len(attempts), "sources": len(source_ids),
             "observations": len(observations),
@@ -1818,4 +1874,10 @@ def validate_canonical(run_directory):
                 d0_semantic_seen_47[eid] != set(range(len(expected_rows)))):
             raise CanonicalContractError(
                 "D0 sealed original parser output incomplete or duplicated")
+    session_rows = [r for r in statuses if r["domain"] == "orchestration"
+                    and r["subject_id"] == run_id]
+    if len(session_rows) != 1:
+        raise CanonicalContractError("missing or ambiguous session orchestration status")
+    validate_persisted_lifecycle(
+        system["header"], manifest, session_rows[0], attempts, statuses)
     return manifest
