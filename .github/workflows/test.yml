@@ -11,6 +11,24 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y dialog
+      - name: Verify software video workloads with a synthetic DVD fixture
+        run: |
+          if ! command -v ffmpeg || ! command -v ffprobe; then
+            sudo apt-get update
+            sudo apt-get install -y ffmpeg
+          fi
+          LBT_RUN_VIDEO_SMOKE=1 python3 -m unittest discover -s tests -p 'test_g5_video_workload.py' -v
+      - name: Verify Jellyfin scenarios with overlapping synthetic transcodes
+        env:
+          LBT_RUN_VIDEO_SMOKE: '1'
+          LBT_JELLYFIN_EVIDENCE: validation-results/ci/jellyfin-workloads.json
+        run: python3 -m unittest discover -s tests -p 'test_g5_jellyfin_workloads.py' -v
+      - name: Upload synthetic Jellyfin workload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: jellyfin-workload-ci
+          path: validation-results/ci/jellyfin-workloads.json
+          if-no-files-found: error
       - name: Shell and Python syntax
         run: |
           bash -n benchmark lib/*.sh tui/*.sh packaging/*.sh tests/*.sh
