@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from lbt_g5.core_workloads import MIB, ShortParameters, run_cpu, run_memory, run_storage
+from lbt_g5.core_workloads import MIB, ShortParameters, local_filesystem, run_cpu, run_memory, run_storage
 from lbt_g5.workload_runtime import Context, Unavailable
 
 
@@ -47,6 +47,26 @@ class CoreWorkloadsTests(unittest.TestCase):
         with self.assertRaisesRegex(Unavailable, "PREEXISTING_IO_PRESSURE"):
             run_storage(self.context, self.parameters)
         self.assertEqual(list(self.context.scratch.iterdir()), [])
+
+    def test_fuse_block_mount_requires_proven_usb_backing(self):
+        mountpoint = self.context.scratch / "New Volume"
+        mountpoint.mkdir()
+        escaped = str(mountpoint).replace(" ", r"\040")
+        table = ("1 0 0:1 / / rw - overlay overlay rw\n"
+                 f"2 1 0:2 / {escaped} rw - fuseblk /dev/sdc1 rw\n")
+        with patch("lbt_g5.core_workloads.Path.read_text", return_value=table), patch(
+                "lbt_g5.core_workloads._usb_block_source", return_value=True) as backing:
+            self.assertEqual(local_filesystem(mountpoint), "fuseblk")
+            backing.assert_called_once_with("/dev/sdc1")
+            backing.return_value = False
+            with self.assertRaisesRegex(Unavailable, "LOCAL_STORAGE_REQUIRED"):
+                local_filesystem(mountpoint)
+            backing.reset_mock()
+            with patch("lbt_g5.core_workloads.Path.read_text",
+                       return_value=table.replace("fuseblk", "fuse.sshfs")):
+                with self.assertRaisesRegex(Unavailable, "LOCAL_STORAGE_REQUIRED"):
+                    local_filesystem(mountpoint)
+                backing.assert_not_called()
 
     def test_rejects_out_of_range_parameters(self):
         for args in ({"cpu_workers": 0}, {"storage_bytes": 4097}, {"memory_seconds": float("nan")}):
