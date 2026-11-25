@@ -1,5 +1,7 @@
 """Generate a combined offline development report from a saved workload session."""
 import argparse
+import csv
+import io
 import html
 import json
 import os
@@ -8,6 +10,7 @@ import re
 import tempfile
 
 from .private_inventory import read_private_inventory
+from .publication_policy import load_policy, public_inventory, public_measurements
 from .workload_assessment import assess
 
 STYLE = """
@@ -25,7 +28,7 @@ def table(headers, rows):
             + "".join("<tr>" + cells("td", row) + "</tr>" for row in rows) + "</tbody></table>")
 
 
-def render(workloads, inventory):
+def render(workloads, inventory, *, private=False):
     assessment_rows = []
     measurements = []
     for row in workloads["results"]:
@@ -33,7 +36,8 @@ def render(workloads, inventory):
         assessment_rows.append(tuple(assessment[key] or "—" for key in (
             "id", "capability", "performance", "reliability", "coverage", "reason", "performance_basis")))
         label = html.escape(row["id"])
-        values = html.escape(json.dumps(row["measurements"], indent=2, ensure_ascii=False))
+        metrics = row["measurements"] if private else public_measurements(row["measurements"])
+        values = html.escape(json.dumps(metrics, indent=2, ensure_ascii=False))
         measurements.append(f"<details><summary>{label}</summary><pre>{values}</pre></details>")
     sources = table(("Source", "Status", "Reason", "Facts"), (
         (item["source_id"], item["status"], item["reason_code"], item["semantic_fact_count"])
@@ -49,10 +53,11 @@ def render(workloads, inventory):
     notices = "".join(f"<li>{html.escape(str(item))}</li>" for item in limitations)
     status = html.escape(workloads["state"])
     inventory_status = html.escape(inventory["completion_state"])
+    heading = "Private local report" if private else "Publication report"
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
 <title>Linux Benchmark Toolkit report</title><style>{STYLE}</style></head>
-<body><h1>Linux Benchmark Toolkit</h1><p>Workload session {status} · Inventory {inventory_status}</p>
+<body><h1>Linux Benchmark Toolkit</h1><p>{heading} · Workload session {status} · Inventory {inventory_status}</p>
 <section><h2>Workload assessments</h2>{table(
     ("Workload", "Capability", "Performance", "Reliability", "Coverage", "Outcome", "Threshold"), assessment_rows)}
 <p>{for_action}</p></section>
@@ -77,29 +82,69 @@ def saved_session(session):
     return session, workloads, read_private_inventory(acquisitions[0])
 
 
-def publish(session):
+def publish(session, config, *, private=False):
     session, workloads, inventory = saved_session(session)
-    document = render(workloads, inventory)
+    policy = load_policy(config)
+    if not private:
+        inventory = public_inventory(inventory, policy)
+    documents = {"report.html": render(workloads, inventory, private=private)}
+    outcomes = {}
+    assessments = [assess(row) for row in workloads["results"]]
+    if not private:
+        for output in sorted(policy.outputs):
+            if not assessments and not inventory["facts"]:
+                outcomes[output] = "NOT_APPLICABLE"
+                continue
+            if output == "json":
+                results = [{"assessment": assessment,
+                            "measurements": public_measurements(row["measurements"])}
+                           for assessment, row in zip(assessments, workloads["results"])]
+                documents["report.json"] = json.dumps(
+                    {"version": 1, "inventory": inventory["facts"], "results": results},
+                    indent=2, allow_nan=False) + "\n"
+            elif assessments:
+                stream = io.StringIO(newline="")
+                writer = csv.DictWriter(stream, fieldnames=list(assessments[0]))
+                writer.writeheader()
+                writer.writerows(assessments)
+                documents["assessments.csv"] = stream.getvalue()
+            else:
+                outcomes[output] = "NOT_APPLICABLE"
+                continue
+            outcomes[output] = "GENERATED"
+    documents["publication.json"] = json.dumps({"version": 1, "outputs": outcomes}, indent=2) + "\n"
     directory = Path(tempfile.mkdtemp(prefix="report-", dir=session))
     pending = directory / ".report.tmp"
     try:
-        with pending.open("x", encoding="utf-8") as stream:
-            stream.write(document)
-            stream.flush()
-            os.fsync(stream.fileno())
-        return pending.rename(directory / "report.html")
-    finally:
-        pending.unlink(missing_ok=True)
-        if not any(directory.iterdir()):
-            directory.rmdir()
+        for name, document in documents.items():
+            with pending.open("x", encoding="utf-8") as stream:
+                stream.write(document)
+                stream.flush()
+                os.fsync(stream.fileno())
+            pending.rename(directory / name)
+        return directory / "report.html"
+    except BaseException:
+        for item in directory.iterdir():
+            item.unlink()
+        directory.rmdir()
+        raise
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("session", type=Path)
+    parser.add_argument("session", nargs="?", type=Path)
+    parser.add_argument("--config", type=Path, default=Path(__file__).resolve().parents[1] / "config")
+    parser.add_argument("--private", action="store_true", help="include private inventory for local use")
+    parser.add_argument("--check-config", action="store_true")
     args = parser.parse_args(argv)
     try:
-        print(publish(args.session))
+        if args.check_config:
+            load_policy(args.config)
+            print("Publication configuration valid")
+        elif args.session:
+            print(publish(args.session, args.config, private=args.private))
+        else:
+            parser.error("provide a saved session or --check-config")
     except (OSError, KeyError, ValueError) as error:
         parser.exit(2, f"Workload report: {error}\n")
     return 0
