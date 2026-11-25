@@ -1,0 +1,76 @@
+{
+  "record_type": "LBT_G5_04_RP03_CP03_INCREMENT_44_VERIFIED_CANDIDATE_CHECKPOINT",
+  "date": "2026-11-14",
+  "authority": "AI-Assisted Software Engineering Governance Standard v1.0; owner-approved FAT Readiness Roadmap RP-03.1; approved CP-01 §6 D-02 exact schema; Requirements Rev 1.6",
+  "repo": {
+    "full_name": "joeblow42/linux-benchmark-toolkit",
+    "branch": "g5/cp03-rp03-d02-validator-44",
+    "pr": 69,
+    "stacked_on": 68,
+    "predecessor_verified": "4116302831cb5ecd3df48fcbb7d6f8de27c9685f",
+    "implementation_verified_head": "0ff94ee3365b643424d0d82e703a3a14d005d542",
+    "pr_ci_run": 43651921510,
+    "push_ci_run": 43651917072,
+    "conclusion": "completed/success",
+    "note": "After checkpoint/handoff commits, verify final PR head exact-head CI separately."
+  },
+  "source_authority": {
+    "zip_sha256": "75bd8d7f4ad5167449cc63974fdc85650dc364cce0b037d9633a9794c2b157a2",
+    "odt_sha256": "6d836d28af086a0fec7df2ca0949faf9447f9cee29cfabb8751344bd5104c98b",
+    "odt_path": "03_DECISION_AUTHORITY/LBT_G5_04_CP01_Contract_Reconciliation_Approval_Review_2026-11-02.odt",
+    "zip_integrity": "CRC PASS, 7/7 SHA256 manifest files PASS",
+    "frozen_contract": "verification/g5_04/rp03_cp01_d02_approved_contract_43.json",
+    "previous_blocker": "verification/g5_04/rp03_d02_source_authority_blocker_20261114.json",
+    "disposition": "RESOLVED_BY_BYTE_VERIFIED_SOURCE"
+  },
+  "increment": {
+    "number": 44,
+    "title": "Strict approved D-02 file/entity shape/type/enum validator",
+    "source_first": "Oracle verification/g5_04/rp03_d02_shape_oracle_44.json and nine tests committed before validator implementation.",
+    "negative_ci": "43651771114 — controlled failure, ModuleNotFoundError: lbt_g5.d02_schema (expected RED)",
+    "implementation": "lbt_g5/d02_schema.py",
+    "tests": "tests/test_g5_cp03_rp03_d02_shape_44.py",
+    "tested": "Four exact closed-world JSON file shapes, nine entity types, required nullable fields, JSON lossless unknown observation, hard enums, UTC, SHA256, numeric bounds, 41 status pairs, invalid extra fields",
+    "scope_limit": "Pure independent shape/type validator only, NOT integrated into canonical_session.build_canonical or validate_canonical. No claim RP-03.1 complete."
+  },
+  "changes": [
+    ".github/workflows/test.yml",
+    "lbt_g5/d02_schema.py",
+    "tests/test_g5_cp03_rp03_d02_shape_44.py",
+    "verification/g5_04/rp03_d02_shape_oracle_44.json"
+  ],
+  "protected_unchanged": [
+    "lbt_g5/safety.py",
+    "lbt_g5/o1.py",
+    "lbt_g5/privilege_contract.py",
+    "lbt_g5/privileged_session.py",
+    "packaging/lbt_root_helper.py",
+    "lbt_g5/evidence.py",
+    "lbt_g5/canonical_contract.py",
+    "lbt_g5/o1_execution.py",
+    "lbt_g5/records.py",
+    "lbt_g5/canonical_session.py"
+  ],
+  "next": {
+    "increment45": "Source-first strict production producer conformance and literal schema transition. Wire pure validator only when fields/types are exact; preserve existing receipts, sealed original pointers, status 1.0/41. Reconcile existing tests asserting old provisional names instead of relaxing approved closed-world contract.",
+    "then": "RP-03.2 multi-source typed/lossless and contributors; RP-03.3 D-05 truthful lifecycle; RP-04 independent CP-02 39 cases and G5-04 integrity, Bodhi7 host proof and CP-07 owner dossier; remaining FAT roadmap",
+    "warnings": [
+      "D-02 schema version remains 1.0.0; any change requires owner authorization",
+      "Exact source ODT §6 is authority; do not reconstruct from candidate or template",
+      "No source-permission, helper-protocol, G4-07 ceiling or original evidence changes permitted",
+      "Mock CI is NOT independent original CP-02 or Bodhi 7 proof"
+    ]
+  },
+  "gates": {
+    "RP_02": "PARTIAL_WITH_EXPLICIT_NONPROMOTION",
+    "RP_03": "OPEN_43_44_CANDIDATE_VERIFIED",
+    "RP_04": "OPEN",
+    "G5_04": "OPEN",
+    "CP_02_original_39": "0 ACCEPTED",
+    "Rev_1_6_requirements": "283 NOT_VERIFIED",
+    "Bodhi7_host": "NOT_EXECUTED",
+    "FAT": "NOT_ESTABLISHED",
+    "release": "NOT_AUTHORIZED"
+  },
+  "conversation_safety": "Recommend clean continuation handoff now after 2 source-first increments, byte-level document recovery and multiple exact-head CI runs; no owner decision pending."
+}

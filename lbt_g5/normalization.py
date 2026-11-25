@@ -11,6 +11,14 @@ import math
 import json
 import re
 import shlex
+from .src13_normalization import parse_src13, SRC13ParseError
+from .mountinfo_normalization import parse_mountinfo, MountinfoParseError
+from .fs_stat_normalization import parse_fs_stat_stdout, FSStatParseError
+from .optical_media_normalization import parse_optical_media, OpticalMediaParseError
+from .lspci_normalization import parse_lspci_nn, LspciParseError
+from .vainfo_normalization import parse_vainfo, VainfoParseError
+from .ip_local_normalization import parse_ip_local, IpLocalParseError
+from .offline_dpkg_normalization import parse_offline_dpkg, OfflineDpkgParseError
 
 
 MAX_PARSER_BYTES = 1024 * 1024
@@ -756,9 +764,369 @@ def _parse_net_sysfs(raw, *, source_path):
     ))
 
 
+
+# SRC-24 accepted G5-03 passive worker. Only thermal_zoneN {type,temp}
+# originals are read, never cooling/trip controls or thermal policy writes.
+_THERMAL_SYSFS_ROOT = "/sys/class/thermal/"
+_THERMAL_SYSFS_ZONE = re.compile(r"thermal_zone[0-9]+\Z")
+_THERMAL_SYSFS_ATTRS = ("type", "temp")
+
+
+def thermal_sysfs_path_identity(source_path):
+    """SRC-24 allowed zone attribute and G5-03 original ordering key."""
+    if type(source_path) is not str or not source_path.startswith(_THERMAL_SYSFS_ROOT):
+        return None
+    parts = source_path[len(_THERMAL_SYSFS_ROOT):].split("/", 1)
+    if len(parts) != 2:
+        return None
+    zone, attr = parts
+    if _THERMAL_SYSFS_ZONE.fullmatch(zone) is None or attr not in _THERMAL_SYSFS_ATTRS:
+        return None
+    return ("thermal.sysfs." + zone + "." + attr,
+            (zone, _THERMAL_SYSFS_ATTRS.index(attr)), attr)
+
+
+def _parse_thermal_sysfs(raw, *, source_path):
+    identity = thermal_sysfs_path_identity(source_path)
+    if identity is None:
+        raise SourceParseError("THERMAL_SYSFS_SOURCE_PATH_NOT_APPROVED")
+    observed, value = _block_scalar_text(raw)
+    attr = identity[2]
+    if attr == "temp":
+        # Linux thermal_zone temp is in millidegrees Celsius. Do NOT
+        # divide by 1000 or infer an operating limit or thermal failure.
+        norm = _cpu_sysfs_integer(value, signed=True)
+        typ, unit = "INTEGER", "millidegrees Celsius"
+    else:
+        norm, typ, unit = value.strip(" \t"), "STRING", None
+    return ParseResult("linux-sysfs-thermal-zone-v1", (
+        ParsedDatum(identity[0], observed, norm, typ, unit),
+    ))
+
+
+
+# SRC-25: hwmon chip/channel observations. Devices and filenames are sorted
+# lexically by the accepted G5-03 worker. Do not infer hardware-specific units
+# from attr names; some temp*_input drivers represent non-temperature values.
+_HWMON_ROOT = "/sys/class/hwmon/"
+_HWMON_DEVICE = re.compile(r"hwmon[0-9]+\Z")
+_HWMON_ATTR = re.compile(r"(?:(?:temp|fan|in|power)[0-9]+_(?:input|label)|name)\Z")
+_HWMON_SIGNED = re.compile(r"-?[0-9]{1,19}\Z")
+
+
+def hwmon_sysfs_path_identity(source_path):
+    if type(source_path) is not str or not source_path.startswith(_HWMON_ROOT):
+        return None
+    fields = source_path[len(_HWMON_ROOT):].split("/", 1)
+    if len(fields) != 2 or not _HWMON_DEVICE.fullmatch(fields[0]):
+        return None
+    chip, attr = fields
+    if not _HWMON_ATTR.fullmatch(attr):
+        return None
+    return ("thermal.hwmon." + chip + "." + attr, (chip, attr), attr)
+
+
+def _parse_hwmon_sysfs(raw, *, source_path):
+    identity = hwmon_sysfs_path_identity(source_path)
+    if identity is None:
+        raise SourceParseError("HWMON_SOURCE_PATH_NOT_APPROVED")
+    observed, value = _block_scalar_text(raw)
+    attr = identity[2]
+    if attr == "name" or attr.endswith("_label"):
+        norm, typ = value.strip(" \t"), "STRING"
+    else:
+        if not _HWMON_SIGNED.fullmatch(value):
+            raise SourceParseError("HWMON_INVALID_RAW_DECIMAL")
+        norm = int(value)
+        if not -(1 << 63) <= norm < (1 << 63):
+            raise SourceParseError("HWMON_INTEGER_OUT_OF_RANGE")
+        typ = "INTEGER"
+    # Preserve the unconverted driver-reported value; unit inference requires
+    # chip/channel evidence not present in SRC-25's bounded source contract.
+    return ParseResult("linux-sysfs-hwmon-raw-v1", (
+        ParsedDatum(identity[0], observed, norm, typ),
+    ))
+
+
+
+# SRC-26 original G5-03 passive power-supply captures. In particular,
+# serial_number is PRIVATE; source acquisition does not grant public release.
+_POWER_SYSFS_ROOT = "/sys/class/power_supply/"
+_POWER_SYSFS_DEVICE = re.compile(r"[A-Za-z0-9_.:-]+\Z")
+_POWER_SYSFS_ATTRS = (
+    "type", "status", "capacity", "voltage_now", "current_now",
+    "power_now", "energy_now", "energy_full", "energy_full_design",
+    "charge_now", "charge_full", "charge_full_design", "manufacturer",
+    "model_name", "serial_number", "technology", "cycle_count",
+)
+_POWER_SYSFS_TEXT = frozenset((
+    "type", "status", "manufacturer", "model_name", "serial_number", "technology",
+))
+
+
+def power_sysfs_path_identity(source_path):
+    if type(source_path) is not str or not source_path.startswith(_POWER_SYSFS_ROOT):
+        return None
+    parts = source_path[len(_POWER_SYSFS_ROOT):].split("/", 1)
+    if len(parts) != 2:
+        return None
+    name, attr = parts
+    if (name.startswith(".") or _POWER_SYSFS_DEVICE.fullmatch(name) is None
+            or attr not in _POWER_SYSFS_ATTRS):
+        return None
+    return ("power.supply." + name + "." + attr,
+            (name, _POWER_SYSFS_ATTRS.index(attr)), attr)
+
+
+def _parse_power_sysfs(raw, *, source_path):
+    identity = power_sysfs_path_identity(source_path)
+    if identity is None:
+        raise SourceParseError("POWER_SYSFS_SOURCE_PATH_NOT_APPROVED")
+    observed, value = _block_scalar_text(raw)
+    attr = identity[2]
+    if attr in _POWER_SYSFS_TEXT:
+        normalized, kind = value.strip(" \t"), "STRING"
+    else:
+        if _HWMON_SIGNED.fullmatch(value) is None:
+            raise SourceParseError("POWER_SYSFS_INVALID_RAW_DECIMAL")
+        normalized = int(value)
+        if not -(1 << 63) <= normalized < (1 << 63):
+            raise SourceParseError("POWER_SYSFS_INTEGER_OUT_OF_RANGE")
+        kind = "INTEGER"
+    # Keep native raw integer, without inferring battery health or units.
+    return ParseResult("linux-sysfs-power-raw-v1", (
+        ParsedDatum(identity[0], observed, normalized, kind),
+    ))
+
+
+
+# SRC-05 lscpu: D1 original command stream, not a source path. Locale-specific
+# labels are kept as strings; no numeric CPU claim without field assurance.
+def _parse_lscpu_stdout(raw):
+    lines = _text(raw).splitlines()
+    if not lines or len(lines) > MAX_FIELDS:
+        raise SourceParseError("LSCPU_MISSING_OR_EXCESSIVE_ROWS")
+    fields = []
+    for line in lines:
+        if not line.strip():
+            continue
+        if ":" not in line:
+            raise SourceParseError("LSCPU_NON_KEYVALUE_LINE")
+        label, value = line.split(":", 1)
+        label, value = label.strip(), value.strip()
+        if (not label or len(label) > 256 or len(value) > 8192
+                or "\x00" in line or "\r" in line):
+            raise SourceParseError("LSCPU_UNBOUNDED_OR_INVALID_ROW")
+        fields.append({"label": label, "value": value})
+    if not fields:
+        raise SourceParseError("LSCPU_NO_DATA_ROWS")
+    return ParseResult("linux-lscpu-opaque-rows-v1", (
+        ParsedDatum("cpu.lscpu.rows", "LSCPU_KEY_VALUE_ROWS", fields, "ARRAY"),
+    ))
+
+
+
+# SRC-11 lsblk: fixed G5-03 D1 --json --bytes plan. Keep the tree and
+# private MODEL/SERIAL as recorded; no host disk probing or size aggregation.
+_LSBLK_RECORD_FIELDS = frozenset((
+    "name", "kname", "type", "size", "ro", "rm", "model", "serial", "tran",
+))
+_LSBLK_DEPTH_LIMIT = 16
+
+
+def _lsblk_unique_object(pairs):
+    data = {}
+    for key, value in pairs:
+        if key in data:
+            raise SourceParseError("LSBLK_DUPLICATE_JSON_KEY")
+        data[key] = value
+    return data
+
+
+def _lsblk_reject_constant(value):
+    raise SourceParseError("LSBLK_NONFINITE_JSON_CONSTANT")
+
+
+def _parse_lsblk_stdout(raw):
+    try:
+        data = json.loads(_text(raw), object_pairs_hook=_lsblk_unique_object,
+                          parse_constant=_lsblk_reject_constant)
+    except SourceParseError:
+        raise
+    except (ValueError, RecursionError) as exc:
+        raise SourceParseError("LSBLK_INVALID_JSON") from exc
+    if type(data) is not dict or set(data) != {"blockdevices"}:
+        raise SourceParseError("LSBLK_UNEXPECTED_JSON_ROOT")
+    devices = data["blockdevices"]
+    if type(devices) is not list or len(devices) > MAX_FIELDS:
+        raise SourceParseError("LSBLK_INVALID_DEVICE_ARRAY")
+    total = [0]
+
+    def validate(node, depth):
+        if depth > _LSBLK_DEPTH_LIMIT or type(node) is not dict:
+            raise SourceParseError("LSBLK_INVALID_DEVICE_DEPTH_OR_TYPE")
+        total[0] += 1
+        if total[0] > MAX_FIELDS:
+            raise SourceParseError("LSBLK_EXCESSIVE_NODES")
+        if not set(node).issubset(_LSBLK_RECORD_FIELDS | {"children"}):
+            raise SourceParseError("LSBLK_UNAUTHORIZED_DEVICE_KEY")
+        # NAME is explicitly selected and required for device identity;
+        # no assumption that the remaining selected columns are populated.
+        if type(node.get("name")) is not str or not node["name"]:
+            raise SourceParseError("LSBLK_MISSING_DEVICE_NAME")
+        result = {}
+        for key, value in node.items():
+            if key == "children":
+                if type(value) is not list or len(value) > MAX_FIELDS:
+                    raise SourceParseError("LSBLK_INVALID_CHILDREN")
+                result[key] = [validate(child, depth + 1) for child in value]
+            elif value is None:
+                result[key] = None
+            elif type(value) is str:
+                if (len(value) > 8192 or "\x00" in value or
+                        "\n" in value or "\r" in value):
+                    raise SourceParseError("LSBLK_INVALID_STRING_FIELD")
+                result[key] = value
+            elif type(value) is bool:
+                if key not in ("ro", "rm"):
+                    raise SourceParseError("LSBLK_INVALID_BOOLEAN_FIELD")
+                result[key] = value
+            elif type(value) is int:
+                if (key not in ("size", "ro", "rm") or value < 0 or
+                        value > 18446744073709551615 or
+                        (key in ("ro", "rm") and value not in (0, 1))):
+                    raise SourceParseError("LSBLK_INVALID_INTEGER_FIELD")
+                result[key] = value
+            else:
+                raise SourceParseError("LSBLK_UNSUPPORTED_JSON_VALUE")
+        return result
+
+    normalized = [validate(node, 1) for node in devices]
+    return ParseResult("linux-lsblk-bounded-json-v1", (
+        ParsedDatum("storage.lsblk.blockdevices",
+                    "LSBLK_DEVICE_HIERARCHY", normalized, "ARRAY"),
+    ))
+
+
+# SRC-13 O1: parser dispatch is by a VERIFIED fixed command, never by
+# untrusted output text. The private canonical writer supplies provenance.
+def _parse_src13_stdout(raw, *, source_command, source_target):
+    try:
+        rows = parse_src13(raw, source_command=source_command,
+                           source_target=source_target)
+    except SRC13ParseError as exc:
+        raise SourceParseError(str(exc)) from exc
+    return ParseResult("linux-src13-health-verified-stdout-v1", tuple(
+        ParsedDatum(path, observed, normalized, kind, unit)
+        for path, observed, normalized, kind, unit in rows))
+
+
+# SRC-14: a single fixed G5-02/03 D0 worker file; identity is validated
+# by the private canonical producer before any original bytes are parsed.
+def _parse_mountinfo_file(raw):
+    try:
+        records = parse_mountinfo(raw)
+    except MountinfoParseError as exc:
+        raise SourceParseError(str(exc)) from exc
+    return ParseResult("linux-mountinfo-proc-bounded-v1", (
+        ParsedDatum("storage.mountinfo.records", "MOUNTINFO_KERNEL_ROWS",
+                    list(records), "ARRAY"),
+    ))
+
+
+
+# SRC-15 fixed G5-03 D1 local-only FS_STAT serialized statvfs worker result.
+# Verified private receipt mount and stream attribution is required upstream.
+def _parse_fsstat_stdout(raw, *, source_path):
+    try:
+        observed = parse_fs_stat_stdout(raw, source_path=source_path)
+    except FSStatParseError as exc:
+        raise SourceParseError(str(exc)) from exc
+    return ParseResult("linux-fs-stat-worker-json-v1", (
+        ParsedDatum("storage.fs_stat.snapshot", observed, observed, "OBJECT"),
+    ))
+
+
+# SRC-18: O1 only. Receipt+consent+same-run SRC-17 binding is checked before
+# entering this source parser. Opaque feature lines do not establish health.
+def _parse_optical_media_stdout(raw, *, source_target):
+    try:
+        value = parse_optical_media(raw, source_target=source_target)
+    except OpticalMediaParseError as exc:
+        raise SourceParseError(str(exc)) from exc
+    return ParseResult("linux-sg-get-config-current-v1", (
+        ParsedDatum("optical.mmc.current_configuration",
+                    "SG_GET_CONFIG_CURRENT", value, "OBJECT"),
+    ))
+
+
+# SRC-20 D1 lspci -nn human-readable snapshot; only parsed reported PCI IDs.
+def _parse_lspci_stdout(raw):
+    try:
+        records = parse_lspci_nn(raw)
+    except LspciParseError as exc:
+        raise SourceParseError(str(exc)) from exc
+    return ParseResult("linux-lspci-nn-bounded-v1", (
+        ParsedDatum("gpu.pci.lspci.devices", "LSPCI_NN_HUMAN_ROWS",
+                    records, "ARRAY"),
+    ))
+
+
+# SRC-21 O1: only source-reported VA-API profiles and entrypoints.
+# Consent and verified SRC-19 witness remain canonical-session responsibilities.
+def _parse_vainfo_stdout(raw, *, source_target):
+    try:
+        values = parse_vainfo(raw, source_target=source_target)
+    except VainfoParseError as exc:
+        raise SourceParseError(str(exc)) from exc
+    return ParseResult("linux-vainfo-profile-entrypoints-v1", (
+        ParsedDatum("gpu.vaapi.reported_capabilities",
+                    "VAINFO_REPORTED_PROFILE_ROWS", values, "OBJECT"),
+    ))
+
+
+# SRC-23: exact D1 local netlink command strings differentiate two receipts.
+def _parse_ip_local_stdout(raw, *, source_command):
+    try:
+        kind, rows = parse_ip_local(raw, source_command=source_command)
+    except IpLocalParseError as exc:
+        raise SourceParseError(str(exc)) from exc
+    label = ("network.ip.local_addresses.reported" if kind == "addr"
+             else "network.ip.local_routes.reported")
+    return ParseResult("linux-iproute2-json-local-v1", (
+        ParsedDatum(label, "IP_LOCAL_JSON_REPORT", rows, "ARRAY"),
+    ))
+
+
+# SRC-28: package/version fields from existing fixed local dpkg-query only.
+# The prior AdditionalOutcome does not attest exact argv or process exit.
+def _parse_offline_dpkg_stdout(raw):
+    try:
+        records = parse_offline_dpkg(raw)
+    except OfflineDpkgParseError as exc:
+        raise SourceParseError(str(exc)) from exc
+    return ParseResult("linux-dpkg-query-package-records-v1", (
+        ParsedDatum("software.dpkg.reported_package_db_records",
+                    "DPKG_REPORTED_DATABASE_ROWS", records, "ARRAY"),
+    ))
+
+
 # Intentional bounded list. Unsupported source families are not normalized
 # by interpreting raw bytes as arbitrary meaningful inventory fields.
 PARSERS = {
+    "SRC-28": _parse_offline_dpkg_stdout,
+    "SRC-23": _parse_ip_local_stdout,
+    "SRC-21": _parse_vainfo_stdout,
+    "SRC-20": _parse_lspci_stdout,
+    "SRC-18": _parse_optical_media_stdout,
+    "SRC-15": _parse_fsstat_stdout,
+    "SRC-14": _parse_mountinfo_file,
+    "SRC-13": _parse_src13_stdout,
+    "SRC-11": _parse_lsblk_stdout,
+    "SRC-05": _parse_lscpu_stdout,
+    "SRC-26": _parse_power_sysfs,
+    "SRC-25": _parse_hwmon_sysfs,
+    "SRC-24": _parse_thermal_sysfs,
     "SRC-22": _parse_net_sysfs,
     "SRC-19": _parse_drm_sysfs,
     "SRC-17": _parse_optical_sysfs,
@@ -781,12 +1149,62 @@ def parser_available(source_id):
     return source_id in PARSERS
 
 
-def normalize_sealed_source(source_id, raw, *, source_path=None):
-    """Normalize sealed bytes; SRC-04 additionally requires verified source path."""
+def normalize_sealed_source(source_id, raw, *, source_path=None,
+                            source_stream=None, source_command=None,
+                            source_target=None):
+    """Normalize sealed source bytes only with their approved attribution."""
     parser = PARSERS.get(source_id)
     if parser is None:
         return None
-    if source_id in ("SRC-04", "SRC-07", "SRC-12", "SRC-17", "SRC-19", "SRC-22"):
+    if source_id == "SRC-14":
+        if (source_path != "/proc/self/mountinfo"
+                or source_stream is not None
+                or source_command is not None or source_target is not None):
+            raise SourceParseError("SRC14_UNVERIFIED_FIXED_FILE")
+        return parser(raw)
+    if source_id == "SRC-21":
+        if (source_path is not None or source_stream != "stdout"
+                or source_command != "vainfo"
+                or type(source_target) is not str):
+            raise SourceParseError("VAINFO_O1_UNVERIFIED_STREAM")
+        return parser(raw, source_target=source_target)
+    if source_id == "SRC-18":
+        if (source_path is not None or source_stream != "stdout"
+                or source_command != "sg_get_config"
+                or type(source_target) is not str):
+            raise SourceParseError("OPTICAL_O1_UNVERIFIED_STREAM")
+        return parser(raw, source_target=source_target)
+    if source_id == "SRC-13":
+        if (source_path is not None or source_stream != "stdout"
+                or source_command not in ("smartctl", "nvme")
+                or type(source_target) is not str):
+            raise SourceParseError("O1_UNVERIFIED_DATA_STREAM")
+        return parser(raw, source_command=source_command,
+                      source_target=source_target)
+    if source_id == "SRC-28":
+        if (source_path != "installed-packages" or source_stream != "stdout"
+                or source_command != "dpkg-query" or source_target is not None):
+            raise SourceParseError("OFFLINE_DPKG_UNVERIFIED_SOURCE_STREAM")
+        return parser(raw)
+    if source_id == "SRC-23":
+        if (source_path is not None or source_target is not None
+                or source_stream != "stdout"
+                or source_command not in ("ip -j addr show", "ip -j route show")):
+            raise SourceParseError("IP_LOCAL_UNVERIFIED_D1_STREAM")
+        return parser(raw, source_command=source_command)
+    if source_command is not None or source_target is not None:
+        raise SourceParseError("SOURCE_COMMAND_NOT_APPLICABLE")
+    if source_id == "SRC-15":
+        if source_stream != "stdout" or type(source_path) is not str:
+            raise SourceParseError("FSSTAT_UNVERIFIED_DATA_STREAM")
+        return parser(raw, source_path=source_path)
+    if source_id in ("SRC-05", "SRC-11", "SRC-20"):
+        if source_path is not None or source_stream != "stdout":
+            raise SourceParseError("D1_UNVERIFIED_DATA_STREAM")
+        return parser(raw)
+    if source_stream is not None:
+        raise SourceParseError("SOURCE_STREAM_NOT_APPLICABLE")
+    if source_id in ("SRC-04", "SRC-07", "SRC-12", "SRC-17", "SRC-19", "SRC-22", "SRC-24", "SRC-25", "SRC-26"):
         return parser(raw, source_path=source_path)
     if source_path is not None:
         raise SourceParseError("SOURCE_PATH_NOT_APPLICABLE")

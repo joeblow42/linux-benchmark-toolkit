@@ -1,0 +1,71 @@
+{
+  "oracle_id": "CP03-RP02-F04-SRC15-AGGREGATE-37",
+  "authority": "Owner-approved G4-07 SRC-15 source ceiling 15s / 2MiB, per-worker 2s; private receipt 0.6 only",
+  "status": "independently specified source-first synthetic oracle; not CP-02 acceptance or FAT host evidence",
+  "source_first_method": "Use original sealed same-run SRC-14 mountinfo to bind each eligible mount to the actual fixed-worker invocation; compare timed source loop, actual writer receipts, preserved byte hashes and final canonical limit relations; test unknown or contradictory evidence as failure",
+  "scope": [
+    "Existing 15-second cumulative source-level monotonic timer, including evidence persistence",
+    "Actual source-level evidence-writer 2MiB quota across worker calls; use only witnessed omitted bytes",
+    "Preserved D-02 canonical v1.0.0 / 41 status-pair vocabulary / fixed commands and privileges"
+  ],
+  "guardrails": [
+    "Never infer SOURCE deadline from a child timeout alone",
+    "Never infer an omitted byte solely from a byte-count equal to the ceiling",
+    "Any quota-truncated writer call must stop subsequent mounts",
+    "Do not pretend a smaller run-wide quota is the SRC-15 source quota",
+    "No false simultaneous clock/bytes witness without independent contemporaneous facts",
+    "Fail closed on missing/contradictory writer or source timing facts"
+  ],
+  "cases": [
+    {
+      "id": "S15-37-01",
+      "given": "At least 10 eligible same-run SRC14 mounts; nine successful 0.5s child calls with 1.2s evidence persistence each; next source call attempts after >15 seconds",
+      "expect": "Exactly nine calls; source:time threshold=15 seconds, monotonic observed >=15; no per-call transport deadline; receipt v0.6, one canonical D-02 CaptureLimit"
+    },
+    {
+      "id": "S15-37-02",
+      "given": "One valid worker call ends before 15s, even if caller has no more candidates",
+      "expect": "Legacy v0.4; neither fabricated source timer nor omitted bytes"
+    },
+    {
+      "id": "S15-37-03",
+      "given": "One worker times out at its actual 2s ceiling before cumulative 15s",
+      "expect": "Only call-specific transport deadline; no distinct source-time witness"
+    },
+    {
+      "id": "S15-37-04",
+      "given": "Three distinct same-run mounts, first two each yield 1MiB and third produces nonempty bytes beyond source 2MiB evidence writer quota",
+      "expect": "Writer source 2MiB/observed 2MiB/positive known omitted bytes and sealed partial third call; no fourth invocation; private v0.6 and one D-02 limit"
+    },
+    {
+      "id": "S15-37-05",
+      "given": "Exactly two 1MiB captures, no third mount and no omitted bytes",
+      "expect": "No source quota assertion; legacy v0.4"
+    },
+    {
+      "id": "S15-37-06",
+      "given": "Run-wide byte meter limit below source quota, first SRC15 writer truncation",
+      "expect": "Do not relabel run quota as source quota, preserve partial original; canonical refuses unsupported proof"
+    },
+    {
+      "id": "S15-37-07",
+      "given": "Invented source time: threshold 14/16, observed <15, wrong source scope, timed_out false",
+      "expect": "Private receipt validation refuses each invalid witness"
+    },
+    {
+      "id": "S15-37-08",
+      "given": "Invented source writer: threshold !=2MiB, observed !=2MiB, zero or absent omitted extent, wrong scope",
+      "expect": "Private receipt validation refuses each invalid witness"
+    },
+    {
+      "id": "S15-37-09",
+      "given": "Source clock and writer quotas may overlap around a last call",
+      "expect": "No double-counting, preserve only independently witnessed limits; contradictory evidence remains nonpromotable"
+    }
+  ],
+  "provenance": {
+    "prior_checkpoint": "verification/g5_04/rp02_increment34_36_recovery_checkpoint_20261114.json",
+    "first_test_path": "tests/test_g5_cp03_rp02_src15_aggregate_37.py",
+    "approval": "Private receipt v0.6 Owner Choice A; no gate acceptance"
+  }
+}
