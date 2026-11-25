@@ -1,0 +1,17 @@
+{
+  "increment": 71,
+  "scope": "RP-08 C2 FFmpeg DVD video transcode",
+  "branch": "g5/rp08-c2-transcode-71",
+  "draft_pr": 97,
+  "parent_draft_pr": 96,
+  "parent_commit": "5af4b7e0bd8992d30ce2ed20ae2fa23f611591b5",
+  "implementation_commit": "dc1ed332ee382b612296c964fdb4dec07d48aa0f",
+  "implementation_ci": {"push": 45616680962, "pull_request": 45616731962, "conclusion": "success"},
+  "documentation_ci": "Verify the published documentation commit separately",
+  "local": {"targeted_pass": 3, "targeted_skip": 1, "unified_pass": 21, "unified_fail": 0, "unified_skip": 0},
+  "synthetic_ci": "Generated MPEG-2 fixture encoded with libx264 and libx265, including actual deinterlacing path",
+  "hardware": "VA-API and physical DVD content not measured",
+  "requirements": ["LBT-FR-018", "LBT-FR-019", "LBT-FR-062", "LBT-NFR-019", "LBT-NFR-021", "LBT-NFR-045", "LBT-NFR-059"],
+  "formal_cp02": {"executed": 0, "accepted": 0, "total": 39},
+  "next": "RP-08 C3 Jellyfin FFmpeg matrix, concurrent measurements and Direct Play evidence"
+}
