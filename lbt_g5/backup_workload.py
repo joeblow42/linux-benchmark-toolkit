@@ -1,15 +1,16 @@
 """Generated-content copy and rsync benchmarks for an explicit local destination."""
 from dataclasses import dataclass
 import json
+import os
 from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
 
 from .core_workloads import IOPressureGuard, MIB, local_filesystem
 from .workload_process import ProcessLimit, capture, tool_path
-from .workload_runtime import Context, Mode, Resources, Unavailable, Workload
+from .workload_runtime import Cancelled, Context, Mode, Resources, Unavailable, Unsafe, Workload
 
-CASES = ("backup-large", "backup-small", "backup-rsync")
+CASES = ("backup-large", "backup-small", "backup-rsync", "backup-concurrent")
 
 
 @dataclass(frozen=True)
@@ -35,7 +36,8 @@ def run_backup(context, config, case):
     rsync = tool_path("rsync") if case == "backup-rsync" else ""
     guard = IOPressureGuard(context.check_stop)
     guarded = Context(context.scratch, guard.poll, context.inventory, context.evidence)
-    if destination.stat().st_mode & 0o022:
+    metadata = destination.stat()
+    if metadata.st_uid != os.geteuid() or metadata.st_mode & 0o022:
         raise Unavailable("BACKUP_DESTINATION_WRITABLE_BY_OTHERS")
     outcome = None
     try:
@@ -44,7 +46,15 @@ def run_backup(context, config, case):
                        case, str(context.scratch.resolve()), target, str(config.large_mib),
                        str(config.small_files), str(config.reserve_bytes), rsync)
             response = capture(guarded, command, seconds=300, output_bytes=64 * 1024)
-            outcome = json.loads(response.stdout)
+            outcome = (json.loads(response.stdout) if response.returncode == 0
+                       else {"error": "BACKUP_WORKER_FAILED", "exit_code": response.returncode})
+            guard.poll(force=True)
+    except (Cancelled, KeyboardInterrupt):
+        outcome = {"error": "BACKUP_INTERRUPTED"}
+        raise
+    except Unsafe as error:
+        outcome = {"error": str(error)}
+        raise
     except ProcessLimit as error:
         outcome = {"error": str(error)}
     except OSError as error:
@@ -60,7 +70,6 @@ def run_backup(context, config, case):
         raise Unavailable(outcome["unavailable"])
     if "error" in outcome or not outcome["integrity"]["verified"]:
         raise RuntimeError("backup transfer or integrity check failed")
-    guard.poll(force=True)
     return {**outcome, "destination_filesystem": filesystem, "peak_io_pressure_percent": guard.peak}
 
 

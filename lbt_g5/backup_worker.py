@@ -1,4 +1,5 @@
 """Run bounded copies in fresh scratch directories supplied by the backup workload."""
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
 import os
@@ -29,7 +30,14 @@ def make_file(path, size, *, replace=False):
             size -= count
 
 
-def transfer(source, target, names, rsync):
+def copy(source, target, name):
+    with (source / name).open("rb") as incoming, (target / name).open("xb") as outgoing:
+        shutil.copyfileobj(incoming, outgoing, length=MIB)
+        outgoing.flush()
+        os.fsync(outgoing.fileno())
+
+
+def transfer(source, target, names, rsync, *, concurrent=False):
     started = time.monotonic()
     if rsync:
         # Whole-file mode makes changed-file bytes meaningful for local rsync.
@@ -41,14 +49,18 @@ def transfer(source, target, names, rsync):
         if result.returncode or changed != len(names):
             return {"error": "RSYNC_TRANSFER_FAILED", "rsync_exit_code": result.returncode,
                     "changed_files": changed}
+    elif concurrent:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            for _ in pool.map(lambda name: copy(source, target, name), names):
+                pass
     else:
         for name in names:
-            with (source / name).open("rb") as incoming, (target / name).open("xb") as outgoing:
-                shutil.copyfileobj(incoming, outgoing, length=MIB)
+            copy(source, target, name)
     byte_count = 0
     for name in names:
         with (target / name).open("rb") as stream:
-            os.fsync(stream.fileno())
+            if rsync:
+                os.fsync(stream.fileno())
             byte_count += os.fstat(stream.fileno()).st_size
     elapsed = time.monotonic() - started
     return {"bytes": byte_count, "files": len(names), "seconds": elapsed,
@@ -78,7 +90,10 @@ def verify(source, target, names):
 
 
 def run(case, source, target, large_mib, small_files, reserve, rsync):
-    sizes = [large_mib * MIB] if case == "backup-large" else [SMALL_BYTES] * small_files
+    if case in ("backup-large", "backup-concurrent"):
+        sizes = [large_mib * MIB] * (2 if case == "backup-concurrent" else 1)
+    else:
+        sizes = [SMALL_BYTES] * small_files
     source_free, source_block = available(source)
     target_free, target_block = available(target)
     source_bytes = footprint(sizes, source_block)
@@ -92,11 +107,16 @@ def run(case, source, target, large_mib, small_files, reserve, rsync):
     names = [f"test-{i:05d}.bin" for i in range(len(sizes))]
     for name, size in zip(names, sizes):
         make_file(source / name, size)
-    initial = transfer(source, target, names, rsync)
+    initial = transfer(source, target, names, rsync, concurrent=case == "backup-concurrent")
     if "error" in initial:
         return initial
     outcome = {"initial": initial, "integrity": verify(source, target, names),
                "destination_free_bytes_before": target_free, "capacity_reserve_bytes": reserve}
+    if case == "backup-large":
+        rate = initial["mib_per_second"]
+        outcome["sequential_rate_band"] = "GOOD" if rate >= 80 else "MARGINAL" if rate >= 30 else "POOR"
+    if case == "backup-concurrent":
+        outcome["concurrent_streams"] = 2
     if rsync and outcome["integrity"]["verified"]:
         changed = names[:max(1, len(names) // 10)]
         for name in changed:

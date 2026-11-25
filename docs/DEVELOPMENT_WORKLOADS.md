@@ -28,3 +28,33 @@ Use `--jellyfin-fixture jf-01=FILE --mode interactive --select jf-01` for the 10
 Select `jf-direct-play` with an owned fixture and a `--direct-play-profile` JSON file. The profile contains `container`, `video_codecs`, `audio_codecs`, and `subtitle_codecs`. The codec fields are lists. For MP4, use the FFmpeg demuxer label `mov`. Optional fields are `streams`, `storage_bits_per_second`, and `network_bits_per_second`. Supply separately measured rates to assess aggregate delivery. The result reports codec compatibility and throughput evidence independently.
 
 Select `jf-session-evidence` with an operator-exported Jellyfin session JSON object and, for a transcode, the corresponding `--jellyfin-transcode-log`. This imports a real session's local evidence under the operator's control. The import does not initiate a server or client session.
+
+## Generated backup and data movement (RP-09)
+
+Use interactive mode with an explicit selection and an existing local destination
+owned by the current user and protected against writes by other accounts. The
+output root remains the private destination for the report and temporary source
+fixtures. For example:
+
+```bash
+python3 -m lbt_g5.workload_cli --mode interactive --output-root "$RESULTS" \
+    --select backup-large --backup-destination "$TARGET"
+```
+
+- `backup-large` copies one generated file and reports sequential throughput and
+  its baseline rate band (Good at 80 MiB/s or above, Marginal at 30 to below 80
+  MiB/s, Poor below 30 MiB/s).
+- `backup-small` reports files per second and elapsed time for generated 4 KiB files.
+- `backup-rsync` requires rsync and measures an initial copy and an incremental
+  transfer after replacing a subset of the generated files.
+- `backup-concurrent` reports the aggregate throughput of two simultaneous
+  generated-file copies. `group:backup` explicitly selects all four cases.
+
+The default fixture sizes are 64 MiB per large file and 2,048 small files.
+`--backup-large-mib` and `--backup-small-files` adjust these independently.
+The disk reserve applies to both paths. The benchmark uses private temporary
+directories and reports SHA-256 verification separately from transfer speed.
+Timings include flushing destination file data. Cache and shared-device effects
+can influence the results. The worker has a five-minute deadline and uses the
+ordinary host I/O pressure guard. Physical USB behavior and SMB peer behavior
+require an appropriate host and destination.
