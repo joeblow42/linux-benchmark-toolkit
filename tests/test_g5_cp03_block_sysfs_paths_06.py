@@ -69,7 +69,7 @@ class BlockSysfsOracles(unittest.TestCase):
         self.assertEqual(ROOTS["SRC-12"], ROOT.rstrip("/"))
         self.assertEqual(ATTRS["SRC-12"], ATTRIBUTES)
         self.assertTrue(parser_available("SRC-12"))
-        self.assertFalse(parser_available("SRC-17"))
+        self.assertTrue(parser_available("SRC-13"))  # CP03-17 O1 verified stdout
 
     def test_geometry_readonly_and_original_evidence_are_attributed(self):
         paths = (
@@ -82,7 +82,7 @@ class BlockSysfsOracles(unittest.TestCase):
         data = (b"1953525168\n", b"0\n", b"512\n", b"4096\n", b" Demo Disk \n")
         with self.recorded(data, paths) as (directory, engine, artifacts):
             manifest = build_canonical(directory, engine)
-            self.assertEqual(manifest["observation_count"], 10)
+            self.assertEqual(manifest["counts"]["observations"], 10)
             self.assertEqual(validate_canonical(directory), manifest)
             records = json.loads((directory / "private/system.json").read_text())
             typed = [x for x in records["observations"] if x["transformation_ids"]]
@@ -195,7 +195,7 @@ class BlockSysfsOracles(unittest.TestCase):
             directory, engine, artifacts
         ):
             manifest = build_canonical(directory, engine)
-            self.assertEqual(manifest["observation_count"], 1)
+            self.assertEqual(manifest["counts"]["observations"], 1)
             statuses = json.loads((directory / "private/status_records.json").read_text())
             self.assertEqual(statuses["status_records"][0]["reason_code"], "PARSE_FAILED")
             self.assertEqual(validate_canonical(directory), manifest)
