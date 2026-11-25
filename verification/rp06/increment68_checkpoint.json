@@ -1,0 +1,16 @@
+{
+  "increment": 68,
+  "scope": "RP-07 B2 short CPU, memory and storage workloads",
+  "branch": "g5/rp07-b2-core-68",
+  "draft_pr": 94,
+  "parent_draft_pr": 93,
+  "parent_commit": "d34729770f3484208cd4ae2f43126fb5719b2d19",
+  "implementation_commit": "6863768bd0af99571d3c7d5117eced94566a6d27",
+  "implementation_ci": {"push": 45613865930, "pull_request": 45613896092, "conclusion": "success"},
+  "documentation_ci": "Verify the published documentation commit separately",
+  "local": {"targeted_pass": 4, "unified_pass": 21, "unified_fail": 0, "unified_skip": 0},
+  "host_smoke": {"cpu": "COMPLETE", "memory": "COMPLETE", "storage": "UNAVAILABLE: PREEXISTING_IO_PRESSURE"},
+  "requirements": ["LBT-FR-033", "LBT-FR-034", "LBT-FR-035", "LBT-FR-039", "LBT-FR-040", "LBT-FR-041", "LBT-FR-042", "LBT-FR-043", "LBT-FR-044", "LBT-FR-045", "LBT-NFR-010", "LBT-NFR-011", "LBT-NFR-013", "LBT-NFR-014"],
+  "formal_cp02": {"executed": 0, "accepted": 0, "total": 39},
+  "next": "RP-07 B3 sustained bounded workloads with thermal monitoring"
+}

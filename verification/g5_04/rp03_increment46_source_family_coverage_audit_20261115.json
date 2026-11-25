@@ -1,0 +1,271 @@
+{
+  "record_type": "LBT_G5_04_RP03_2_INCREMENT46_SOURCE_FAMILY_COVERAGE_AUDIT",
+  "date": "2026-11-15",
+  "candidate_only": true,
+  "authority": "Frozen owner-approved CP-01 D-02 §6 ledger verification/g5_04/rp03_cp01_d02_approved_contract_43.json; canonical 1.0.0; status 1.0/41; Requirements Rev 1.6",
+  "parent_checkpoint": "b9187732b414c6cfcbec77e07fa677cabe758685",
+  "implementation_verified_head": "b515e66585c4bb1b8a1e5b75ec53afc78f6da20a",
+  "verified_exact_head_runs": {
+    "pr": 43751900734,
+    "push": 43751895329,
+    "conclusions": [
+      "success",
+      "success"
+    ]
+  },
+  "source_registry": {
+    "path": "lbt_g5/catalog.py",
+    "registered_count": 28,
+    "authorization_class_counts": {
+      "D0": 19,
+      "D1": 6,
+      "O1": 3
+    },
+    "sources": [
+      {
+        "source_id": "SRC-01",
+        "collector_id": "COL-OS",
+        "authorization_class": "D0",
+        "operation_id": "LOCAL_API"
+      },
+      {
+        "source_id": "SRC-02",
+        "collector_id": "COL-OS",
+        "authorization_class": "D0",
+        "operation_id": "OS_RELEASE"
+      },
+      {
+        "source_id": "SRC-03",
+        "collector_id": "COL-OS",
+        "authorization_class": "D0",
+        "operation_id": "EFI_PRESENCE"
+      },
+      {
+        "source_id": "SRC-04",
+        "collector_id": "COL-OS",
+        "authorization_class": "D0",
+        "operation_id": "DMI_PUBLIC"
+      },
+      {
+        "source_id": "SRC-05",
+        "collector_id": "COL-CPU",
+        "authorization_class": "D1",
+        "operation_id": "LSCPU"
+      },
+      {
+        "source_id": "SRC-06",
+        "collector_id": "COL-CPU",
+        "authorization_class": "D0",
+        "operation_id": "CPUINFO"
+      },
+      {
+        "source_id": "SRC-07",
+        "collector_id": "COL-CPU",
+        "authorization_class": "D0",
+        "operation_id": "CPU_SYSFS"
+      },
+      {
+        "source_id": "SRC-08",
+        "collector_id": "COL-MEM",
+        "authorization_class": "D0",
+        "operation_id": "MEMINFO"
+      },
+      {
+        "source_id": "SRC-09",
+        "collector_id": "COL-MEM",
+        "authorization_class": "D0",
+        "operation_id": "SWAPS"
+      },
+      {
+        "source_id": "SRC-10",
+        "collector_id": "COL-MEM",
+        "authorization_class": "D0",
+        "operation_id": "MEM_PRESSURE"
+      },
+      {
+        "source_id": "SRC-11",
+        "collector_id": "COL-BLOCK",
+        "authorization_class": "D1",
+        "operation_id": "LSBLK"
+      },
+      {
+        "source_id": "SRC-12",
+        "collector_id": "COL-BLOCK",
+        "authorization_class": "D0",
+        "operation_id": "BLOCK_SYSFS"
+      },
+      {
+        "source_id": "SRC-13",
+        "collector_id": "COL-BLOCK",
+        "authorization_class": "O1",
+        "operation_id": "DEVICE_HEALTH"
+      },
+      {
+        "source_id": "SRC-14",
+        "collector_id": "COL-FS",
+        "authorization_class": "D0",
+        "operation_id": "MOUNTINFO"
+      },
+      {
+        "source_id": "SRC-15",
+        "collector_id": "COL-FS",
+        "authorization_class": "D1",
+        "operation_id": "FS_STAT"
+      },
+      {
+        "source_id": "SRC-16",
+        "collector_id": "COL-OPTICAL",
+        "authorization_class": "D0",
+        "operation_id": "CDROM_INFO"
+      },
+      {
+        "source_id": "SRC-17",
+        "collector_id": "COL-OPTICAL",
+        "authorization_class": "D0",
+        "operation_id": "OPTICAL_SYSFS"
+      },
+      {
+        "source_id": "SRC-18",
+        "collector_id": "COL-OPTICAL",
+        "authorization_class": "O1",
+        "operation_id": "OPTICAL_MEDIA"
+      },
+      {
+        "source_id": "SRC-19",
+        "collector_id": "COL-GPU",
+        "authorization_class": "D0",
+        "operation_id": "DRM_PCI_SYSFS"
+      },
+      {
+        "source_id": "SRC-20",
+        "collector_id": "COL-GPU",
+        "authorization_class": "D1",
+        "operation_id": "LSPCI"
+      },
+      {
+        "source_id": "SRC-21",
+        "collector_id": "COL-VAAPI",
+        "authorization_class": "O1",
+        "operation_id": "VAINFO"
+      },
+      {
+        "source_id": "SRC-22",
+        "collector_id": "COL-NET",
+        "authorization_class": "D0",
+        "operation_id": "NET_SYSFS"
+      },
+      {
+        "source_id": "SRC-23",
+        "collector_id": "COL-NET",
+        "authorization_class": "D1",
+        "operation_id": "IP_LOCAL"
+      },
+      {
+        "source_id": "SRC-24",
+        "collector_id": "COL-THERM",
+        "authorization_class": "D0",
+        "operation_id": "THERM_SYSFS"
+      },
+      {
+        "source_id": "SRC-25",
+        "collector_id": "COL-THERM",
+        "authorization_class": "D0",
+        "operation_id": "HWMON_SYSFS"
+      },
+      {
+        "source_id": "SRC-26",
+        "collector_id": "COL-POWER",
+        "authorization_class": "D0",
+        "operation_id": "POWER_SYSFS"
+      },
+      {
+        "source_id": "SRC-27",
+        "collector_id": "COL-TOOLS",
+        "authorization_class": "D0",
+        "operation_id": "TOOL_RESOLVER"
+      },
+      {
+        "source_id": "SRC-28",
+        "collector_id": "COL-SOFTCODEC",
+        "authorization_class": "D1",
+        "operation_id": "OFFLINE_METADATA"
+      }
+    ]
+  },
+  "parser_inventory": {
+    "path": "lbt_g5/normalization.py",
+    "parser_ids": [
+      "SRC-28",
+      "SRC-23",
+      "SRC-21",
+      "SRC-20",
+      "SRC-18",
+      "SRC-15",
+      "SRC-14",
+      "SRC-13",
+      "SRC-11",
+      "SRC-05",
+      "SRC-26",
+      "SRC-25",
+      "SRC-24",
+      "SRC-22",
+      "SRC-19",
+      "SRC-17",
+      "SRC-12",
+      "SRC-07",
+      "SRC-04",
+      "SRC-01",
+      "SRC-02",
+      "SRC-03",
+      "SRC-06",
+      "SRC-16",
+      "SRC-27",
+      "SRC-08",
+      "SRC-09",
+      "SRC-10"
+    ],
+    "registry_parity": true,
+    "source_first_case": "test_46_07",
+    "important_distinction": "Parser registration is not independent proof of each semantic value or sealed contributor."
+  },
+  "independently_demonstrated_increment46": [
+    "Sealed SRC-14 mountinfo establishes local mount selection while sealed SRC-15 FS_STAT worker stdout contributes typed statvfs data.",
+    "The two actual sealed originals and their distinct source attempts are cited in each SRC-15 semantic observation; acquisition status remains tied only to the primary SRC-15 attempt.",
+    "One SRC-15 source attempt may contain multiple sealed worker artifacts, each with separate evidence ID and mount label; sibling original substitution rejected.",
+    "Read-only validation reparses sealed SRC-14 mountinfo and SRC-15 stdout and rejects rehashed normalized_value changes.",
+    "Read-only validation reconstructs and checks every raw observed_value against original sealed UTF-8 or lossless byte-reference fallback.",
+    "Same-bytes, different source-attempt evidence IDs do not collapse into one identity."
+  ],
+  "source_first_expected_red": {
+    "head": "ec25de8a56f8daacfb847b82ab23e79f9c18167d",
+    "push_run": 43751645202,
+    "failing_cases": [
+      "46_01",
+      "46_02",
+      "46_04",
+      "46_05"
+    ],
+    "controls_passing": [
+      "46_03",
+      "46_06"
+    ]
+  },
+  "immutable_source_and_policy_boundaries": [
+    "source argv",
+    "authorization/consent",
+    "privileged helper",
+    "approved acquisition ceilings",
+    "original sealed evidence",
+    "canonical schema 1.0.0",
+    "status 1.0/41",
+    "RP-02 receipt v0.6",
+    "no merge"
+  ],
+  "remaining_not_proved": [
+    "Read-only independent semantic byte-to-typed-value reparse and per-original attribution for the other 27 registered source families remains RP-03.2 work.",
+    "General multi-source dependencies other than actual SRC-14/SRC-15 are not inferred from source-family adjacency.",
+    "Cross-artifact limit attribution remains empty unless individually witnessed; RP-03.3 lifecycle/completeness remains open.",
+    "Original 39 CP-02 acceptance cases remain 0 formally accepted; no real Bodhi 7 AMD64 FAT, CP-07 review or release."
+  ],
+  "next_increment": "RP-03.2 Increment47 source-first typed-value and lossless consistency for remaining registered families in bounded source-class groups; never promote unreviewed oracles."
+}

@@ -52,7 +52,7 @@ class SRC28SourceFirstOperationalReceiptTests(unittest.TestCase):
         folder,run,rec,receipt,resolves,executes,calls=self.source(stderr=b"warning\n")
         self.assertEqual((resolves,executes),(1,1))
         self.assertEqual(calls[0][0],ARGV)
-        self.assertEqual(receipt["schema_version"],"g5-02-attempt-0.3")
+        self.assertEqual(receipt["schema_version"],"g5-02-attempt-0.4")
         self.assertEqual(receipt["invocation"],"OFFLINE_METADATA")
         self.assertEqual(receipt["exit_code"],0)
         p=receipt["execution_provenance"]
