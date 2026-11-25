@@ -99,8 +99,8 @@ class G504CP03PureParserTests(unittest.TestCase):
                 normalize_sealed_source(source, raw)
 
     def test_unknown_source_fails_closed_and_never_fakes_parser_failure(self):
-        self.assertFalse(parser_available("SRC-14"))
-        self.assertIsNone(normalize_sealed_source("SRC-14", b"arbitrary host bytes"))
+        self.assertFalse(parser_available("SRC-29"))
+        self.assertIsNone(normalize_sealed_source("SRC-29", b"arbitrary host bytes"))
         with self.assertRaises(CanonicalContractError):
             _status_for({"outcome": "CAPTURED", "reason": "BYTES_PRESERVED"},
                         [object()])
@@ -158,7 +158,7 @@ class G504CP03CanonicalIntegrationTests(unittest.TestCase):
         saved, original = self.saved("SRC-02", raw)
         engine_run = EngineRun(RUN, (CollectorRun("COL-OS", (saved,)),))
         manifest = build_canonical(self.run, engine_run)
-        self.assertEqual(manifest["observation_count"], 1)
+        self.assertEqual(manifest["counts"]["observations"], 1)
         self.assertEqual(validate_canonical(self.run), manifest)
         system = json.loads((self.run / "private/system.json").read_text())
         obs = system["observations"][0]
@@ -173,9 +173,9 @@ class G504CP03CanonicalIntegrationTests(unittest.TestCase):
         preserved = self.run / original.private_relative_path
         self.assertEqual(hashlib.sha256(preserved.read_bytes()).hexdigest(), original.sha256)
 
-    def test_unsupported_captured_source_does_not_commit_final_manifest(self):
-        saved, original = self.saved("SRC-14", b"unrecognized semantic source")
-        run = EngineRun(RUN, (CollectorRun("COL-FS", (saved,)),))
+    def test_unattributed_offline_metadata_does_not_commit_final_manifest(self):
+        saved, original = self.saved("SRC-28", b"unrecognized semantic source")
+        run = EngineRun(RUN, (CollectorRun("COL-SOFTCODEC", (saved,)),))
         with self.assertRaises(CanonicalContractError):
             build_canonical(self.run, run)
         self.assertFalse((self.run / "private/session_manifest.json").exists())
@@ -186,7 +186,7 @@ class G504CP03CanonicalIntegrationTests(unittest.TestCase):
         saved, original = self.saved("SRC-08", b"MemTotal: 1024 kB\nMemFree: 128 kB\n")
         engine_run = EngineRun(RUN, (CollectorRun("COL-MEM", (saved,)),))
         manifest = build_canonical(self.run, engine_run)
-        self.assertEqual(manifest["observation_count"], 3)
+        self.assertEqual(manifest["counts"]["observations"], 3)
         sys = json.loads((self.run / "private/system.json").read_text())
         for obs in sys["observations"]:
             self.assertEqual(obs["evidence_refs"], [original.evidence_id])
