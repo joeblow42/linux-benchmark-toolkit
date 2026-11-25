@@ -1,0 +1,32 @@
+{
+  "oracle_id": "CP03-F04-D0-TIMEOUT-29",
+  "authority": [
+    "Approved CP-01 D-04 actual effective bounds",
+    "Approved CP-01 D-02 CaptureLimit fields",
+    "G4-07 bounded D0 acquisition"
+  ],
+  "scope": "Synthetic mock-only D0 worker timeout, no live host read",
+  "cases": [
+    {
+      "id": "D0-T01",
+      "given": "Approved D0 subprocess has some sealed original bytes, returns timed_out true and exceeded_limit false, without any independently flagged byte, writer, per-file, or entry bound.",
+      "expect": "Private v0.5 limit_witness unit seconds, threshold exactly the cap passed to _capture_child, observed_extent exact returned elapsed_seconds, missing_extent null, affected_scope source:call0001:transport; same-run canonical CaptureLimit has identical dimensions."
+    },
+    {
+      "id": "D0-T02",
+      "given": "D0 subprocess returns both timed_out and exceeded_limit.",
+      "expect": "Do not invent a dominant threshold: preserve bytes and return no single-dimension limit_witness; canonical must refuse conversion until simultaneous-limit contract is implemented."
+    },
+    {
+      "id": "D0-T03",
+      "given": "D0 subprocess returns timed_out true and worker record limited true.",
+      "expect": "Do not claim the sole observed event was a timeout; no single limit_witness is emitted, canonical refuses promotion."
+    },
+    {
+      "id": "D0-T04",
+      "given": "D0 worker succeeds with end record and no limit flags.",
+      "expect": "No limit_witness and no canonical CaptureLimit."
+    }
+  ],
+  "independent_acceptance": "OPEN: fixtures and expected assertions AI-authored; requires independent review and CP-02 execution"
+}

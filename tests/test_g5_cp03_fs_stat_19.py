@@ -94,7 +94,15 @@ class FSStatSourceOracles(unittest.TestCase):
             rows = json.loads((folder / "private/system.json").read_text())["observations"]
             derived = [x for x in rows if x["transformation_ids"] and x["datum_path"] == "storage.fs_stat.snapshot"]
             self.assertEqual(len(derived), 1)
-            self.assertEqual(derived[0]["evidence_refs"], [artifacts[0].evidence_id])
+            # RP-03.2: the original statvfs fields depend on both the
+            # sealed worker result and the sealed mountinfo selection.
+            mountinfo_id = next(
+                eid for eid, record in manifest["evidence"].items()
+                if record["source_attempt_id"] == "SRC-14-01")
+            self.assertEqual(derived[0]["evidence_refs"],
+                             [artifacts[0].evidence_id, mountinfo_id])
+            self.assertEqual(derived[0]["source_attempt_ids"],
+                             ["SRC-15-01", "SRC-14-01"])
             self.assertEqual(derived[0]["normalized_value"], FIELDS)
             self.assertEqual(derived[0]["value_type"], "OBJECT")
             self.assertEqual(artifacts[0].sha256, hashlib.sha256(encoded()).hexdigest())
@@ -110,7 +118,7 @@ class FSStatSourceOracles(unittest.TestCase):
         self.assertEqual(parsed.values[0].normalized_value["mount"], path)
         with self.session(stdout_mount=path) as (folder, run, artifacts):
             build_canonical(folder, run)
-            self.assertEqual(validate_canonical(folder)["source_count"], 2)
+            self.assertEqual(validate_canonical(folder)["counts"]["sources"], 2)
 
     def test_diagnostic_stderr_retained_but_not_semantically_parsed(self):
         with self.session(names=("call0001-stdout", "call0001-stderr"),
@@ -214,14 +222,14 @@ class FSStatSourceOracles(unittest.TestCase):
             with self.assertRaises(CanonicalContractError):
                 build_canonical(folder,run)
 
-    def test_partial_capture_precedence(self):
+    def test_legacy_partial_unknown_actual_bound_fails_closed(self):
+        # F-04: a CAPTURE_LIMIT flag alone cannot prove which effective
+        # source/stream ceiling was exceeded or how much was omitted.
         with self.session(outcome="PARTIAL", reason="CAPTURE_LIMIT",
                           limited=True) as (folder,run,_):
-            build_canonical(folder,run)
-            status=json.loads((folder/"private/status_records.json").read_text())
-            src15 = next(s for s in status["status_records"] if s["subject_id"] == "SRC-15")
-            self.assertEqual((src15["status"], src15["reason_code"]),
-                             ("PARTIAL","CAPTURE_LIMIT"))
+            with self.assertRaises(CanonicalContractError):
+                build_canonical(folder,run)
+            self.assertFalse((folder/"private/session_manifest.json").exists())
 
 if __name__ == "__main__":
     unittest.main()
