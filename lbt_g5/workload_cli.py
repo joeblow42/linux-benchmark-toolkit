@@ -10,6 +10,7 @@ from .jellyfin_workloads import (
 )
 from .optical_workload import DVD, dvd_workload
 from .peer_workload import Peer, peer_workload
+from .smb_workload import smb_target, smb_workload
 from .sustained_workloads import SustainedParameters, sustained_workloads
 from .video_workload import Video, VideoCase, video_workloads
 from .workload_runtime import Mode, Resources, Runtime, Workload
@@ -22,6 +23,9 @@ def main(argv=None):
                         help="existing owner-only directory for inventory and benchmark data")
     parser.add_argument("--select", action="append", default=[],
                         help="interactive workload ID or group:NAME, repeatable")
+    parser.add_argument("--smb-target", help="override the local //host/share default")
+    parser.add_argument("--authorize-smb", action="store_true")
+    parser.add_argument("--smb-mib", type=int, default=16)
     parser.add_argument("--backup-destination", type=Path,
                         help="existing local directory for temporary generated backup copies")
     parser.add_argument("--backup-large-mib", type=int, default=64)
@@ -61,6 +65,10 @@ def main(argv=None):
     backup_selected = any(item in (*BACKUP_CASES, "group:backup") for item in args.select)
     if backup_selected != bool(args.backup_destination) or (backup_selected and args.mode != "interactive"):
         parser.error("backup requires interactive selection and --backup-destination")
+    smb_selected = "backup-smb" in args.select
+    if (smb_selected != args.authorize_smb or (smb_selected and args.mode != "interactive")
+            or (args.smb_target and not smb_selected)):
+        parser.error("SMB requires interactive selection of backup-smb and --authorize-smb")
     if "group:backup" in args.select:
         args.select = [item for item in args.select if item != "group:backup"] + list(BACKUP_CASES)
     try:
@@ -69,6 +77,8 @@ def main(argv=None):
                                         cpu_workers=min(2, args.cpu_workers),
                                         max_celsius=args.max_celsius)
         workloads = short_workloads(parameters) + sustained_workloads(sustained)
+        if smb_selected:
+            workloads += (smb_workload(smb_target(args.smb_target), args.smb_mib),)
         if backup_selected:
             workloads += backup_workloads(Backup(args.backup_destination, args.disk_reserve_mib * MIB,
                                                   args.backup_large_mib, args.backup_small_files))
