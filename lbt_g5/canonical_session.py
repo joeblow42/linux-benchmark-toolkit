@@ -649,8 +649,14 @@ def _status_for(receipt, artifacts, *, parser_state="NOT_RUN",
     if state == "CAPTURED":
         if reason != "BYTES_PRESERVED":
             raise CanonicalContractError("captured source has unapproved reason")
-        if not artifacts or parser_state == "NOT_RUN":
-            raise CanonicalContractError("captured source has no supported parser result")
+        if not artifacts:
+            raise CanonicalContractError("captured source has no original evidence")
+        if parser_state == "NOT_RUN":
+            # G5-02 receipt remains durably status_record_pending; source
+            # evidence is preserved, but no production status is emitted.
+            raise CanonicalContractError(
+                "NORMALIZATION_PENDING: captured source preserved; "
+                "parser not executed; production acquisition status withheld")
         if parser_state == "FAILED":
             return "PARTIAL", "PARSE_FAILED"
         return "COMPLETE", "OK"
