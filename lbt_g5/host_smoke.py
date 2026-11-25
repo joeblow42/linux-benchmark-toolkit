@@ -164,7 +164,7 @@ def main(argv=None):
         from .canonical_session import build_canonical
         manifest = build_canonical(folder, run)
         print("G5-04 CANONICAL INTEGRITY: PASS", flush=True)
-        print("G5-04 canonical observations:", manifest["observation_count"], flush=True)
+        print("G5-04 canonical observations:", manifest["counts"]["observations"], flush=True)
         print("G5-04 completion:", manifest["completion_state"], flush=True)
     print("INTEGRITY: PASS", flush=True)
     print("Source families:", len(sources), flush=True)

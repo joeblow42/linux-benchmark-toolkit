@@ -1,0 +1,25 @@
+{
+  "record_id": "LBT-G504-CP03-SRC15-SOURCE-FIRST-ORACLE-19",
+  "date": "2026-11-07",
+  "phase": "FROZEN_BEFORE_PARSER_EDIT",
+  "parent_pr": 42,
+  "parent_sha": "c2062df9f052894299d7d2334ce67f5e9c2c99c5",
+  "authorities": [
+    "Requirements Rev1.6, G4-07 SRC-15: COL-FS/D1/FS_STAT; local-only validated mount; current unprivileged identity; 128 mounts, max 2MiB aggregate, 2 seconds/mount, 15 seconds total",
+    "G5-03 lbt_g5/local_space.py inspect_local_mount (fixed JSON keys) and lbt_g5/additional.py acquire_additional original stdout/stderr sealed per call",
+    "G5-03 SRC-14 same-run fixed /proc/self/mountinfo original; Python os.statvfs_result definition (https://docs.python.org/3/library/os.html#os.statvfs_result)",
+    "Private canonical schema 1.0.0 and separate 14-field status schema 1.0 unchanged"
+  ],
+  "expected": {
+    "source_identity": "A nonempty SRC-15 stdout is attributable to one numbered callNNNN-stdout original, a matching metadata.source_paths slot <mount>:stdout, operation FS_STAT, D1, no target or external command. Only mounts explicitly identified in the same-run hash-verified original SRC-14 captured mountinfo and allowlisted by the existing G5-03 local filesystem types can be candidate records. No host re-read during normalization.",
+    "original": "Never parse a reconstructed JSON transport as source evidence; parse only authenticated sealed stdout bytes. Preserve stdout and stderr separately with their hashes; stderr is diagnostic-only.",
+    "fields": "Existing G5-03 worker outputs one JSON object with exactly mount, fragment_size, block_size, blocks, free_blocks, available_blocks, files, free_files; all 7 numeric fields are nonnegative JSON integers, not bool, bounded to unsigned 64-bit. The mount field exactly matches authenticated receipt mount (including spaces); no extra/missing/duplicate keys.",
+    "meaning": "A numeric counter is the reported statvfs result at capture time. Do not infer physical storage medium, device health, persistent capacity, writability, or network availability. Inodes count from files/free_files may be filesystem-specific. f_frsize and f_bsize are distinct.",
+    "shape": "One typed OBJECT observation storage.fs_stat.snapshot per stdout artifact; mount recorded within object; preserve reported integers without aggregating/restructuring originals. Its semantic observation references only that artifact's preserved original.",
+    "fail_closed": "Bad path binding, out-of-order or duplicated call slots, forged artifact stream, omitted matching SRC-14 original, unapproved mount -> no semantic parsing; invalid JSON and invalid field types/limits -> parser error with raw original retained; PARTIAL and capture-limit status precedence remains.",
+    "bounds": "Parser accepts UTF-8 bounded to <=1MiB stdout per invocation; strict no NaN, no duplicate keys, max field lengths; 128 calls max; G5-03 retains stricter aggregate budget.",
+    "verify": "Positive: root and multiple local mounts, mount path containing whitespace and escaped path in original; zero-valued counters and bfree != bavail. Negative: malformed JSON, duplicate keys, bool/float/negative/overflow counters, missing/extra keys, mount/receipt mismatch, missing/wrong SRC14 provenance, forged call labels/ordinals, stderr-only, oversized bytes, original hash tamper, partial/capture limit."
+  },
+  "independence": "Source-first expectations independently specified from controlled source contract, Python API and pinned acquisition worker before implementation edit. Authored by same AI as implementation; independent human/third-party assurance not claimed.",
+  "scope": "Candidate CP03 Increment 19 only; no new source permissions, command, schema, publication or owner gate acceptance."
+}

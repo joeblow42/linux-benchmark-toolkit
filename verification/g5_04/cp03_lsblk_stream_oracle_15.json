@@ -1,0 +1,73 @@
+{
+  "record_id": "LBT-G504-CP03-INC15-SRC11-ORACLE",
+  "date": "2026-11-04",
+  "state": "PREIMPLEMENTATION_SOURCE_CONTRACT_ORACLES",
+  "authority": {
+    "owner": "Owner approved Alternative A status mapping, CI #632 PASS; continue sequential CP-03",
+    "source": "G4-07 SRC-11 D1 COL-BLOCK, one unprivileged read-only lsblk command, <=16MiB total, original stdout/stderr",
+    "approved_command": [
+      "lsblk",
+      "--bytes",
+      "--json",
+      "--output",
+      "NAME,KNAME,TYPE,SIZE,RO,RM,MODEL,SERIAL,TRAN"
+    ],
+    "evidence_contract": "Accepted G5-03 runtime.py fixed argv and call0001-stdout/call0001-stderr evidence artifact slots, source_paths=[], receipt exit_code and original hashes",
+    "external_reference": "https://man7.org/linux/man-pages/man8/lsblk.8.html: --json with NAME emits child hierarchy, --bytes emits sizes in bytes; explicitly selected columns restrict acquisition",
+    "versions": "Approved canonical schema 1.0.0 and 14-field status 1.0, Rev1.6 requirements, AI engineering governance standard v1.0"
+  },
+  "boundaries": {
+    "only_semantic_data": "call0001-stdout; stderr always diagnostic original, never a second semantic parser",
+    "identity": "Exact source ID SRC-11/command invocation and G5-03 item order; reject all forged, duplicated, unknown subcalls, source_paths or cross-run originals",
+    "json": "Strict UTF-8 object with sole key blockdevices, array; each record object with approved keys NAME,KNAME,TYPE,SIZE,RO,RM,MODEL,SERIAL,TRAN plus optional children array; nested depth limited to 16, total nodes <=4096, strings bounded <=8192, no duplicate keys or nonfinite constants. Preserve values as reported; do not invent field presence, identity, disk model or runtime capacity",
+    "privacy": "Model and SERIAL fields remain PRIVATE canonical, are subject to publication masking, never public raw pointers",
+    "output": "One typed ARRAY datum storage.lsblk.blockdevices representing validated hierarchy and original values; no child capacity aggregation or partition-type inference"
+  },
+  "cases": [
+    {
+      "id": "S11-P01",
+      "expectation": "Fixed JSON blockdevices tree with disk and partition, both original evidence SHA and matching parent-child labels; one semantic ARRAY from stdout"
+    },
+    {
+      "id": "S11-P02",
+      "expectation": "stdout and stderr both sealed; stderr classified diagnostic-only, valid zero exit yields COMPLETE/OK for semantic stdout, no false PARSE_FAILED"
+    },
+    {
+      "id": "S11-P03",
+      "expectation": "empty blockdevices array valid; do not invent block devices"
+    },
+    {
+      "id": "S11-P04",
+      "expectation": "nonzero D1 with one stdout uses owner-approved PARTIAL/SOURCE_INCOMPLETE, actual exit code preserved; no false COMPLETE"
+    },
+    {
+      "id": "S11-N01",
+      "expectation": "wrong stdout/stderr order, forged call0002 or duplicate, bogus invocation, forged source_paths reject before manifest"
+    },
+    {
+      "id": "S11-N02",
+      "expectation": "malformed JSON, duplicate keys, arrays not objects, forbidden field names, null root, NaN, excessive depth/count/size produce actual parser failure and fallback original"
+    },
+    {
+      "id": "S11-N03",
+      "expectation": "cross-run evidence/digest mismatch and missing stdout CAPTURED are refused before manifest"
+    },
+    {
+      "id": "S11-N04",
+      "expectation": "unexpected fields (e.g. mountpoint/uuid/owner) were not selected by exact command and must not be silently published"
+    },
+    {
+      "id": "S11-B01",
+      "expectation": "serial/model are private opaque strings, null and absent fields stay distinct; no raw-source pointer in generated public output"
+    },
+    {
+      "id": "S11-B02",
+      "expectation": "the accepted decoder preserves size as reported under --bytes; no automatic reinterpretation of textual numeric values"
+    }
+  ],
+  "review": {
+    "method": "Source-first expected behavior frozen before implementing SRC-11",
+    "independence": "Same AI reviewed separate source and implementation concerns; no independent human or second reviewer",
+    "assurance": "Synthetic CI success does not close requirements-wide, CP-03, CP-04/05/06/07"
+  }
+}

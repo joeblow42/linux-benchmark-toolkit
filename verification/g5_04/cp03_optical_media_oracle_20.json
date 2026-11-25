@@ -1,0 +1,27 @@
+{
+  "record_id": "LBT-G504-CP03-SRC18-SOURCE-FIRST-ORACLE-20",
+  "date": "2026-11-08",
+  "phase": "FROZEN_BEFORE_PARSER_EDIT",
+  "parent_pr": 43,
+  "parent_sha": "521f2629e4f1d32dbcfd9197ec1bc4c71fdbdd3f",
+  "source_id": "SRC-18",
+  "collector_id": "COL-OPTICAL",
+  "authorization": "O1",
+  "operation": "OPTICAL_MEDIA",
+  "authorities": [
+    "G4-07 Rev0.1: optical GET CONFIGURATION conditional selected local drive; 4 devices, 4MiB each, 8MiB source, 8sec/device and 20sec source, one-run consent, possible spin-up; no eject/read/rip.",
+    "Pinned G5-03 o1.py and o1_execution.py: vetted sg_get_config --readonly --current /dev/srN; sealed callNNNN-stdout/stderr, actual exit, no automatic privilege.",
+    "Pinned G5-04 _verified_o1_provenance requires in-memory witness, matching sealed SRC-17 same-run D0 source, consent, fixed argv and hash.",
+    "External sg_get_config manpage https://man.archlinux.org/man/extra/sg3_utils/sg_get_config.8.en and utility's open-source decoder output https://fossies.org/dox/sg3_utils-1.49/sg__get__config_8c_source.html"
+  ],
+  "expected": {
+    "grammar": "Successful stdout contains at most one leading 'Current profile: <reported description>' line, then literal 'Features:' line and bounded following opaque feature/descriptor text; no current profile can be printed on stderr, not inferred from stdout absence. No media-presence verdict from profiles.",
+    "result": "One private OBJECT datum optical.mmc.current_configuration with reported_profile optional STRING and feature_lines array of opaque original decoded lines; retain order, no profile-to-device health/media inference.",
+    "provenance": "Only verified original callNNNN-stdout of SRC-18 with same-run authentic O1 witness, exact fixed command, selected /dev/srN target and corresponding sealed SRC-17 optical path. stderr diagnostic-only.",
+    "status": "CAPTURED can be COMPLETE only if recorded exit=0, not timed out or capture-limited, original complete, verified consent and parser success. Authentic PARTIAL/ACQUISITION_ERROR nonzero maps PARTIAL/SOURCE_INCOMPLETE per approved O1 rule.",
+    "negative": "Refuse wrong/missing target, forged command, missing/upstream inventory, bad witness, wrong original ordinal, stderr-only claimed complete, nonzero captured contradiction, malformed UTF-8, controls, oversized rows, forged profile grammar, raw tamper, extra fabricated device read.",
+    "bounds": "Input max 1MiB; max 4096 lines, max 8192 chars per line; no host/device reads by parser. All original bytes remain preserved.",
+    "limits": "Version-dependent feature decoding remains opaque; optical command may wake media when actually consented (not executed by fixtures); this is not on-target device verification."
+  },
+  "independent_assurance": "AI-authored oracles are source-first but not independent human/third-party review; owner gate acceptance not claimed."
+}

@@ -62,7 +62,7 @@ class LscpuD1SourceFirstOracles(unittest.TestCase):
     def test_approved_command_and_data_stream_only(self):
         self.assertEqual(command_plan("SRC-05").argv, ("lscpu",))
         self.assertTrue(parser_available("SRC-05"))
-        self.assertFalse(parser_available("SRC-11"))
+        self.assertTrue(parser_available("SRC-13"))  # CP03-17 O1 verified stdout
         parsed = normalize_sealed_source(
             "SRC-05", b"Architecture:   x86_64\nCPU(s): 4\n",
             source_stream="stdout")
@@ -82,7 +82,7 @@ class LscpuD1SourceFirstOracles(unittest.TestCase):
                  ("call0001-stderr", b"warning: synthetic diagnostic\n"))
         with self.sealed(items) as (folder, run, originals):
             manifest = build_canonical(folder, run)
-            self.assertEqual(manifest["observation_count"], 3)
+            self.assertEqual(manifest["counts"]["observations"], 3)
             self.assertEqual(validate_canonical(folder), manifest)
             obs = json.loads((folder/"private/system.json").read_text())["observations"]
             typed = [x for x in obs if x["transformation_ids"]]
@@ -158,19 +158,29 @@ class LscpuD1SourceFirstOracles(unittest.TestCase):
         with self.sealed((("call0001-stdout", b"not key value\n"),)
         ) as (folder, run, originals):
             manifest = build_canonical(folder, run)
-            self.assertEqual(manifest["observation_count"], 1)
+            self.assertEqual(manifest["counts"]["observations"], 1)
             states = json.loads((folder/"private/status_records.json").read_text())
             self.assertEqual(states["status_records"][0]["reason_code"], "PARSE_FAILED")
             self.assertEqual((folder/originals[0].private_relative_path).read_bytes(),
                              b"not key value\n")
             self.assertEqual(validate_canonical(folder), manifest)
 
-    def test_nonzero_command_exit_has_no_invented_status_mapping(self):
+    def test_approved_nonzero_command_exit_is_partial_and_not_complete(self):
         with self.sealed((("call0001-stdout", b"CPU(s): 1\n"),),
                          outcome="PARTIAL", reason="EXIT_NONZERO",
-                         exit_code=2) as (folder, run, _):
-            with self.assertRaises(CanonicalContractError):
-                build_canonical(folder, run)
+                         exit_code=2) as (folder, run, originals):
+            manifest = build_canonical(folder, run)
+            self.assertEqual(validate_canonical(folder), manifest)
+            status = json.loads(
+                (folder/"private/status_records.json").read_text())["status_records"][0]
+            self.assertEqual((status["status"], status["reason_code"]),
+                             ("PARTIAL", "SOURCE_INCOMPLETE"))
+            self.assertIn("transport=PARTIAL/EXIT_NONZERO", status["detail"])
+            self.assertIn("exit_code=2", status["detail"])
+            self.assertNotIn("PARSE_FAILED", status["reason_code"])
+            self.assertEqual(manifest["counts"]["observations"], 2)
+            self.assertEqual((folder / originals[0].private_relative_path).read_bytes(),
+                             b"CPU(s): 1\n")
 
     def test_wrong_run_evidence_rejected(self):
         with self.sealed((("call0001-stdout", b"CPU(s): 4\n"),),

@@ -64,14 +64,14 @@ class ThermalSourceFirstOracles(unittest.TestCase):
         self.assertEqual(ROOTS["SRC-24"], ROOT.rstrip("/"))
         self.assertEqual(ATTRS["SRC-24"], THERM_ATTRS)
         self.assertTrue(parser_available("SRC-24"))
-        self.assertFalse(parser_available("SRC-11"))
+        self.assertTrue(parser_available("SRC-13"))  # CP03-17 verified O1 stdout
 
     def test_one_thermal_zone_type_and_temperature_cite_original_bytes(self):
         paths = (ROOT + "thermal_zone0/type", ROOT + "thermal_zone0/temp")
         raw = (b"x86_pkg_temp\n", b"45000\n")
         with self.originals(raw, paths) as (folder, run, sealed):
             manifest = build_canonical(folder, run)
-            self.assertEqual(manifest["observation_count"], 4)
+            self.assertEqual(manifest["counts"]["observations"], 4)
             self.assertEqual(validate_canonical(folder), manifest)
             sys = json.loads((folder / "private/system.json").read_text())
             typed = [x for x in sys["observations"] if x["transformation_ids"]]
@@ -117,7 +117,7 @@ class ThermalSourceFirstOracles(unittest.TestCase):
         with self.originals((), (), outcome="UNAVAILABLE", reason="SOURCE_ABSENT"
         ) as (folder, run, _):
             manifest = build_canonical(folder, run)
-            self.assertEqual(manifest["observation_count"], 0)
+            self.assertEqual(manifest["counts"]["observations"], 0)
             self.assertEqual(validate_canonical(folder), manifest)
 
     def test_swapped_duplicate_missing_paths_and_item_ordinals_rejected(self):
@@ -188,7 +188,7 @@ class ThermalSourceFirstOracles(unittest.TestCase):
             (b"NaN\n",), (ROOT + "thermal_zone0/temp",)
         ) as (folder, run, artifacts):
             manifest = build_canonical(folder, run)
-            self.assertEqual(manifest["observation_count"], 1)
+            self.assertEqual(manifest["counts"]["observations"], 1)
             statuses = json.loads((folder / "private/status_records.json").read_text())
             self.assertEqual(statuses["status_records"][0]["reason_code"], "PARSE_FAILED")
             self.assertEqual((folder / artifacts[0].private_relative_path).read_bytes(),
