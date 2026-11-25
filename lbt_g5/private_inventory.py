@@ -67,6 +67,12 @@ def read_private_inventory(run_directory):
         per_source_semantics[primary] += 1
         facts.append({
             "source_id": attempt["source_id"],
+            # Preserve D-02's verified co-contributor source identities
+            # without exposing attempt/evidence IDs or restricted paths.
+            "supporting_source_ids": [
+                by_attempt[aid]["source_id"]
+                for aid in row["source_attempt_ids"][1:]
+            ],
             "datum_path": row["datum_path"],
             "ordinal": row["ordinal"],
             "observed_value": row["observed_value"],
@@ -80,12 +86,19 @@ def read_private_inventory(run_directory):
     sources = []
     for attempt in attempts:
         status = by_status[attempt["status_record_id"]]
+        # Retain factual source availability and process disposition for
+        # D1/O1 consumers. These are existing approved D-02 private fields,
+        # not new producer schema or authorization claims.
         sources.append({
             "source_id": attempt["source_id"],
+            "authorization_class": attempt["authorization_class"],
+            "authorization_decision": attempt["authorization_decision"],
             "status": status["status"],
             "reason_code": status["reason_code"],
             "semantic_fact_count": per_source_semantics[attempt["attempt_id"]],
             "capture_bytes": attempt["capture_bytes"],
+            "exit_code": attempt["exit_code"],
+            "unavailable_fields": list(attempt["unavailable_fields"]),
         })
 
     return {
