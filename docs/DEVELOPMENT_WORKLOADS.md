@@ -17,6 +17,8 @@ Select `dvd-image` with the confirmed `--dvd-device`, `--dvd-bytes`, and `--conf
 
 The separate [owned-DVD decode baseline](../verification/rp08/bc_dvd_media_baseline.md) permits authorized decryption for playback checks and a bounded private encoding fixture.
 
+The development decode check defaults to guarded 1× input pacing. Add `--native-speed` to `python3 -m scripts.rp08_dvd_decode_check` to read the selected title as fast as the optical drive can supply it. This mode reports host I/O pressure, including a notification above 50%, without the normal 75% I/O stop. Its command deadline, cancellation, and temperature guard remain active. The output report identifies the selected pace and whether pressure telemetry was available.
+
 For an owned MPEG-2 fixture, `--video-source FILE --mode interactive --select dvd-h264 --select dvd-hevc` compares software H.264 and HEVC, with deinterlacing on the HEVC scenario. Available VA-API comparisons use an explicitly supplied render device and the `dvd-h264-vaapi` or `dvd-hevc-vaapi` selections. The development defaults target 120 seconds of media for short video and 300 seconds for extended cases, subject to the actual fixture duration and wall time limits. FFmpeg and FFprobe must already be installed.
 
 ## Jellyfin scenarios

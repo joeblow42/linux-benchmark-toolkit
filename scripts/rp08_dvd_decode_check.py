@@ -4,8 +4,10 @@ import os
 from pathlib import Path
 import re
 import stat
+import sys
+import time
 
-from lbt_g5.core_workloads import IOPressureGuard, MIB, check_pressure
+from lbt_g5.core_workloads import IO_NOTIFY_PERCENT, IOPressureGuard, MIB, check_pressure, pressure
 from lbt_g5.sustained_workloads import Monitor
 from lbt_g5.video_workload import Video, _digest, _keep, _progress, probe
 from lbt_g5.workload_process import ProcessLimit, capture, tool_path
@@ -24,7 +26,37 @@ def encryption_observation(stderr):
 MAX_FIXTURE_BYTES = 256 * MIB
 
 
-def decode_dvd(context, *, device, library_dir, title, seconds, keep_fixture=False):
+class IOPressureReporter:
+    """Report host I/O pressure during native-speed DVD work without stopping it."""
+
+    def __init__(self, check_stop):
+        self.check_stop = check_stop
+        self.peak = None
+        self.last_sample = None
+        self.samples = 0
+        self.notified = False
+        self.poll()
+
+    def poll(self, *, force=False):
+        self.check_stop()
+        now = time.monotonic()
+        if self.last_sample is not None and not force and now - self.last_sample < .25:
+            return
+        self.last_sample = now
+        sample = pressure("io")
+        if sample is None:
+            return
+        self.samples += 1
+        observed = sample["avg10_percent"]
+        self.peak = observed if self.peak is None else max(self.peak, observed)
+        if observed > IO_NOTIFY_PERCENT and not self.notified:
+            print(f"Host I/O pressure is {observed:.1f}% (10-second average)",
+                  file=sys.stderr, flush=True)
+            self.notified = True
+
+
+def decode_dvd(context, *, device, library_dir, title, seconds, keep_fixture=False,
+               native_speed=False):
     if not os.access(device, os.R_OK):
         raise Unavailable("OPTICAL_DEVICE_NOT_READABLE")
     dev = os.stat(device, follow_symlinks=False)
@@ -32,19 +64,19 @@ def decode_dvd(context, *, device, library_dir, title, seconds, keep_fixture=Fal
         raise Unavailable("OPTICAL_DEVICE_TYPE_UNSUPPORTED")
     if not (library_dir / "libdvdcss.so.2").is_file():
         raise Unavailable("DVD_DECRYPTION_LIBRARY_MISSING")
-    io_guard = IOPressureGuard(context.check_stop)
-    context = Context(context.scratch, io_guard.poll, context.inventory, context.evidence)
+    io_reporter = (IOPressureReporter(context.check_stop) if native_speed
+                   else IOPressureGuard(context.check_stop))
+    context = Context(context.scratch, io_reporter.poll, context.inventory, context.evidence)
     check_pressure("cpu", 15)
     monitor = Monitor(context, 80)
     guarded = Context(context.scratch, monitor.poll, context.inventory, context.evidence)
     ffmpeg = tool_path("ffmpeg")
     partial = None
-    pace = ()
+    pace = () if native_speed else ("-readrate", "1")
     output = ("-f", "null", "-")
     if keep_fixture:
         context.evidence.mkdir(mode=0o700)
         partial = context.evidence / "dvd-encoding-fixture.partial.mkv"
-        pace = ("-readrate", "1")
         output = ("-c:v", "copy", "-fs", str(MAX_FIXTURE_BYTES), "-f", "matroska",
                   "-n", str(partial))
     command = (
@@ -96,12 +128,16 @@ def decode_dvd(context, *, device, library_dir, title, seconds, keep_fixture=Fal
                    "fixture_height": stream.get("height"), "decoded_fixture_frames": verified_frames,
                    "decoded_fixture_seconds": verified_seconds}
     monitor.poll(force=True)
-    io_guard.poll(force=True)
+    io_reporter.poll(force=True)
     return {"title_number": title, "frames": frames, "media_seconds": media_seconds,
             "elapsed_seconds": result.seconds, "realtime_factor": media_seconds / result.seconds,
             "encryption_observation": encryption_observation(result.stderr),
             "libdvdcss_diagnostic_present": b"libdvdcss" in result.stderr.lower(),
-            "peak_io_pressure_percent": io_guard.peak, **fixture, **monitor.result()}
+            "native_speed": native_speed,
+            "io_pressure_mode": "report-only" if native_speed else "guarded",
+            "io_pressure_telemetry_available": io_reporter.peak is not None,
+            "io_pressure_samples": getattr(io_reporter, "samples", None),
+            "peak_io_pressure_percent": io_reporter.peak, **fixture, **monitor.result()}
 
 
 def main(argv=None):
@@ -110,6 +146,8 @@ def main(argv=None):
     parser.add_argument("--title", type=int, default=1)
     parser.add_argument("--seconds", type=int, default=5)
     parser.add_argument("--keep-fixture", action="store_true")
+    parser.add_argument("--native-speed", action="store_true",
+                        help="read at the drive's native speed; report I/O pressure without stopping at its threshold")
     parser.add_argument("--library-dir", type=Path, required=True)
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--authorize-owned-dvd-decode", action="store_true", required=True)
@@ -125,7 +163,8 @@ def main(argv=None):
                         lambda context: decode_dvd(context, device=args.device,
                                                    library_dir=args.library_dir.resolve(),
                                                    title=args.title, seconds=args.seconds,
-                                                   keep_fixture=args.keep_fixture))
+                                                   keep_fixture=args.keep_fixture,
+                                                   native_speed=args.native_speed))
     session = Runtime((workload,), limits=workload.resources,
                       disk_reserve_bytes=1024*MIB).execute(
         args.output_root, Mode.INTERACTIVE, selections=(workload.id,), collectors=("COL-OPTICAL",))
@@ -136,6 +175,12 @@ def main(argv=None):
         print(values["frames"], "frames", values["media_seconds"], "seconds",
               values["encryption_observation"], "libdvdcss diagnostic",
               values["libdvdcss_diagnostic_present"], flush=True)
+        peak = values["peak_io_pressure_percent"]
+        sample_count = values["io_pressure_samples"]
+        print("native-speed" if values["native_speed"] else "guarded 1x",
+              "I/O pressure peak", f"{peak:.1f}%" if peak is not None else "unavailable",
+              "using", f"{sample_count} samples" if sample_count is not None
+              else "guarded sampling", flush=True)
         if args.keep_fixture:
             print(session.directory / "dvd-video-decode-evidence" / values["fixture_file"],
                   values["fixture_bytes"], "bytes", values["decoded_fixture_frames"],
