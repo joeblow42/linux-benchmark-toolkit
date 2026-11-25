@@ -1,0 +1,33 @@
+{
+  "oracle_id": "CP03-RP03-D02-STRICT-SHAPE-44",
+  "date": "2026-11-14",
+  "authority": "Owner-approved CP-01 §6 field/type/nullability freeze, byte-verified ODT sha256 6d836d28af086a0fec7df2ca0949faf9447f9cee29cfabb8751344bd5104c98b",
+  "scope": "Source-first strict schema validation helper for exact D-02 shapes and enums, no producer changes or status vocabulary changes",
+  "candidate_only": true,
+  "positive": [
+    "All four exact top-level file shapes (system, attempts, statuses, manifest) validate",
+    "All nine approved entity definitions accept typed/null fields with no omitted required names",
+    "Observation JSON payload retains arbitrary unknown acquired source objects without adding unknown schema fields",
+    "Approved 41 domain/status/reason keys preserve separate status schema v1.0"
+  ],
+  "negative": [
+    "Missing required nullable fields forbidden",
+    "Additional/unknown top-level system, manifest, attempt, evidence and observation keys forbidden",
+    "Boolean used for integer/number rejected; negative counts/extent rejected; NaN and infinity rejected",
+    "Invalid status pair, unsupported source authorization class and evidence representation rejected",
+    "Unapproved session lifecycle/completeness values and non-UTC timestamps rejected",
+    "Observation evidence/source contributor lists empty rejected",
+    "Malformed SHA256, wrong nested digest types and wrong status schema rejected"
+  ],
+  "remaining": [
+    "Not yet integrated into canonical_session build/validation",
+    "No cross-file reference and manifest hash counting in this bounded increment",
+    "No G5-04 acceptance; CP-02 39 original cases NOT_ACCEPTED; all Rev1.6 283 NOT_VERIFIED",
+    "FAT host/run not executed"
+  ],
+  "protected": [
+    "Do not alter G4-07 source ceilings, approved commands, helper, privileges, consent, original raw",
+    "Do not alter schema_version 1.0.0, status schema 1.0, 41 status/reason pairs"
+  ],
+  "next": "After test-first red CI, implement exact private shape validator. Follow with separate producer wiring/closed-world manifest and independent cross-file testing under RP-03.1/CP-04."
+}
