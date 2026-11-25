@@ -1,0 +1,28 @@
+{
+  "record_type": "RP02_F04_D0_PRIVATE_RECEIPT_CONTRACT_GAP",
+  "checkpoint_base_sha": "5bd31245fc31500cbb9abc2dcb3a65415af18582",
+  "status": "OWNER_DECISION_REQUIRED_BEFORE_RECEIPT_CHANGE",
+  "fact_sources": [
+    "lbt_g5/records.py build_attempt limit_witness validator, PR54 pinned base",
+    "lbt_g5/passive.py acquire_passive and _transport_decode, PR54 pinned base",
+    "lbt_g5/passive_worker.py collect, PR54 pinned base",
+    "lbt_g5/canonical_session.py same-run capture-limit strict validation, PR54 pinned base",
+    "CP-01 D-02 approved entity/field contract in Increment29/30 nested authority"
+  ],
+  "facts": [
+    "Private g5-02-attempt-0.5 supports one limit_witness, only seconds or bytes",
+    "Allowed scopes: :callNNNN:transport|stdout|stderr; source aggregate, per-file and entry-count events lack exact scope",
+    "Byte thresholds limited by policy.max_bytes even when private D0 encoded transport cap is higher",
+    "D0 worker generic end limited cannot disambiguate reached entry/total-byte ceiling; per-file at-limit is only possible truncation",
+    "Competing or unproven limit dimensions are intentionally nonpromotable; cannot infer single dominant limit",
+    "Private canonical verifier checks bound equals in-memory source witness and refuses unwitnessed limit"
+  ],
+  "recommended_owner_option": "A: approve new versioned private operational receipt v0.6 with one-or-more factual limit witnesses, including exact D0 source/file/entry scopes; preserve v0.1-v0.5 reading and frozen canonical schema 1.0.0",
+  "alternative": "B: retain v0.5 and hold D0/complete F-04 nonpromotable pending future authority",
+  "changes_not_authorized": [
+    "New receipt validation/shape or schema version",
+    "Any source authorization, command, privilege or safety limit change",
+    "Any production canonical schema_version 1.0.0 field change or status vocabulary change"
+  ],
+  "source_first_next_step": "Once approved, independently specify positive/negative/boundary/simultaneous event oracle, then use existing D0 worker/receipt/canonical pipeline in a new stacked draft; no merge."
+}

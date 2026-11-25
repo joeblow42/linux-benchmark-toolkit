@@ -40,6 +40,8 @@ class EvidenceFailure:
 class SealResult:
     receipt: ArtifactReceipt | None
     failure: EvidenceFailure | None
+    # Private in-memory operational facts; not part of sealed original receipt.
+    limit_events: list[dict] = field(default_factory=list)
 
 @dataclass
 class RunMeter:
@@ -119,6 +121,7 @@ class EvidenceWriter:
         written = 0
         truncated = False
         omitted_at_least = 0
+        writer_events = []
         run_fd = private_fd = evidence_fd = out_fd = None
         staging = identifier + ".partial-" + secrets.token_hex(8)
         try:
@@ -135,9 +138,16 @@ class EvidenceWriter:
                 available = max(0, limit-written)
                 with self._source_lock:
                     key = (policy.source_id,)
-                    remaining_source = max(0,policy.max_bytes-self._source_reserved.get(key,0))
+                    remaining_source = max(
+                        0,policy.max_bytes-self._source_reserved.get(key,0))
+                    # Bounded reservation is still enforced by RunMeter.
+                    # A before/after witness cannot infer a reason when another
+                    # writer raced its reservation or the timer expired.
+                    remaining_run = max(
+                        0,self.meter.max_bytes-self.meter.bytes_reserved)
                     take = self.meter.reserve(min(len(block),available,remaining_source))
                     self._source_reserved[key] = self._source_reserved.get(key,0)+take
+                    source_after=self._source_reserved[key]
                 if take:
                     # os.write may be short. Account only bytes actually persisted.
                     view = memoryview(block)[:take]
@@ -152,6 +162,31 @@ class EvidenceWriter:
                 if take < len(block):
                     truncated = True
                     omitted_at_least = len(block)-take
+                    # Record EACH actually reached quota, never infer one
+                    # dominant reason for tied source/stream/run bounds.
+                    # Reservation races or time expiry are not byte facts.
+                    expected=min(len(block),available,
+                                 remaining_source,remaining_run)
+                    if take==expected and self.meter.time_remaining()>0:
+                        if (take==available and written==limit):
+                            writer_events.append({
+                                "dimension":"writer_stream_bytes",
+                                "threshold":limit,"observed_extent":written,
+                                "omitted_at_least":omitted_at_least})
+                        if (take==remaining_source and
+                                source_after==policy.max_bytes):
+                            writer_events.append({
+                                "dimension":"writer_source_bytes",
+                                "threshold":policy.max_bytes,
+                                "observed_extent":source_after,
+                                "omitted_at_least":omitted_at_least})
+                        if (take==remaining_run and
+                                self.meter.bytes_reserved==self.meter.max_bytes):
+                            writer_events.append({
+                                "dimension":"writer_run_bytes",
+                                "threshold":self.meter.max_bytes,
+                                "observed_extent":self.meter.max_bytes,
+                                "omitted_at_least":omitted_at_least})
                     break
                 if self.meter.time_remaining() <= 0:
                     truncated = True
@@ -167,7 +202,7 @@ class EvidenceWriter:
             return SealResult(ArtifactReceipt(identifier,self.run_id,
                 policy.collector_id,policy.source_id,attempt,artifact,
                 "private/evidence/"+identifier,h.hexdigest(),written,
-                not truncated,truncated,omitted_at_least),None)
+                not truncated,truncated,omitted_at_least),None,writer_events)
         except OSError as exc:
             # Staging retains any acquired partial bytes privately; no fake
             # sealed evidence ID or digest is returned on failure.
