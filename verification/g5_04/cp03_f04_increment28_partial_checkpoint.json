@@ -1,0 +1,35 @@
+{
+  "id": "LBT-G504-CP03-F04-INC28-PARTIAL",
+  "authority": "CP-01 approved D-04; G4-07 source authorization and bounds; CP-02 CT-05",
+  "date": "2026-11-08",
+  "state": "CANDIDATE_IMPLEMENTED_SUBSET_OPEN_F04",
+  "prior": "F-02 PR #51, commit 108636333555498513b107591705bcf787672369",
+  "source_first_oracle_commit": "8681219660e5801d4f69c7b769f8d8503af513b5",
+  "source_first_fixture_commit": "4e8dcb6a2712498fb84afaaf67040ad1c36fb11b",
+  "tested_candidate": "61b330a7a9d125b79514b4fc8c8a42326a618274",
+  "ci_success_before_final_evidence": 42540719685,
+  "new_tests": {
+    "pass": 5,
+    "fail": 0
+  },
+  "unified_full": {
+    "pass": 21,
+    "fail": 0
+  },
+  "results": [
+    "D1 registered command adapter now captures actual applied seconds or byte-stream limit from bounded _capture_child",
+    "Private operational source receipt v0.5 carries limit_witness, canonical checks exact witness against in-memory adapter outcome",
+    "TIME_BUDGET_EXCEEDED no longer misrepresented as max_bytes",
+    "Historical limit-only cases without applied threshold may no longer generate canonical manifest, source originals remain sealed",
+    "Controlled tests for historical SRC-14/SRC-15 limited-case fixtures revised to require fail-closed instead of fabricated bound"
+  ],
+  "limitations": [
+    "Not a full F-04 closure: passive D0, additional D1 SRC-15/SRC-28, optional O1 still require actual applied-bound witness",
+    "Writer-only source/per-stream truncation may lack precise effective threshold and fail closed",
+    "No real source command invoked by new synthetic tests",
+    "All original CP-02 39 acceptance cases NOT_EXECUTED; independent assurance pending",
+    "F-06 exact D-02 fields not yet implemented",
+    "No production canonical/status schema change, source authorization or raw evidence mutation"
+  ],
+  "next": "New conversation: finish F-04 source families with source-first negative tests, then F-06 exact D-02 and F-07 cross-file checks in gated sequence. Stop and obtain owner approval only for new material schema/policy choice."
+}

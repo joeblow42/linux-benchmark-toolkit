@@ -1,0 +1,35 @@
+{
+  "record_id": "LBT-G504-CP03-23-SCOPED-ENGINEERING-CHECKPOINT",
+  "local_date": "2026-11-08",
+  "pr_number": 47,
+  "branch": "g5/cp03-ip-local-network-23",
+  "parent_pr": 46,
+  "parent_sha": "f82e96d7b53d639a5338ae48c5fe3192ed5a9cf0",
+  "source_first_oracle_commit": "4b66fb5bf6edfffd67335a7544bf30da41184636",
+  "source_first_test_commit": "42d400065028438bdba6dec8c76f8ba3db6b7f47",
+  "implementation_head_before_evidence": "881f33f4f570040d37b94a27653b60dc40bdbd3e",
+  "ci_run": 42517644144,
+  "ci_conclusion": "success",
+  "new_tests": {
+    "PASS": 11,
+    "FAIL": 0
+  },
+  "unified_full": {
+    "PASS": 21,
+    "FAIL": 0,
+    "SKIP": 0,
+    "BLOCKED": 0,
+    "NOT_APPLICABLE": 0
+  },
+  "source": "SRC-23",
+  "approval": "COL-NET D1 IP_LOCAL; two fixed local netlink commands `ip -j addr show` and `ip -j route show`; no active probes",
+  "lineage": "separate SRC-23-01 and SRC-23-02 source-attempts, exact respective `call0001-*` and `call0002-*` originals, sealed SHA verification, stdout semantic/stderr diagnostic; code-only fixtures",
+  "limit_summary": "strict UTF-8, bounded JSON including nested maximum, reject duplicate keys and nonfinite, per-call semantic 1MiB vs approved 8MiB transport; no reachability or network health inference",
+  "known_gaps": [
+    "Network interface/route objects are source-reported private observations and must remain privacy-controlled; no public raw source pointers.",
+    "Not checked on Bodhi Linux 7 AMD64; source-first fixtures authored by same AI as implementation; not independent assurance.",
+    "Two individual source-attempt statuses are not a system-wide network-health or complete host networking verdict."
+  ],
+  "requirements": "283 Rev1.6 unchanged; no requirement state promoted VERIFIED; CP-03 G5-04 CP-04 through CP-07 open",
+  "remaining_parsers": "SRC-28"
+}

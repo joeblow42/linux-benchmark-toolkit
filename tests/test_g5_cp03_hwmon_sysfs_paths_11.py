@@ -60,7 +60,7 @@ class HwmonOriginalPathOracles(unittest.TestCase):
     def test_source_allowlist_corresponds_to_g5_worker(self):
         self.assertEqual(ROOTS["SRC-25"], ROOT.rstrip("/"))
         self.assertTrue(parser_available("SRC-25"))
-        self.assertFalse(parser_available("SRC-13"))
+        self.assertTrue(parser_available("SRC-13"))  # CP03-17 O1 verified stdout
         for field in ("name", "temp1_input", "temp1_label", "fan1_input",
                       "in0_input", "power1_input"):
             self.assertIsNotNone(HWMON.fullmatch(field))
@@ -74,7 +74,7 @@ class HwmonOriginalPathOracles(unittest.TestCase):
                 b"-2500\n", b"Probe A\n")
         with self.sealed(raws, paths) as (folder, run, originals):
             manifest = build_canonical(folder, run)
-            self.assertEqual(manifest["observation_count"], 12)
+            self.assertEqual(manifest["counts"]["observations"], 12)
             self.assertEqual(validate_canonical(folder), manifest)
             vals = json.loads((folder / "private/system.json").read_text())
             typed = [x for x in vals["observations"] if x["transformation_ids"]]
@@ -106,8 +106,8 @@ class HwmonOriginalPathOracles(unittest.TestCase):
     def test_no_chip_does_not_fabricate_a_sensor(self):
         with self.sealed((), (), outcome="UNAVAILABLE",
                          reason="SOURCE_ABSENT") as (folder, run, _):
-            self.assertEqual(build_canonical(folder, run)["observation_count"], 0)
-            self.assertEqual(validate_canonical(folder)["observation_count"], 0)
+            self.assertEqual(build_canonical(folder, run)["counts"]["observations"], 0)
+            self.assertEqual(validate_canonical(folder)["counts"]["observations"], 0)
 
     def test_duplicate_swapped_count_and_ordinal_rejected(self):
         scenarios = (
@@ -155,7 +155,7 @@ class HwmonOriginalPathOracles(unittest.TestCase):
             folder, run, originals
         ):
             result = build_canonical(folder, run)
-            self.assertEqual(result["observation_count"], 1)
+            self.assertEqual(result["counts"]["observations"], 1)
             statuses = json.loads((folder/"private/status_records.json").read_text())
             self.assertEqual(statuses["status_records"][0]["reason_code"], "PARSE_FAILED")
             self.assertEqual((folder/originals[0].private_relative_path).read_bytes(),

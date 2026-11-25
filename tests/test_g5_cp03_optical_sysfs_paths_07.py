@@ -64,14 +64,14 @@ class OpticalSysfsOracles(unittest.TestCase):
         self.assertEqual(ROOTS["SRC-17"], ROOT.rstrip("/"))
         self.assertEqual(ATTRS["SRC-17"], OPTICAL_FIELDS)
         self.assertTrue(parser_available("SRC-17"))
-        self.assertFalse(parser_available("SRC-13"))
+        self.assertTrue(parser_available("SRC-13"))  # CP03-17 O1 verified stdout
 
     def test_optical_identity_preserves_each_sealed_original(self):
         paths = tuple(ROOT + "sr0/" + x for x in OPTICAL_FIELDS)
         originals = (b"1\n", b"5\n", b"HL-DT-ST \n", b"DVDRAM GH24 \n")
         with self.recorded(originals, paths) as (directory, engine, artifacts):
             manifest = build_canonical(directory, engine)
-            self.assertEqual(manifest["observation_count"], 8)
+            self.assertEqual(manifest["counts"]["observations"], 8)
             self.assertEqual(validate_canonical(directory), manifest)
             sys = json.loads((directory / "private/system.json").read_text())
             self.assertIn("Registered semantic parsers: ", sys["limitations"][1])
@@ -124,7 +124,7 @@ class OpticalSysfsOracles(unittest.TestCase):
         with self.recorded((), (), outcome="UNAVAILABLE", reason="SOURCE_ABSENT"
         ) as (directory, engine, _):
             manifest = build_canonical(directory, engine)
-            self.assertEqual(manifest["observation_count"], 0)
+            self.assertEqual(manifest["counts"]["observations"], 0)
             self.assertEqual(validate_canonical(directory), manifest)
             statuses = json.loads((directory / "private/status_records.json").read_text())
             self.assertEqual(statuses["status_records"][0]["reason_code"], "SOURCE_ABSENT")
@@ -185,7 +185,7 @@ class OpticalSysfsOracles(unittest.TestCase):
         with self.recorded((b"\xff\n",), (ROOT + "sr0/device/model",)
         ) as (directory, engine, artifacts):
             manifest = build_canonical(directory, engine)
-            self.assertEqual(manifest["observation_count"], 1)
+            self.assertEqual(manifest["counts"]["observations"], 1)
             status = json.loads((directory / "private/status_records.json").read_text())
             self.assertEqual(status["status_records"][0]["reason_code"], "PARSE_FAILED")
             self.assertEqual(validate_canonical(directory), manifest)
