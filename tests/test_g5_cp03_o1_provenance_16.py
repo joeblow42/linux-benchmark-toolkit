@@ -213,8 +213,8 @@ class O1ApprovedOwnerOracles(unittest.TestCase):
                 approved_argv=["nvme","smart-log","/dev/nvme0"]),
             o1_changes=dict(target="/dev/nvme0",
                             invocation="nvme smart-log /dev/nvme0"))
-        self.assertEqual(build_canonical(folder,run)["attempt_count"],2)
-        self.assertEqual(validate_canonical(folder)["attempt_count"],2)
+        self.assertEqual(build_canonical(folder,run)["counts"]["attempts"],2)
+        self.assertEqual(validate_canonical(folder)["counts"]["attempts"],2)
 
     def test_rejected_stream_ordinal_and_modified_receipt(self):
         folder,run,*_=self.canonical_fixture(original_name="call0002-stdout")

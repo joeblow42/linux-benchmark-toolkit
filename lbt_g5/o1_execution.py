@@ -100,6 +100,29 @@ def execute_optional(request,attempt,subcall,writer,slots,calls,*,privileged_ses
                     "affected_scope":request.source_id+
                         ":call%04d:transport"%(subcall+1),
                     "reason":"CAPTURE_LIMIT"},)
+            # RP-02.3 / Increment 41: only actual SRC-18 cumulative
+            # writer-source clipping, never source time/call exhaustion.
+            # Writer's source meter is not canonical proof by itself: the
+            # normalizer must independently count same-run sealed originals.
+            if (not limit_witnesses and request.source_id=="SRC-18"
+                    and not captured.timed_out and not captured.exceeded_limit
+                    and transport_missing==0
+                    and len(writer_events)==1 and len(clipped)==1
+                    and writer_events[0].get("dimension")=="writer_source_bytes"):
+                source_event=writer_events[0]
+                if (type(source_event.get("threshold")) is int
+                        and source_event["threshold"]==policy.max_bytes
+                        and source_event.get("observed_extent")==policy.max_bytes
+                        and source_event.get("omitted_at_least")
+                            ==clipped[0].omitted_at_least
+                        and clipped[0].omitted_at_least>0):
+                    limit_witnesses=({
+                        "unit":"bytes", "threshold":policy.max_bytes,
+                        "observed_extent":policy.max_bytes,
+                        "missing_extent":clipped[0].omitted_at_least,
+                        "affected_scope":request.source_id+
+                            ":call%04d:source:writer"%(subcall+1),
+                        "reason":"CAPTURE_LIMIT"},)
             limited=captured.exceeded_limit or captured.timed_out or any(
                     r.limit_applied for r in receipts)
             if limited:reason="TIME_BUDGET_EXCEEDED" if captured.timed_out else "CAPTURE_LIMIT"

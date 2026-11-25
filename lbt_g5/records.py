@@ -211,7 +211,9 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                     and type(scope) is str
                     and scope in (
                         source_id+":call%04d:run:writer"%int(attempt),
-                        source_id+":call%04d:transport"%int(attempt)))
+                        source_id+":call%04d:transport"%int(attempt),
+                        *( (source_id+":call%04d:source:writer"%int(attempt),)
+                           if source_id=="SRC-18" else () )))
             if (unit not in ("seconds","bytes","entries")
                     or type(scope) is not str
                     or not eligible_scope
@@ -249,6 +251,9 @@ def build_attempt(run_id,source_id,attempt,decision,outcome,reason,
                         applied=(policy.per_target_bytes or policy.max_bytes)
                         if th!=applied:
                             raise ValueError("unproved O1 applied transport cap")
+                    elif scope.endswith(":source:writer"):
+                        if source_id!="SRC-18" or th!=policy.max_bytes:
+                            raise ValueError("unproved O1 source-writer ceiling")
                     elif th>RUN_BYTES:
                         raise ValueError("invalid O1 writer-run original limit")
                 elif source_id=="SRC-15":
@@ -378,12 +383,14 @@ def commit_attempt(run_directory,receipt):
         raise ValueError("attempt receipt exceeds limit")
     run_fd=private_fd=attempt_fd=temp_fd=None
     staging=".staging-"+secrets.token_hex(12)
+    staging_created=False
     try:
         run_fd=os.open(run_directory,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
         private_fd=_safe_private_dir(run_fd,"private")
         attempt_fd=_safe_private_dir(private_fd,"source_attempt_records")
         temp_fd=os.open(staging,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,
                         0o600,dir_fd=attempt_fd)
+        staging_created=True
         data=memoryview(payload)
         while data:
             count=os.write(temp_fd,data)
@@ -395,8 +402,14 @@ def commit_attempt(run_directory,receipt):
                 follow_symlinks=False)
         os.fsync(attempt_fd)
         os.unlink(staging,dir_fd=attempt_fd)
+        staging_created=False
         os.fsync(attempt_fd)
         return "private/source_attempt_records/"+name
     finally:
-        for fd in (temp_fd,attempt_fd,private_fd,run_fd):
-            if fd is not None:os.close(fd)
+        try:
+            if staging_created and attempt_fd is not None:
+                try: os.unlink(staging,dir_fd=attempt_fd)
+                except FileNotFoundError: pass
+        finally:
+            for fd in (temp_fd,attempt_fd,private_fd,run_fd):
+                if fd is not None:os.close(fd)
