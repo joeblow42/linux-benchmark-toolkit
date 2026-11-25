@@ -1,0 +1,163 @@
+{
+  "case": "CT-11-P1",
+  "result": "PASS",
+  "formal_cp02_execution": false,
+  "host": "bodhi",
+  "kernel": "6.2.0-26-generic",
+  "architecture": "x86_64",
+  "python": "3.10.12",
+  "effective_uid": 1001,
+  "run_id": "run-2026329051404",
+  "execution": {
+    "selected_collector_ids": [
+      "COL-MEM"
+    ],
+    "selected_source_ids": [
+      "SRC-08",
+      "SRC-09",
+      "SRC-10"
+    ],
+    "planned_attempt_ids": [
+      "SRC-08-01",
+      "SRC-09-01",
+      "SRC-10-01"
+    ],
+    "started_utc": "2026-11-25T05:14:04.240Z",
+    "completed_utc": "2026-11-25T05:14:04.342Z",
+    "elapsed_ms": 102,
+    "terminal_state": "FINISHED"
+  },
+  "progress": [
+    [
+      "COL-MEM",
+      "SRC-08",
+      "START"
+    ],
+    [
+      "COL-MEM",
+      "SRC-08",
+      "END"
+    ],
+    [
+      "COL-MEM",
+      "SRC-09",
+      "START"
+    ],
+    [
+      "COL-MEM",
+      "SRC-09",
+      "END"
+    ],
+    [
+      "COL-MEM",
+      "SRC-10",
+      "START"
+    ],
+    [
+      "COL-MEM",
+      "SRC-10",
+      "END"
+    ]
+  ],
+  "completion_state": "COMPLETE",
+  "manifest_counts": {
+    "attempts": 3,
+    "sources": 3,
+    "observations": 66,
+    "evidence_artifacts": 3,
+    "original_bytes": 1636,
+    "statuses": 4,
+    "capture_limits": 0
+  },
+  "outcomes": [
+    {
+      "source_id": "SRC-08",
+      "authorization_class": "D0",
+      "authorization_decision": "ALLOW",
+      "status": "COMPLETE",
+      "reason_code": "OK",
+      "semantic_fact_count": 54,
+      "capture_bytes": 1503,
+      "exit_code": null,
+      "unavailable_fields": []
+    },
+    {
+      "source_id": "SRC-09",
+      "authorization_class": "D0",
+      "authorization_decision": "ALLOW",
+      "status": "COMPLETE",
+      "reason_code": "OK",
+      "semantic_fact_count": 1,
+      "capture_bytes": 39,
+      "exit_code": null,
+      "unavailable_fields": []
+    },
+    {
+      "source_id": "SRC-10",
+      "authorization_class": "D0",
+      "authorization_decision": "ALLOW",
+      "status": "COMPLETE",
+      "reason_code": "OK",
+      "semantic_fact_count": 8,
+      "capture_bytes": 94,
+      "exit_code": null,
+      "unavailable_fields": []
+    }
+  ],
+  "replay_alarms": [],
+  "original_sha256": {
+    "SRC-08-01.json": "1f3c9f311289fdf1c1174260ba5522dc26f959ffc22b035086db7dc82cb4eb46",
+    "run-2026329051404_COL-MEM_SRC-08_01:item0001": "cf927ef13daf5a2490febb6d7086447ef9a319c82ce32838e0121d8c2be0c79c",
+    "SRC-09-01.json": "aea587403112328930c9568780a8461da8bb99de42bb66f854edbd31b1854c30",
+    "run-2026329051404_COL-MEM_SRC-09_01:item0001": "615b077d430a7469a972688b6e10db6e37f8ecea47e6f2754cb179bb6c483e0a",
+    "SRC-10-01.json": "6629c2317bd817278787c15f4b480eb99a51d2f70940c08badeaa1996d73295a",
+    "run-2026329051404_COL-MEM_SRC-10_01:item0001": "412d920370f34151bf0ed4a09cb00c0495ef7d8f922049744e873bbc34c2f17f"
+  },
+  "canonical_manifest_sha256": "0c322159811714348fa6e2b39b0d2c0f3df8b9293e0547b058adf9f141843aec",
+  "requirements": [
+    "LBT-FR-020",
+    "LBT-FR-121",
+    "LBT-FR-127",
+    "LBT-FR-129",
+    "LBT-FR-208",
+    "LBT-NFR-016",
+    "LBT-NFR-031"
+  ],
+  "environment": {
+    "os": "Bodhi Linux 7.0 Moksha (Ubuntu 22.04 base)",
+    "user": "dog",
+    "git": "2.34.1",
+    "tools": [
+      "python3",
+      "unittest",
+      "git",
+      "make",
+      "dialog",
+      "dpkg-deb",
+      "curl"
+    ],
+    "unavailable_tools": [
+      "pip",
+      "gh",
+      "pytest",
+      "shellcheck",
+      "strace"
+    ],
+    "available_disk_initial_gib": 29,
+    "verified_base": "8d46206ea67c3606c1e6cc104b117858ade85a01",
+    "branch": "g5/rp04-ct11-p1-bodhi-66"
+  },
+  "software_validation": {
+    "profile": "FULL",
+    "PASS": 21,
+    "FAIL": 0,
+    "SKIP": 0,
+    "BLOCKED": 0,
+    "NOT_APPLICABLE": 0
+  },
+  "formal_cp02": {
+    "executed": 0,
+    "accepted": 0,
+    "total": 39
+  }
+}
