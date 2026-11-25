@@ -1,0 +1,70 @@
+{
+  "oracle_id": "CP03-RP02-O1-LIMITS-42",
+  "date": "2026-11-14",
+  "authority": "AI-Assisted Software Engineering Governance Standard v1.0; FAT Readiness Roadmap RP-02.3; requirements Rev 1.6; private operational receipt v0.6 Choice A",
+  "classification": "Source-first candidate assurance; pure synthetic execution, no sudo or device access, not independent acceptance",
+  "scope": "Actually applied optional O1 time budget and call reservations; independently enforced SRC-13 privileged helper 32MiB and 60s cumulative quotas. No protected changes.",
+  "cases": [
+    {
+      "id": "42-01",
+      "stimulus": "SRC-13/18/21 policy count exact boundary and next attempted source call",
+      "expected": "existing SourceCallBudget refuses before device execution; no asserted D-02 CaptureLimit for non-executed attempt"
+    },
+    {
+      "id": "42-02",
+      "stimulus": "SRC-13/18/21 caller-side cumulative source seconds exactly exhausted",
+      "expected": "next call denied before transport; no inferred effective process threshold or unexecuted capture"
+    },
+    {
+      "id": "42-03",
+      "stimulus": "SRC-13/18/21 process timed_out with preserved original bytes and no independently attested selected cap",
+      "expected": "private timed_out and TIME_BUDGET_EXCEEDED retained; no forged v0.6 witness; canonical rejects unproved D-02 time dimension"
+    },
+    {
+      "id": "42-04",
+      "stimulus": "SRC-13 helper cumulative quota almost exhausted (bytes or seconds)",
+      "expected": "helper privately reduces effective request cap while original request remains unchanged; response schema does not attest applied cap"
+    },
+    {
+      "id": "42-05",
+      "stimulus": "SRC-13 helper cumulative exact exhaustion",
+      "expected": "helper rejects without device operation; no source-level limit claim"
+    },
+    {
+      "id": "42-06",
+      "stimulus": "SRC-13 helper internally reduced byte cap, positive omitted original",
+      "expected": "consumer retains omission without guessing applied effective threshold; canonical refuses unsupported D-02 promotion"
+    },
+    {
+      "id": "42-07",
+      "stimulus": "SRC-13 helper internally shortened time cap, timed out",
+      "expected": "consumer retains timeout without inventing 12s per-target or 60s helper threshold; canonical refuses unsupported D-02"
+    },
+    {
+      "id": "42-08",
+      "stimulus": "forged O1 source:entries, source:time and transport seconds facts",
+      "expected": "private receipt rejects unapproved scopes or canonical refuses unsupported time/entry fact"
+    }
+  ],
+  "boundary_findings": [
+    "SourceCallBudget tracks count and whole adapter elapsed time; `begin` can refuse an unexecuted call, which is not a reached capture-limit operation",
+    "Direct O1 _capture_child receives min(plan per-target time, caller source remaining, run wall remaining); actual selected cap is not separately persisted in an independently verifiable receipt",
+    "The helper _limit_run_request independently adjusts remaining 32MiB/60s SRC-13 per-run budget and emits no applied-limit fields in the installed wire protocol",
+    "An elapsed source interval includes transport setup/sealing and is not interchangeable with process-child timeout",
+    "Private receipts may truthfully report timeout or denial while D-02 CaptureLimit is withheld. The remaining coverage is a documented RP-02 gap, not permission to modify protected authority."
+  ],
+  "prohibitions": [
+    "No original evidence mutation",
+    "No modified fixed O1 argv, consent/privilege, helper protocol, source ceiling, canonical schema 1.0.0 or status schema 1.0",
+    "No assumed O1 time/count or helper shortened-limit proof"
+  ],
+  "next": "RP-03 exact F-06/D-02 producer-validator conformance. Retain open RP-02 time/call-count/helper effective threshold limitation until independent provenance or owner authorization permits closure.",
+  "gates": {
+    "RP_02": "PARTIAL_ASSURANCE_GAPS_DOCUMENTED",
+    "RP_03": "OPEN",
+    "RP_04": "OPEN",
+    "CP_02": "NOT_ACCEPTED",
+    "Bodhi_7": "NOT_EXECUTED",
+    "FAT": "NOT_ESTABLISHED"
+  }
+}
