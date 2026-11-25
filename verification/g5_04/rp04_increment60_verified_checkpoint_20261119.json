@@ -1,0 +1,77 @@
+{
+  "record_type": "LBT_G5_04_RP04_INCREMENT60_VERIFIED_IMPLEMENTATION_CHECKPOINT",
+  "date_local": "2026-11-19",
+  "governance": "AI-Assisted Software Engineering Governance Standard v1.0",
+  "roadmap": "Owner-approved Alternative B FAT Readiness Roadmap Rev 0.2",
+  "predecessor": {
+    "increment": 59,
+    "pr": 85,
+    "head": "d5f25e801ba75f16115c717b2ee6fdb11bed35d7",
+    "pr_ci": 44669572686,
+    "push_ci": 44669564797
+  },
+  "current": {
+    "increment": 60,
+    "pr": 86,
+    "branch": "g5/rp04-ct06-measured-timing-60",
+    "implementation_head": "6e7fe5ec430ea158e727facc39029160907f2fdc",
+    "pr_ci": {
+      "id": 44670066694,
+      "status": "SUCCESS"
+    },
+    "push_ci": {
+      "id": 44670060354,
+      "status": "SUCCESS"
+    },
+    "unified_validation": "SUCCESS",
+    "candidate_case_ids": [
+      "CT-06-P1",
+      "CT-06-P2",
+      "CT-06-N1",
+      "CT-06-N2"
+    ],
+    "checks_executed": 4,
+    "checks_passed": 4,
+    "skips": 0,
+    "artifact": {
+      "name": "rp04-ct06-candidate-60",
+      "push_artifact_id": 14600120051
+    },
+    "final_doc_head_ci": "VERIFY_SEPARATELY"
+  },
+  "test_harness_exception": {
+    "initial_commit": "5065b72327f3af5095d2f8e6c1d425befab61000",
+    "failed_pr_ci": 44669911769,
+    "reason": "Invalid test-only run ID minute 60; EvidenceWriter correctly rejected identity before cases executed",
+    "corrected_commit": "6e7fe5ec430ea158e727facc39029160907f2fdc",
+    "fix": "Changed test-only run ID from run-2026320206000 to valid run-2026320205900",
+    "production_impact": "NONE",
+    "later_exact_head_both_ci": "SUCCESS"
+  },
+  "methods": [
+    "CT-06-P1: actual unprivileged Linux CI-host G5-03 memory acquisition SRC-08; measured UTC/monotonic source timing reconciled with private D-02 source attempt and status records, no physical Bodhi 7",
+    "CT-06-P2: DENY/DENIED O1 offline attempt without execution, no invented UTC or elapsed_ms",
+    "CT-06-N1: test-only in-memory source receipt view drops real recorded timing; canonicalizer rejects and original append-only receipt remains untouched; original restored reader passes",
+    "CT-06-N2: reversed UTC ordering refused by existing attempt/status contract validators"
+  ],
+  "protected": {
+    "production_code_changed": false,
+    "canonical_schema": "1.0.0",
+    "status_pairs": 41,
+    "source_commands_changed": false,
+    "consent_privileges_limits_changed": false,
+    "raw_originals_modified": false,
+    "physical_bodhi7_test": false
+  },
+  "acceptance": {
+    "cp02_total": 39,
+    "formal_execution_count": 0,
+    "formal_acceptance_count": 0,
+    "formal_requirements_verified": 0,
+    "cp07_owner_gate_open": true,
+    "fat_entry_authorized": false,
+    "pr_draft": true,
+    "pr_merged": false
+  },
+  "conversation_integrity": "Authority, exact-head development CI, case scope and owner boundaries coherent through implementation head. Final documentation-head CI must be checked separately."
+}

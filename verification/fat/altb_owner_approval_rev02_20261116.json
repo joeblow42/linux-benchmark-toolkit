@@ -1,0 +1,35 @@
+{
+  "record_type": "LBT_FAT_ALTERNATIVE_B_REV0_2_OWNER_APPROVAL",
+  "approved_local_date": "2026-11-16",
+  "approval_source": "Owner's explicit reply in ChatGPT LBT project conversation: 'both approved'",
+  "owner_decisions": [
+    {
+      "decision_id": "ALT_B_REV02_ROADMAP",
+      "disposition": "APPROVED",
+      "authority": "Six-slice FAT readiness roadmap Rev 0.2, retained RP package numbers and core/specialist scope",
+      "document": "verification/fat/altb_candidate_fat_roadmap_rev0_2_20261115.md",
+      "document_commit": "a65bff102a532711ab596a3df340c4afb34fc643"
+    },
+    {
+      "decision_id": "CP02_CT07_N1_TEST_INPUT",
+      "disposition": "APPROVED",
+      "authority": "Replace hypothetical forged-attempt wording with ordinary stale/wrong-run/missing provenance failure; original expected rejection unchanged",
+      "review": "verification/fat/altb_cp02_39case_method_review_20261116.csv",
+      "review_commit": "a65bff102a532711ab596a3df340c4afb34fc643"
+    }
+  ],
+  "remains_protected": [
+    "Requirements Rev1.6 original 283-row 20-column source",
+    "Approved 283-row RP01 matrix: 210 mandatory, 65 conditional, 8 later",
+    "39 original CP02 expected results and formal acceptance status (zero accepted)",
+    "D02 production canonical schema v1.0.0 and approved status vocabulary",
+    "G5-03 collection commands, authorization, privilege and safety limits",
+    "Single acquisition engine; original evidence preserved unchanged",
+    "One combined offline HTML report plus nine approved conditional outputs",
+    "No TUI report viewer"
+  ],
+  "execution_effect": "Clears revised planning gate to start Increment 48 / RP-03.2 practical functional source-to-consumer integration; separate incremental verification still required",
+  "scope": "APPROVED_PLANNING_ONLY_NOT_FAT_ACCEPTANCE",
+  "no_merge_authorized": true,
+  "formal_fat_accepted": false
+}
