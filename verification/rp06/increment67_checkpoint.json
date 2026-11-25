@@ -1,0 +1,16 @@
+{
+  "increment": 67,
+  "scope": "RP-06 B1 shared development workload runtime",
+  "branch": "g5/rp06-b1-runtime-67",
+  "draft_pr": 93,
+  "parent_draft_pr": 92,
+  "parent_commit": "12791bf3ecb287278a0b1de11e4d21117d82e6ba",
+  "implementation_commit": "5e3c4f557b618a1263487be57813fa7cac558a66",
+  "implementation_ci": {"push": 45612797001, "pull_request": 45612825723, "conclusion": "success"},
+  "documentation_ci": "Verify the published documentation commit separately",
+  "local": {"targeted_pass": 4, "unified_pass": 21, "unified_fail": 0, "unified_skip": 0},
+  "host_smoke": "Ordinary-user read-only COL-MEM Discovery produced one COMPLETE inventory and selected zero workloads",
+  "requirements": ["LBT-FR-017", "LBT-FR-018", "LBT-FR-019", "LBT-FR-020", "LBT-FR-021", "LBT-FR-022", "LBT-FR-185", "LBT-FR-186", "LBT-NFR-010", "LBT-NFR-013", "LBT-NFR-016", "LBT-NFR-018"],
+  "formal_cp02": {"executed": 0, "accepted": 0, "total": 39},
+  "next": "RP-07 B2 short CPU, memory and isolated file-backed storage measurements"
+}

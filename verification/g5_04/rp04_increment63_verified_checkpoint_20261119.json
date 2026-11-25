@@ -1,0 +1,69 @@
+{
+  "record_type": "LBT_G5_04_RP04_INCREMENT63_VERIFIED_IMPLEMENTATION_CHECKPOINT",
+  "date_local": "2026-11-19",
+  "governance": "AI-Assisted Software Engineering Governance Standard v1.0",
+  "roadmap": "Owner-approved Alternative B FAT Readiness Roadmap Rev 0.2",
+  "predecessor": {
+    "increment": 62,
+    "pr": 88,
+    "final_head": "0b6148892329f30900cce0e18cd66b7bdae46786",
+    "pr_ci": 44671718246,
+    "push_ci": 44671710840
+  },
+  "current": {
+    "increment": 63,
+    "pr": 89,
+    "branch": "g5/rp04-ct09-lossless-data-63",
+    "implementation_head": "c3cb73d2df2ec712f284573472ad3a155e2c222c",
+    "pr_ci": {
+      "id": 44672121753,
+      "status": "SUCCESS"
+    },
+    "push_ci": {
+      "id": 44672094308,
+      "status": "SUCCESS"
+    },
+    "unified_validation": "SUCCESS",
+    "candidate_case_ids": [
+      "CT-09-P1",
+      "CT-09-P2",
+      "CT-09-N1",
+      "CT-09-N2"
+    ],
+    "checks_run": 4,
+    "checks_passed": 4,
+    "skipped": 0,
+    "artifact": {
+      "name": "rp04-ct09-candidate-63",
+      "push_artifact_id": 14600876845
+    },
+    "final_documentation_head_ci": "VERIFY_SEPARATELY"
+  },
+  "actual_methods": [
+    "CT-09-P1 unknown SRC-02 EXPERIMENTAL_FIELD retained as typed observation with original provenance; nonUTF8 original remains byte-exact BYTES_REF fallback without fabricated semantics",
+    "CT-09-P2 known SRC-08 MemTotal source bytes correctly parsed as 1048576 INTEGER bytes, parser transformation and original evidence ID correct",
+    "CT-09-N1 extra unknown object and observation keys rejected by frozen D-02 closed-world schema",
+    "CT-09-N2 intentionally dropped unknown semantic row in an in-memory consumer view rejected by independent source-first canonical validation, originals/persisted records unchanged"
+  ],
+  "protected": {
+    "production_code_changed": false,
+    "canonical_schema": "1.0.0",
+    "status_pair_count": 41,
+    "source_commands_changed": false,
+    "consent_privileges_limits_changed": false,
+    "raw_originals_modified": false,
+    "physical_bodhi7_test": false,
+    "benchmarks_or_public_reports": false
+  },
+  "formal": {
+    "controlled_original_cp02_cases": 39,
+    "formally_executed": 0,
+    "formally_accepted": 0,
+    "requirements_formally_verified": 0,
+    "cp07_or_fat_authorized": false,
+    "draft_pr": true,
+    "merged": false,
+    "downstream_ct08_n2": "NOT_EXECUTED_G5_06"
+  },
+  "integrity": "All exact implementation-head CI SUCCESS; final documentation-head must be separately checked"
+}

@@ -1,0 +1,70 @@
+{
+  "oracle_id": "CP03-RP02-O1-AGGREGATE-41",
+  "authority": "Governance Standard v1.0, RP-02 v0.6 Choice A, Rev 1.6, approved FAT roadmap",
+  "assurance": "Source-first candidate with mocks; no independent CP-02 acceptance and no real device/privilege test",
+  "scope": "Actual SRC-18 source-wide EvidenceWriter 8 MiB clipping only, when a later authorized call contributes a positive omitted original and all cumulative preceding source bytes are independently sealed.",
+  "cases": [
+    [
+      "41-01",
+      "two source calls preserve exactly 4 MiB each; third clips 17 original bytes at source writer",
+      "private v0.6 source:writer event, source aggregate 8 MiB, canonical PASS"
+    ],
+    [
+      "41-02",
+      "same event but one earlier sealed source omitted from canonical run",
+      "reject false full-source aggregate"
+    ],
+    [
+      "41-03",
+      "source writer threshold/affected source/omission absent or forged",
+      "receipt validator rejects"
+    ],
+    [
+      "41-04",
+      "writer private source meter includes unsealed reservation",
+      "canonical refuses invented aggregate"
+    ],
+    [
+      "41-05",
+      "SRC-21 only one call and per-call transport cap equals its 8MiB source total",
+      "cannot prove positive source-writer clipping by an unexecuted next call; no false D-02 entity"
+    ],
+    [
+      "41-06",
+      "SRC-13 installed root helper has independent cumulative 32MiB and 60s caps, no exact remaining threshold response",
+      "must not infer helper source quota or truncated operation without helper attestation"
+    ],
+    [
+      "41-07",
+      "cumulative source time based on whole adapter duration and caller budget, with unknown time consumed by sealing",
+      "do not infer exact time-limit event by elapsed aggregate alone"
+    ],
+    [
+      "41-08",
+      "all prior and new CI",
+      "candidate exact-head success only, other FAT gates open"
+    ]
+  ],
+  "protected": [
+    "root-helper protocol and cumulation",
+    "O1 consent and validated D0 inventory",
+    "G4-07 bytes, calls, seconds, slots",
+    "fixed argv",
+    "immutable original raw",
+    "production canonical v1.0.0/status v1.0 41 pairs"
+  ],
+  "deferred": [
+    "O1 source-time exact applied limit",
+    "O1 source-call omitted operation proof",
+    "SRC-13 helper reduced effective thresholds",
+    "SRC-21 unreachable source writer byte proof",
+    "Bodhi7 real-host FAT"
+  ],
+  "gates": {
+    "RP_02": "OPEN",
+    "RP_03": "OPEN",
+    "RP_04": "OPEN",
+    "CP_02": "NOT_ACCEPTED",
+    "FAT": "NOT_AUTHORIZED"
+  }
+}
