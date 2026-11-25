@@ -6,6 +6,7 @@ from .core_workloads import MIB, ShortParameters, short_workloads
 from .optical_workload import DVD, dvd_workload
 from .peer_workload import Peer, peer_workload
 from .sustained_workloads import SustainedParameters, sustained_workloads
+from .video_workload import Video, VideoCase, video_workloads
 from .workload_runtime import Mode, Resources, Runtime
 
 
@@ -25,7 +26,13 @@ def main(argv=None):
     parser.add_argument("--dvd-device", help="selected /dev/srN drive")
     parser.add_argument("--dvd-bytes", type=int, help="expected capacity of the selected disc")
     parser.add_argument("--confirm-unencrypted-dvd", action="store_true")
+    parser.add_argument("--video-source", type=Path, help="owned local DVD video fixture")
+    parser.add_argument("--video-seconds", type=int)
+    parser.add_argument("--video-deadline", type=int)
+    parser.add_argument("--vaapi-render-device", help="explicit render node for comparison")
     args = parser.parse_args(argv)
+    if args.vaapi_render_device and args.video_source is None:
+        parser.error("--vaapi-render-device requires --video-source")
     dvd_flags = (bool(args.dvd_device), args.dvd_bytes is not None, args.confirm_unencrypted_dvd)
     if any(dvd_flags) and not all(dvd_flags):
         parser.error("provide --dvd-device, --dvd-bytes and --confirm-unencrypted-dvd together")
@@ -46,8 +53,27 @@ def main(argv=None):
             dvd = dvd_workload(DVD(args.dvd_device, args.dvd_bytes, args.confirm_unencrypted_dvd))
             workloads += (dvd,)
             disk_bytes = max(disk_bytes, dvd.resources.disk_bytes)
+        memory_bytes = 128 * MIB
+        short_seconds = 120 if args.video_seconds is None else args.video_seconds
+        extended_seconds = 300 if args.video_seconds is None else args.video_seconds
+        short_deadline = 180 if args.video_deadline is None else args.video_deadline
+        extended_deadline = 600 if args.video_deadline is None else args.video_deadline
+        if args.video_source:
+            short_video = Video(args.video_source, short_seconds, short_deadline,
+                                max_celsius=args.max_celsius)
+            video = Video(args.video_source, extended_seconds, extended_deadline,
+                          max_celsius=args.max_celsius)
+            short_case = VideoCase("video-short", ("mpeg2video",), output_height=480)
+            workloads += video_workloads(short_video, (short_case,), tier=Mode.STANDARD,
+                                         requires_selection=False)
+            workloads += video_workloads(video)
+            if args.vaapi_render_device:
+                hardware = Video(args.video_source, extended_seconds, extended_deadline,
+                                 max_celsius=args.max_celsius, render_device=args.vaapi_render_device)
+                workloads += video_workloads(hardware)
+            memory_bytes = 512 * MIB
         runtime = Runtime(workloads,
-                          limits=Resources(parameters.cpu_workers, 128 * MIB, disk_bytes),
+                          limits=Resources(parameters.cpu_workers, memory_bytes, disk_bytes),
                           disk_reserve_bytes=args.disk_reserve_mib * MIB)
         session = runtime.execute(args.output_root, Mode(args.mode), selections=args.select)
     except (OSError, ValueError) as error:
