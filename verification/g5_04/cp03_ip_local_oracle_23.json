@@ -1,0 +1,23 @@
+{
+  "record_id": "LBT-G504-CP03-SRC23-SOURCE-FIRST-ORACLE-23",
+  "date": "2026-11-08",
+  "phase": "FROZEN_BEFORE_PARSER_EDIT",
+  "parent_sha": "f82e96d7b53d639a5338ae48c5fe3192ed5a9cf0",
+  "parent_pr": 46,
+  "authority": [
+    "G4-07 Source Authorization Rev0.1 SRC-23 COL-NET D1 IP_LOCAL: local kernel netlink only, two calls each <=5 sec, total <=10 sec, <=16MiB; exactly `ip -j addr show` and `ip -j route show`; no active probes, network namespace changes, send traffic or elevating privileges",
+    "Pinned G5-03 lbt_g5/runtime.py fixed two D1 command plans: subcall=0 `ip -j addr show`; subcall=1 `ip -j route show`, stdout/stderr 8MiB per call, 8MiB total per call",
+    "Pinned G5-03 engine `_SUBCALLS = {'SRC-23': (0,1)}` and two separate attempts SRC-23-01 and SRC-23-02; originals `call0001-*` and `call0002-*`, evidence IDs include attempt",
+    "iproute2 JSON output format and `ip-address(8)`/`ip-route(8)` Linux manual: source JSON arrays of local interface/address or local route objects; no network requests, no interpretation of remote availability"
+  ],
+  "expectations": {
+    "parser": "Pure bounded strict UTF-8 JSON; duplicate keys, nonfinite numbers, excessive recursion/strings/rows and trailing data fail. One top-level JSON array per original; preserve nested JSON fields as source-reported metadata without inventing physical link, public IP, route reachability or network health.",
+    "addr": "First attempt uses invocation `ip -j addr show` and sealed `call0001-stdout`; each top-level record is a dictionary with an integer positive ifindex and nonempty ifname, optional addr_info array of dictionaries. Parsed datum `network.ip.local_addresses.reported` (ARRAY). An empty JSON array is a legitimate source report.",
+    "route": "Second attempt uses invocation `ip -j route show` and sealed `call0002-stdout`; top-level dictionary records carry source report for destination/dev/gateway/type/protocol or other recognized routing fields, preserve unknown fields. Parsed datum `network.ip.local_routes.reported` (ARRAY). An empty JSON array is legitimate.",
+    "lineage": "Bound attempt ID to precise subcall number, exact original byte hashes and slots, approved fixed argv, no source_paths nor target, no operator command injection. stderr diagnostic only; no stderr semantic parse.",
+    "states": "Captured must have actual exit_code=0, no timeout, no capture limit, intact sealed original. Partial EXIT_NONZERO remains PARTIAL/SOURCE_INCOMPLETE, with exact exit and original bytes; parse failure from captured maps PARSE_FAILED.",
+    "negative": "Swapped addr/route arrays, source command mismatch, cross-subcall artifact names, unapproved attempt 03, duplicated JSON keys, malformed nested arrays, NaN/Infinity, strings containing controls, oversize, forged targets/paths, evidence tamper, stderr-only capture, nonzero captured contradiction.",
+    "limits": "Parser max 1MiB per sealed stdout vs 8MiB approved per-call; raw is preserved if parse cannot be completed. This does not prove network connectivity.",
+    "assurance": "AI-written source-first oracle/tests are not independent human/third-party verification; no Bodhi target testing; owner gates open."
+  }
+}
