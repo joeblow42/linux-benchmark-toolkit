@@ -1,0 +1,100 @@
+{
+  "record_id": "LBT-G504-CP03-SYSFS-ORACLE-04",
+  "revision": "0.1",
+  "record_type": "verification_case_and_oracle_review",
+  "status": "SPECIFIED_NOT_EXECUTED",
+  "date": "2026-11-04",
+  "baseline": {
+    "requirements": "Rev 1.6",
+    "canonical_schema": "1.0.0",
+    "status_schema": "1.0",
+    "source": "SRC-04",
+    "collector": "COL-OS",
+    "source_authority": "G4-07 Source Authorization and Bounds Rev0.1: /sys/class/dmi/id selected readable files; D0, allowlisted public DMI files only, maximum 64 entries, 4 MiB, 3s, no sudo/dmidecode/secret sources",
+    "source_worker_contract": "Accepted G5-03 passive_worker.py emits acquired records in deterministic sorted allowlisted order; parent writes original bytes as item0001..itemNNNN and persists successful source_paths in that same order",
+    "provenance_decisions": [
+      "CP-01 D-02 exact canonical entities",
+      "CP-01 D-03 truthfully evidenced parser status",
+      "CP-01 D-04 same-run evidence binding and immutability",
+      "FR-121 raw evidence pointer excluded from public outputs",
+      "NFR-068 original provenance"
+    ]
+  },
+  "independent_review": {
+    "method": "Source-first oracle specification written before CP-03 increment-04 parser code. Expected outcomes are derived from approved G4-07 and accepted G5-03 original worker/receipt mechanics rather than parser output.",
+    "reasoning_independence": "Separate derivation, same AI assistant; NOT independently human-reviewed",
+    "review_result": "PROVISIONAL_FOR_CI_CHALLENGE",
+    "approval_boundary": "No new owner approval of detailed externally published field vocabulary or G5-04 gate is implied"
+  },
+  "allowlist": [
+    "bios_date",
+    "bios_vendor",
+    "bios_version",
+    "board_name",
+    "board_vendor",
+    "board_version",
+    "chassis_type",
+    "chassis_vendor",
+    "chassis_version",
+    "product_family",
+    "product_name",
+    "product_version",
+    "sys_vendor"
+  ],
+  "canonical_private_mapping": "platform.dmi.<exact_allowlisted_attribute>; interpreted identifier from verified receipt source path; raw content never determines attribute identity; private only",
+  "tests": [
+    {
+      "id": "S4-P1",
+      "kind": "POSITIVE",
+      "precondition": "Two sealed items from SRC-04, receipt source_paths are permitted exact DMI paths in sorted worker order; evidence IDs and SHA-256 valid",
+      "expected": "One raw fallback plus one typed STRING per item; datum_path attributed to the corresponding path, with each semantic evidence_refs equal to that item's original ID and matching same-run attempt ID; validate_canonical succeeds"
+    },
+    {
+      "id": "S4-P2",
+      "kind": "POSITIVE",
+      "precondition": "One optional DMI attribute absent and excluded from sealed evidence, other paths and receipts remain aligned",
+      "expected": "No synthesized attribute; reported unavailable_fields retained with no semantic observation for missing attribute"
+    },
+    {
+      "id": "S4-N1",
+      "kind": "NEGATIVE",
+      "precondition": "source_paths length differs from number of sealed items",
+      "expected": "Reject canonical construction before any canonical manifest is committed; preserve immutable original files"
+    },
+    {
+      "id": "S4-N2",
+      "kind": "NEGATIVE",
+      "precondition": "source_paths are permuted/reversed relative to worker monotonic path sequence, or duplicated",
+      "expected": "Reject rather than silently attribute source values to wrong fields"
+    },
+    {
+      "id": "S4-N3",
+      "kind": "NEGATIVE",
+      "precondition": "Path traversal, non-DMI root, unsupported/secret attribute, malformed separator or path suffix",
+      "expected": "Reject; no speculative path normalization or acceptance based on raw bytes"
+    },
+    {
+      "id": "S4-N4",
+      "kind": "NEGATIVE",
+      "precondition": "Evidence artifact identifier or ordinal does not match receipt item index, or evidence belongs to another run",
+      "expected": "Reject same-run binding; do not publish altered canonical contents"
+    },
+    {
+      "id": "S4-N5",
+      "kind": "NEGATIVE",
+      "precondition": "Parser called without source_path or with undecodable raw content",
+      "expected": "Attributed SourceParseError only when actual parser invoked; raw evidence remains sealed"
+    },
+    {
+      "id": "S4-B1",
+      "kind": "BOUNDARY",
+      "precondition": "Empty-string DMI value, optional missing value and bounded non-text blob",
+      "expected": "Do not fabricate product identity; preserve original; limited parser errors require real invocation"
+    }
+  ],
+  "scope_limits": [
+    "Does not establish source path authenticity against an attacker able to rewrite trusted G5-03 receipt before validation",
+    "Does not normalize other sysfs families or close CP-04 integrity findings",
+    "Does not establish G5-04 gate acceptance, public-output privacy verification, or Bodhi host validation"
+  ]
+}

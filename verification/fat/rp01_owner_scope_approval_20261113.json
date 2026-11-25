@@ -1,0 +1,34 @@
+{
+  "record_type": "FAT_APPLICABILITY_SCOPE_OWNER_APPROVAL",
+  "date_local": "2026-11-13",
+  "source": "Direct owner approval recorded in project conversation",
+  "statement": "proposed RP-01 applicability classification and the recommended FR-134, FR-177 and FR-186 dispositions approved",
+  "controlling_requirements": "Requirements Rev 1.6",
+  "controlled_requirement_count": 283,
+  "counts": {
+    "FAT_MANDATORY": 210,
+    "CONDITIONALLY_APPLICABLE": 65,
+    "EXPLICIT_LATER_RELEASE": 8,
+    "OWNER_DECISION_PENDING": 0
+  },
+  "dispositions": {
+    "LBT-FR-134": "Explicit later release: no TUI prior-results viewing or report viewer in FAT",
+    "LBT-FR-177": "FAT mandatory TUI execution selection, NOT assessment/report viewer",
+    "LBT-FR-186": "FAT mandatory interactive test-group and individual-test selection where practical"
+  },
+  "protected_originals": "No controlled Rev 1.6 requirement wording, priority, disposition or release target field modified",
+  "scope_matrix_sha256": "deb4ea158491d980e7ff57d6ac9bc58560316edf3adfb8d3e9c37c59f9266092",
+  "source_baseline_sha256": "04849cd13ecc75c803839ab7c59a1015c5b92d1f05bf31422b54406c188e2702",
+  "g4_10_fixtures": {
+    "total": 70,
+    "unlinked_in_inherited_crosswalk": 25,
+    "execution_status": "DESIGNED_NOT_ACCEPTED"
+  },
+  "verification": {
+    "requirements_not_verified": 283,
+    "original_cp02_cases_not_accepted": 39,
+    "g5_04": "OPEN",
+    "bodhi_amd64_host_receipt": "NOT_AVAILABLE"
+  },
+  "scope": "Authorizes FAT applicability classification only, not code acceptance or FAT-entry gate."
+}
