@@ -383,12 +383,14 @@ def commit_attempt(run_directory,receipt):
         raise ValueError("attempt receipt exceeds limit")
     run_fd=private_fd=attempt_fd=temp_fd=None
     staging=".staging-"+secrets.token_hex(12)
+    staging_created=False
     try:
         run_fd=os.open(run_directory,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
         private_fd=_safe_private_dir(run_fd,"private")
         attempt_fd=_safe_private_dir(private_fd,"source_attempt_records")
         temp_fd=os.open(staging,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,
                         0o600,dir_fd=attempt_fd)
+        staging_created=True
         data=memoryview(payload)
         while data:
             count=os.write(temp_fd,data)
@@ -400,8 +402,14 @@ def commit_attempt(run_directory,receipt):
                 follow_symlinks=False)
         os.fsync(attempt_fd)
         os.unlink(staging,dir_fd=attempt_fd)
+        staging_created=False
         os.fsync(attempt_fd)
         return "private/source_attempt_records/"+name
     finally:
-        for fd in (temp_fd,attempt_fd,private_fd,run_fd):
-            if fd is not None:os.close(fd)
+        try:
+            if staging_created and attempt_fd is not None:
+                try: os.unlink(staging,dir_fd=attempt_fd)
+                except FileNotFoundError: pass
+        finally:
+            for fd in (temp_fd,attempt_fd,private_fd,run_fd):
+                if fd is not None:os.close(fd)
