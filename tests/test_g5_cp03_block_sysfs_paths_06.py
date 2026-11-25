@@ -82,7 +82,7 @@ class BlockSysfsOracles(unittest.TestCase):
         data = (b"1953525168\n", b"0\n", b"512\n", b"4096\n", b" Demo Disk \n")
         with self.recorded(data, paths) as (directory, engine, artifacts):
             manifest = build_canonical(directory, engine)
-            self.assertEqual(manifest["observation_count"], 10)
+            self.assertEqual(manifest["counts"]["observations"], 10)
             self.assertEqual(validate_canonical(directory), manifest)
             records = json.loads((directory / "private/system.json").read_text())
             typed = [x for x in records["observations"] if x["transformation_ids"]]
@@ -195,7 +195,7 @@ class BlockSysfsOracles(unittest.TestCase):
             directory, engine, artifacts
         ):
             manifest = build_canonical(directory, engine)
-            self.assertEqual(manifest["observation_count"], 1)
+            self.assertEqual(manifest["counts"]["observations"], 1)
             statuses = json.loads((directory / "private/status_records.json").read_text())
             self.assertEqual(statuses["status_records"][0]["reason_code"], "PARSE_FAILED")
             self.assertEqual(validate_canonical(directory), manifest)

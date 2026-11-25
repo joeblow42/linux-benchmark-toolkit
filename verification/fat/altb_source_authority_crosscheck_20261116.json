@@ -1,0 +1,29 @@
+{
+  "kind": "ALTB_SOURCE_JOIN_CP02_METHOD_RECONCILIATION",
+  "date": "2026-11-16",
+  "pinned_start_head": "1ec675192ed1d6a55a667df208460c7d1859e14c",
+  "original_source_sha256": "04849cd13ecc75c803839ab7c59a1015c5b92d1f05bf31422b54406c188e2702",
+  "approved_rp01_sha256": "deb4ea158491d980e7ff57d6ac9bc58560316edf3adfb8d3e9c37c59f9266092",
+  "source_rows": 283,
+  "scope_rows": 283,
+  "trace_rows": 283,
+  "controlled_overlaps": 1981,
+  "overlap_mismatches": 0,
+  "trace_row_order_mismatch_positions": 141,
+  "fat_classifications": {
+    "EXPLICIT_LATER_RELEASE": 8,
+    "FAT_MANDATORY": 210,
+    "CONDITIONALLY_APPLICABLE": 65
+  },
+  "derived_columns": 53,
+  "cp02_cases": 39,
+  "cp02_method": {
+    "KEEP_FUNCTIONAL": 35,
+    "REPLACE_WITH_ORDINARY_FAILURE": 1,
+    "DOWNSTREAM_NOT_EXECUTED": 3,
+    "PROPOSE_REMOVAL_ATTACK_ONLY": 0
+  },
+  "accepted_cp02": 0,
+  "verified_requirements": 0,
+  "approval": "PLANNING_OWNER_PENDING"
+}
