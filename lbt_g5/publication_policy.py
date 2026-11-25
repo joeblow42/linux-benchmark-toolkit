@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 import json
 import os
+import re
 from pathlib import Path
 
 BLOCKED = "BLOCKED / UNCLASSIFIED_PUBLIC_FIELD"
@@ -105,7 +106,6 @@ def settings(path, default, *, private=False):
                   if tag != "tag:yaml.org,2002:bool"]
             for key, values in yaml.SafeLoader.yaml_implicit_resolvers.items()
         }
-        import re
         StrictLoader.add_implicit_resolver("tag:yaml.org,2002:bool", re.compile(r"^(true|false)$"), "tf")
         try:
             for token in yaml.scan(content):
@@ -139,29 +139,72 @@ def load_policy(path):
     return Policy(privacy["global_privacy_enabled"], masks, selected)
 
 
+def inventory_values(fact):
+    """Yield classified scalar values from known canonical datum shapes."""
+    datum = fact["datum_path"]
+    value = fact["normalized_value"]
+    unit = fact.get("unit")
+    if datum in PUBLIC_FACTS or datum in SENSITIVE_FACTS:
+        yield datum, value, unit, SENSITIVE_FACTS.get(datum)
+    elif datum.startswith("tools.resolution.") and type(value) is dict:
+        yield datum + ".available", value.get("available"), None, None
+        yield datum + ".resolved_path", value.get("resolved_path"), None, "tool.executable_path"
+    elif datum == "storage.mountinfo.records" and type(value) is list:
+        for row in value:
+            if type(row) is dict:
+                yield "storage.mount.filesystem_type", row.get("filesystem_type"), None, None
+                yield "storage.mount.mount_point", row.get("mount_point"), None, "filesystem.mount_point"
+    elif datum == "storage.lsblk.blockdevices" and type(value) is list:
+        pending = list(value)
+        while pending:
+            row = pending.pop(0)
+            if type(row) is dict:
+                yield "storage.device.size", row.get("size"), "bytes", None
+                yield "storage.device.type", row.get("type"), None, None
+                yield "storage.device.name", row.get("name"), None, "storage.device_node"
+                yield "storage.device.serial", row.get("serial"), None, "storage.disk_serial"
+                children = row.get("children")
+                if type(children) is list:
+                    pending.extend(children)
+    elif datum == "network.ip.local_addresses.reported" and type(value) is list:
+        for row in value:
+            if type(row) is not dict:
+                continue
+            yield "network.interface.name", row.get("ifname"), None, "network.interface_name"
+            yield "network.interface.address", row.get("address"), None, "network.mac_address"
+            for address in row.get("addr_info", []):
+                family = address.get("family")
+                if family in ("inet", "inet6"):
+                    identifier = "network.ipv4_address" if family == "inet" else "network.ipv6_address"
+                    yield "network.interface.local_address", address.get("local"), None, identifier
+    elif datum == "network.ip.local_routes.reported" and type(value) is list:
+        for row in value:
+            if type(row) is dict:
+                yield "network.route.destination", row.get("dst"), None, "network.route_destination"
+                yield "network.route.gateway", row.get("gateway"), None, "network.route_gateway"
+                yield "network.route.interface", row.get("dev"), None, "network.interface_name"
+
+
 def public_inventory(inventory, policy):
     facts = []
     withheld = 0
     for fact in inventory["facts"]:
-        datum = fact["datum_path"]
-        if datum not in PUBLIC_FACTS | SENSITIVE_FACTS.keys():
+        projected = list(inventory_values(fact))
+        if not projected:
             withheld += 1
-            continue
-        value = fact["normalized_value"]
-        if type(value) not in (str, int, float, bool, type(None)):
-            withheld += 1
-            continue
-        masked = policy.enabled and SENSITIVE_FACTS.get(datum) in policy.masks
-        facts.append({"datum_path": datum,
-                      "normalized_value": "MASKED" if masked else value,
-                      "publication_state": "MASKED" if masked else "NOT_OBSERVED" if value is None else "VISIBLE",
-                      "unit": fact.get("unit")})
+        for datum, value, unit, sensitive in projected:
+            if type(value) not in (str, int, float, bool, type(None)):
+                withheld += 1
+                continue
+            masked = value is not None and policy.enabled and sensitive in policy.masks
+            state = "MASKED" if masked else "NOT_OBSERVED" if value is None else "VISIBLE"
+            facts.append({"datum_path": datum, "normalized_value": "MASKED" if masked else value,
+                          "publication_state": state, "unit": unit})
     limits = ["Inventory is limited to fields classified for publication."]
     if withheld:
         limits.append(f"{BLOCKED} ({withheld} inventory values)")
     return {"completion_state": inventory["completion_state"], "facts": facts,
             "source_outcomes": inventory["source_outcomes"], "limitations": limits}
-
 
 def public_measurements(data, *, mark=True):
     output = {}
