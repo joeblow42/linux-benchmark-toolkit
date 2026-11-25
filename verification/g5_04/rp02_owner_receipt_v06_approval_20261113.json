@@ -1,0 +1,30 @@
+{
+  "record_type": "RP02_F04_PRIVATE_RECEIPT_CONTRACT_OWNER_APPROVAL",
+  "approval_date_local": "2026-11-13",
+  "approval_source": "Owner statement in current LBT conversation",
+  "owner_approval": "Choice A is approved.",
+  "decision": "A",
+  "authorized_scope": [
+    "Introduce versioned private operational receipt v0.6 to carry multiple independently witnessed actual capture limits",
+    "Precisely represent D0 per-file, source-total-bytes, source entry-count, transport and evidence-writer limits",
+    "Extend existing source adapters, source-to-receipt pipeline and canonical-generation/validation implementation while preserving approved field contracts",
+    "Preserve legacy private receipt versions v0.1 through v0.5 and byte-identical original acquired evidence",
+    "Use source-first independently reviewable positive, negative, boundary and simultaneous-limit fixtures"
+  ],
+  "explicit_non_authorization": [
+    "Change to fixed source commands or source authorizations",
+    "Expansion of privilege, root helper behavior or operator consent",
+    "Changes to approved acquisition limits",
+    "Changes to production canonical schema_version 1.0.0 or D-02 exact entity/field contract",
+    "Changes to accepted status record schema_version 1.0 or 41 status/reason pairs"
+  ],
+  "engineering_review": {
+    "canonical_support": "D-02 exact approved CaptureLimit entity already supports multiple records via system.json capture_limits and multi-ID references from attempt, artifact, observation, status",
+    "actual_gap": "Private receipt v0.5 and the current canonical producer/parser validate a single limit_witness, restrict unit and scope, and assign at most one limit per attempt",
+    "necessary_changes": "Private receipt v0.6, existing adapter/worker instrumentation, strict receipt and canonical-generation/validation implementation, source-first assurance fixtures",
+    "restrictions": "Never infer clipped bytes, dominant simultaneous dimension, omitted extent or unsupported status from an unobserved event",
+    "new_owner_gate": "Stop and request specific approval if tests reveal any required change to a protected authority boundary"
+  },
+  "prior_record": "verification/g5_04/rp02_d0_receipt_contract_gap_20261113.json",
+  "recorded_as": "Engineering authority input, not implementation completion, CP-02 acceptance, G5-04 closure, or merge permission"
+}
