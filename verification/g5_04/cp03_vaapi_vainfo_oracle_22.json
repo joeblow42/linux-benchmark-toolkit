@@ -1,0 +1,26 @@
+{
+  "record_id": "LBT-G504-CP03-SRC21-SOURCE-FIRST-ORACLE-22",
+  "date": "2026-11-08",
+  "phase": "FROZEN_BEFORE_PARSER_EDIT",
+  "parent_pr": 45,
+  "parent_sha": "7482c4f654309231204a703eccae7739f4a7f5ef",
+  "source_id": "SRC-21",
+  "collector_id": "COL-VAAPI",
+  "authorization": "O1",
+  "operation": "VAINFO",
+  "authorities": [
+    "G4-07 Rev0.1 SRC-21 VAINFO: selected operator-authorized local render node/session, current unprivileged identity, 8MiB, 1 call, 10 seconds, driver initialization disclosed.",
+    "Pinned lbt_g5/o1.py and o1_execution.py: vetted vainfo --display drm --device /dev/dri/renderDNNN, original call0001 stdout/stderr, actual return and no automatic elevation.",
+    "Pinned G5-03 provenance: original same-run SRC-19 cardN PCI sysfs D0, render-node-to-card verified by G5-03 at execution, consent witness required; no re-probing during canonical normalization.",
+    "Upstream libva-utils output examples: https://github.com/intel/libva-utils/issues/343 and https://chromium.googlesource.com/chromium/src/+/main/docs/gpu/vaapi.md"
+  ],
+  "expected": {
+    "grammar": "Optional exact 'Trying display: drm'; optional 'vainfo: VA-API version: ...' and 'vainfo: Driver version: ...', required 'vainfo: Supported profile and entrypoints', followed only by bounded 'VAProfile<token> : VAEntrypoint<token>' lines; strict UTF-8 and row bounds. Empty list allowed if header present; no invented capabilities.",
+    "result": "One private OBJECT datum gpu.vaapi.reported_capabilities: source-reported version and driver text (optional), ordered reported profile+entrypoint pairs; do not convert reported labels into benchmark, working playback/encoding, or actual codec quality guarantees.",
+    "provenance": "Only authentic sealed SRC-21 call0001-stdout with exactly selected /dev/dri/renderDNNN, existing O1 one-run operator consent, vetted fixed argv, and same-run sealed SRC-19 witness. stdout only; stderr preserved diagnostic but not semantic.",
+    "status": "CAPTURED success must carry actual exit_code=0, intact original and no timeout or capture limit. Verified O1 PARTIAL/ACQUISITION_ERROR with nonzero exit is PARTIAL/SOURCE_INCOMPLETE, not device health.",
+    "negative": "Forged target/command/inventory/consent/memory witness, wrong original ordinal, stderr-only claimed success, nonzero CAPTURED, malformed/duplicate profile entries, unsupported or invalid lines/Unicode/control/oversize, evidence tamper.",
+    "limits": "Conservative parser ceiling 1MiB vs G4-07 8MiB original cap. Captured larger data remains byte-exact original but semantic parser may return PARSE_FAILED. No live driver initialization occurs during tests.",
+    "assurance": "Same AI wrote oracle and implementation; independent human/third-party assurance, Bodhi Linux 7 target acceptance and owner gates remain open."
+  }
+}
