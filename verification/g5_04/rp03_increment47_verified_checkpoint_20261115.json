@@ -1,0 +1,66 @@
+{
+  "record_type": "LBT_G5_04_RP03_CP03_INCREMENT47_VERIFIED_IMPLEMENTATION_CANDIDATE_CHECKPOINT",
+  "date": "2026-11-15",
+  "governance": "AI-Assisted Software Engineering Governance Standard v1.0",
+  "roadmap": "Approved FAT Readiness Roadmap RP-03.2",
+  "repo": "joeblow42/linux-benchmark-toolkit",
+  "branch": "g5/cp03-rp03-d0-semantic-47",
+  "draft_pr": 72,
+  "stacked_on_draft_pr": 71,
+  "recovered_parent": "391ba75a28b1f396ad28f89e951b135d01edeb02",
+  "parent_exact_head_ci": {
+    "pr": 43752194895,
+    "push": 43752190351,
+    "conclusion": "SUCCESS/SUCCESS"
+  },
+  "implementation_head": "b0d012a57b496d8dd36a35a701fe5c91a24022ad",
+  "implementation_exact_head_ci": {
+    "pr": 43763957465,
+    "push": 43763953297,
+    "conclusion": "SUCCESS/SUCCESS"
+  },
+  "test_first_expected_red": {
+    "head": "302eaeea77aa9f8d0e7b37f3611df38829b6578b",
+    "pr": 43763844953,
+    "push": 43763828270,
+    "failures": 6,
+    "controls_passed": 2
+  },
+  "tests": {
+    "file": "tests/test_g5_cp03_rp03_d0_semantics_47.py",
+    "count": 8,
+    "production_fix": "lbt_g5/canonical_session.py",
+    "families": [
+      "SRC-02",
+      "SRC-08",
+      "SRC-09",
+      "SRC-10"
+    ],
+    "positive": "independent manually computed semantic rows, lossless nonUTF8 fallback",
+    "negative": "rehashed typed values, omitted semantic row, parser ID substitution"
+  },
+  "frozen_contract": {
+    "ledger": "verification/g5_04/rp03_cp01_d02_approved_contract_43.json",
+    "odt_sha256": "6d836d28af086a0fec7df2ca0949faf9447f9cee29cfabb8751344bd5104c98b",
+    "canonical": "1.0.0",
+    "status": "1.0",
+    "status_pairs": 41,
+    "requirements_rev": "1.6",
+    "requirements_count": 283
+  },
+  "boundaries": "No change to argv, privileges, consent, acquisition limits, sealed originals, schema, status controlled vocabulary, publication or TUI",
+  "audit": "verification/g5_04/rp03_increment47_source_first_audit_20261115.json",
+  "notes": "Documentation changes occur after the known-tested implementation head. Verify final current PR head and exact-head PR/push CI independently before treating this checkpoint as fully recovered.",
+  "gates": {
+    "RP03_2": "PARTIAL_CANDIDATE_VERIFICATION",
+    "RP03": "OPEN",
+    "RP04": "OPEN",
+    "G504": "OPEN",
+    "original_CP02_cases_formally_accepted": 0,
+    "requirements_rev16": "283 NOT_VERIFIED",
+    "Bodhi7_FAT": "NOT_EXECUTED",
+    "FAT_readiness": "NOT_ESTABLISHED",
+    "release": "NOT_AUTHORIZED"
+  },
+  "next": "Increment 48: source-first D0 remaining families (path-sensitive sysfs and local synthetic snapshots), advance small batches with explicit sealed source-path/receipt identities; separate later D1 and O1 original/consent checks. No merge."
+}

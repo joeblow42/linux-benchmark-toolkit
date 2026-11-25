@@ -1,0 +1,83 @@
+{
+  "record_type": "LBT_G5_04_RP02_CP03_INCREMENT_38_VERIFIED_IMPLEMENTATION_CHECKPOINT",
+  "documented_date": "2026-11-14",
+  "owner_authority": {
+    "methodology": "AI-Assisted Software Engineering Governance Standard v1.0",
+    "roadmap": "Owner-approved FAT Readiness Roadmap, RP-02.2 F-04",
+    "decisions": "Owner RP-01 applicability 210 mandatory, 65 conditional, 8 deferred; FR-134/177/186 dispositions approved; private receipt v0.6 Choice A",
+    "requirements": "Rev 1.6; 283 unchanged, all NOT_VERIFIED",
+    "preserved": "Fixed source commands/authorization, G4-07 ceilings, privileges/O1 consent, production canonical v1.0.0 and 41 status pairs, original acquired evidence"
+  },
+  "repository": {
+    "name": "joeblow42/linux-benchmark-toolkit",
+    "baseline_increment_37_sha": "f550601f69b8e9dfd51e92ffb661ada15f7ba308",
+    "branch": "g5/cp03-rp02-f04-src28-writer-38",
+    "pr": 63,
+    "base_pr": 62,
+    "implementation_verified_head": "5cb916a1cdbe3499995e8363145a773307841211",
+    "verified_workflow_run": 43628656753,
+    "ci_conclusion": "success",
+    "handoff_commit_validation": "Record committed after implementation CI. Verify the exact record-commit SHA in a new CI run before declaring final checkpoint tested.",
+    "stacked_pr_status": "PRs 55–63 draft, open and unmerged"
+  },
+  "change": {
+    "source": "SRC-28 OFFLINE_METADATA D1; existing one fixed dpkg-query command",
+    "source_bytes_ceiling": 33554432,
+    "combined_transport_bytes_ceiling": 8388608,
+    "stream_stderr_bytes_ceiling": 1048576,
+    "per_call_seconds_ceiling": 8,
+    "source_seconds_ceiling": 20,
+    "run_bytes_max_ceiling": 536870912,
+    "verified_reachable_writer_event": "SRC-28:call0001:run:writer when EvidenceWriter actually clips a captured original at the shared run meter; threshold/omission from actual meter and SealResult",
+    "canonical_corroboration": "Exact applied run threshold must equal ALL same-run sealed original bytes, and same source original must prove positive omitted suffix. Unsealed reservations cannot prove a canonical limit.",
+    "unreachable_source_event": "SRC-28 32MiB per-source writer quota cannot be reached by current single command with 8MiB combined capture; do not produce a SOURCE quota event merely from the registered ceiling.",
+    "ambiguity": "Writer plus simultaneous/unverified transport event remains fail-closed rather than guessed dominant limit",
+    "unsupported_remaining": "SRC-28 source-total 20s post-capture/writer timing not independently proved by this increment; further source-time assurance remains open"
+  },
+  "source_first_evidence": {
+    "oracle": "verification/g5_04/cp03_rp02_src28_writer_oracle_38.json",
+    "tests": "tests/test_g5_cp03_rp02_src28_writer_38.py",
+    "cases_designed": 8,
+    "executable_tests": 6,
+    "coverage": "Writer clipping positive, exact no-omission boundary, prior same-run source aggregate, stale/unsealed reservation negative, conflicting transport/writer negative, invalid scope and source-quota negative",
+    "result": "Six new tests PASS; prior SRC-28 transport suite and unified validation PASS; GitHub Actions run 43628656753 successful",
+    "limitations": "All tests synthetic/mock-only. Host Bodhi 7 AMD64 acquisition and independent CP-02 acceptance remain OPEN."
+  },
+  "change_paths": [
+    ".github/workflows/test.yml",
+    "lbt_g5/additional.py",
+    "lbt_g5/records.py",
+    "lbt_g5/canonical_session.py",
+    "tests/test_g5_cp03_rp02_src28_writer_38.py",
+    "verification/g5_04/cp03_rp02_src28_writer_oracle_38.json"
+  ],
+  "unchanged_protected_paths": [
+    "lbt_g5/safety.py",
+    "lbt_g5/runtime.py",
+    "lbt_g5/o1.py",
+    "lbt_g5/o1_execution.py",
+    "lbt_g5/privileged_session.py",
+    "lbt_g5/canonical_contract.py",
+    "lbt_g5/evidence.py"
+  ],
+  "gate_status": {
+    "G5_04": "OPEN",
+    "RP_02": "PARTIALLY_COMPLETE",
+    "FAT_requirements": "283 NOT_VERIFIED",
+    "original_39_CP02_cases": "NOT_ACCEPTED",
+    "independent_assurance": "OPEN",
+    "Bodhi7_AMD64_real_host": "NOT_EXECUTED",
+    "F06_exact_D02": "OPEN",
+    "FAT_approval": "NOT_ESTABLISHED",
+    "release_authorization": "NOT_ESTABLISHED"
+  },
+  "next": {
+    "increment_39": "RP-02.3 optional O1 SRC-13/SRC-18/SRC-21/privileged-helper capture-limit scope and consent-proof oracles; read current contracts first, no privilege broadening",
+    "remaining_RP02": "Additional D1/O1 unsupported or simultaneous time/byte/writer cases, explicit proof gaps under approved limits",
+    "RP03": "Exact frozen canonical D-02/F-06 conformance",
+    "RP04": "Independent 39-case CP-02 assurance, trace and Bodhi 7 AMD64 host validation before any FAT gate",
+    "approvals": "No merge, no gate promotion without owner direction"
+  },
+  "conversation_safety": "Reassess at each increment. This checkpoint is intended for fresh-context continuation before higher-risk O1/privilege source-first work, given extensive multi-increment edits and context accumulation.",
+  "invalid_promotions": "CI passing on mocked cases does not mean original CP-02 acceptance, requirement verification, canonical F-06 conformance, FAT readiness, or release authorization."
+}
