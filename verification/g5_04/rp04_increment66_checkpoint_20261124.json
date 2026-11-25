@@ -12,13 +12,22 @@
   "unified_full": "21 PASS, 0 FAIL, 0 SKIP",
   "controlled_requirement_overlap_checks": "1981 PASS, 0 mismatches",
   "missing_data_replay": "PARTIAL, 3 TOOL_MISSING/EXECUTABLE_NOT_FOUND, 0 facts",
-  "publication": "BLOCKED",
-  "publication_reason": "Direct git push lacks HTTPS credentials. GitHub connector automatic review rejected uploading the derived physical-host evidence metadata.",
-  "draft_pr": null,
-  "implementation_head_push_ci": null,
-  "implementation_head_pr_ci": null,
-  "documentation_head_push_ci": null,
-  "documentation_head_pr_ci": null,
-  "formal_cp02": {"total": 39, "executed": 0, "accepted": 0},
-  "next": "Complete Increment 66 publication and both CI checks, then reconcile the Slice A exit and advance to RP-06 B1 as applicable. CT-11-N2 and CT-11-N3 require their downstream G5-06 and TUI components."
+  "publication": "IMPLEMENTATION_PUBLISHED",
+  "draft_pr": 92,
+  "implementation_head_push_ci": {
+    "run_id": 45554692230,
+    "conclusion": "success"
+  },
+  "implementation_head_pr_ci": {
+    "run_id": 45554717079,
+    "conclusion": "success"
+  },
+  "documentation_head_push_ci": "VERIFY_ON_PUBLISHED_DOCUMENTATION_HEAD",
+  "documentation_head_pr_ci": "VERIFY_ON_PUBLISHED_DOCUMENTATION_HEAD",
+  "formal_cp02": {
+    "total": 39,
+    "executed": 0,
+    "accepted": 0
+  },
+  "next": "Verify documentation-head CI. CP-07 stage disposition remains an owner gate. RP-06 B1 is the next roadmap implementation slice."
 }
