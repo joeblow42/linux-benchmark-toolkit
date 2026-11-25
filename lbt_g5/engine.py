@@ -12,12 +12,14 @@ import os
 import re
 import stat
 import threading
+import time
 from pathlib import Path
 from typing import Mapping
 
 from .catalog import initial_catalog
 from .evidence import EvidenceWriter
 from .receipt_dispatch import capture_and_record
+from .records import utc_now
 from .runtime import ProbeSlots, SourceCallBudget
 from .safety import SourceRequest, initial_source_policies
 
@@ -36,11 +38,30 @@ class CollectorRun:
 
 
 @dataclass(frozen=True)
+class SessionExecution:
+    """Factual in-memory scope/clock/terminal witness of this engine run.
+
+    FINISHED means the selected iteration returned normally, NOT that all
+    selected acquisitions succeeded or a benchmark ran. An explicit
+    cancellation checked between source attempts yields INTERRUPTED.
+    """
+    selected_collector_ids: tuple[str, ...]
+    selected_source_ids: tuple[str, ...]
+    planned_attempt_ids: tuple[str, ...]
+    started_utc: str
+    completed_utc: str
+    elapsed_ms: int
+    terminal_state: str
+
+
+@dataclass(frozen=True)
 class EngineRun:
     run_id: str
     collectors: tuple
     # Operational receipts are private G5-02 attempts, NOT the G5-04 schema.
     canonical_status_pending: bool = True
+    # None for historical/manual fixtures: absence never proves completion.
+    execution: SessionExecution | None = None
 
     @property
     def source_attempt_count(self):
@@ -149,6 +170,49 @@ class UnifiedCollectorEngine:
             return frozenset()
         return frozenset((target,))
 
+    def _o1_inventory_binding(self, source_id, target, results):
+        """Return a same-run D0 original/path that justified G5-03 O1 trust.
+
+        Called only AFTER _trusted_targets has accepted the real device; never
+        accepts caller-provided trusted-target assertions. The consumer checks
+        this private execution witness against sealed D0 receipts again.
+        """
+        upstream = {"SRC-13":"SRC-12", "SRC-18":"SRC-17",
+                    "SRC-21":"SRC-19"}.get(source_id)
+        if upstream is None or type(target) is not str:
+            return None
+        entries=[]
+        for recorded in results.get(upstream, ()):
+            outcome=recorded.outcome
+            if getattr(outcome,"disposition",None) not in ("CAPTURED","PARTIAL"):
+                continue
+            for path,receipt in zip(getattr(outcome,"source_paths",()),
+                                    getattr(outcome,"artifacts",())):
+                if (receipt.run_id==self.run_id and receipt.source_id==upstream
+                        and receipt.private_relative_path ==
+                        "private/evidence/" + receipt.evidence_id):
+                    entries.append((path,receipt))
+        name=target.rsplit("/",1)[-1]
+        for path,artifact in sorted(entries,key=lambda pair: pair[0]):
+            if source_id=="SRC-13":
+                m=_BLOCK.match(path)
+                valid=bool(m and (m.group(1)==name or
+                    (re.fullmatch(r"nvme[0-9]+",name) and
+                     re.fullmatch(re.escape(name)+r"n[0-9]+",m.group(1)))))
+            elif source_id=="SRC-18":
+                m=_OPTICAL.match(path)
+                valid=bool(m and m.group(1)==name)
+            else:
+                m=_DRM_CARD.match(path)
+                valid=bool(m and _RENDER.fullmatch(target) and
+                    os.path.exists(Path("/sys/class/drm")/name/"device") and
+                    os.path.realpath(Path("/sys/class/drm")/name/"device") ==
+                    os.path.realpath(Path("/sys/class/drm")/m.group(1)/"device"))
+            if valid:
+                return {"source_id":upstream,"source_path":path,
+                        "evidence_id":artifact.evidence_id}
+        return None
+
     def _mountinfo_original(self, results):
         """Consume SOURCE-14 immutable bytes, never re-read live mountinfo."""
         for result in results.get("SRC-14", ()):
@@ -181,7 +245,8 @@ class UnifiedCollectorEngine:
         return None
 
     def run(self, collector_ids=None, *, o1_requests: Mapping | None = None,
-            disabled_sources=(), progress=None, privileged_session=None):
+            disabled_sources=(), progress=None, privileged_session=None,
+            cancel_requested=None):
         """Execute registered sources; progress is a best-effort observer only.
 
         START/END/ERROR notifications never change source authorization or
@@ -189,6 +254,8 @@ class UnifiedCollectorEngine:
         """
         if progress is not None and not callable(progress):
             raise TypeError("progress observer must be callable")
+        if cancel_requested is not None and not callable(cancel_requested):
+            raise TypeError("cancel_requested must be callable")
         def notify(collector_id, source_id, event):
             if progress is not None:
                 try:
@@ -234,8 +301,33 @@ class UnifiedCollectorEngine:
                 raise RuntimeError("IC-02 engine is single-use per run")
             self._used = True
 
+        # The exact plan is frozen after preflight and before the first
+        # adapter call. Preserve one entry per actual planned source subcall.
+        planned = []
+        for cid in selected:
+            for source in by_owner[cid]:
+                sid = source.source_id
+                count = (len(o1[sid]) if sid in o1 else 1)
+                if policies[sid].authorization_class != "O1":
+                    count = len(_SUBCALLS.get(sid, (0,)))
+                planned.extend("%s-%02d" % (sid, i + 1)
+                               for i in range(count))
+        selected_sources = tuple(
+            source.source_id for cid in selected for source in by_owner[cid])
+        started = utc_now()
+        clock_start = time.monotonic_ns()
         receipts_by_source = {}
         collected = []
+
+        def outcome(terminal):
+            return EngineRun(
+                self.run_id, tuple(collected),
+                execution=SessionExecution(
+                    selected, selected_sources, tuple(planned),
+                    started, utc_now(),
+                    max(0, (time.monotonic_ns() - clock_start) // 1000000),
+                    terminal))
+
         for cid in selected:
             attempts = []
             for source in by_owner[cid]:
@@ -248,14 +340,31 @@ class UnifiedCollectorEngine:
                     requests = (SourceRequest(self.run_id, sid, policy.operation_id,
                                              operator_disabled=sid in disabled),)
                 for index, request in enumerate(requests):
+                    o1_binding = None
                     if policy.authorization_class == "O1":
+                        trusted = self._trusted_targets(
+                            sid, request.target, receipts_by_source)
+                        # A binding is minted only for a target independently
+                        # accepted by this run-scoped inventory/device check.
+                        if request.target in trusted:
+                            o1_binding = self._o1_inventory_binding(
+                                sid, request.target, receipts_by_source)
                         request = replace(request,
-                            trusted_targets=self._trusted_targets(
-                                sid, request.target, receipts_by_source),
+                            trusted_targets=trusted,
                             operator_disabled=(sid in disabled or request.operator_disabled))
                     subcalls = (_SUBCALLS.get(sid, (0,))
                                 if policy.authorization_class != "O1" else (index,))
                     for subcall in subcalls:
+                        # Deliberate cancellation is honored between
+                        # source calls. Never fabricate a receipt for a call
+                        # that did not execute or swallow an unexpected error.
+                        if cancel_requested is not None:
+                            flag = cancel_requested()
+                            if type(flag) is not bool:
+                                raise TypeError("cancel_requested must return bool")
+                            if flag:
+                                collected.append(CollectorRun(cid, tuple(attempts)))
+                                return outcome("INTERRUPTED")
                         attempt = "%02d" % (subcall + 1)
                         source14 = (self._mountinfo_original(receipts_by_source)
                                     if sid == "SRC-15" else None)
@@ -264,7 +373,8 @@ class UnifiedCollectorEngine:
                             recorded = capture_and_record(
                                 request, attempt, self.writer, self.slots, self.calls,
                                 subcall=subcall, source14_evidence=source14,
-                                privileged_session=privileged_session)
+                                privileged_session=privileged_session,
+                                o1_inventory_binding=o1_binding)
                         except Exception:
                             notify(cid, sid, "ERROR")
                             raise
@@ -272,4 +382,4 @@ class UnifiedCollectorEngine:
                         receipts_by_source.setdefault(sid, []).append(recorded)
                         notify(cid, sid, "END")
             collected.append(CollectorRun(cid, tuple(attempts)))
-        return EngineRun(self.run_id, tuple(collected))
+        return outcome("FINISHED")

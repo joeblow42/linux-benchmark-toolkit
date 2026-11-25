@@ -1,0 +1,67 @@
+{
+  "record_type": "LBT_G5_04_RP04_INCREMENT61_VERIFIED_IMPLEMENTATION_CHECKPOINT",
+  "date_local": "2026-11-19",
+  "governance": "AI-Assisted Software Engineering Governance Standard v1.0",
+  "roadmap": "Owner-approved Alternative B FAT Readiness Roadmap Rev 0.2",
+  "owner_scope": "CT-07-N1 ordinary stale/wrong-run/missing provenance overlay approved; original expected rejection unchanged",
+  "predecessor": {
+    "increment": 60,
+    "pr": 86,
+    "final_head": "54e667761202ff9c67921afad472198d88b3538d",
+    "pr_ci": 44670327367,
+    "push_ci": 44670322148
+  },
+  "current": {
+    "increment": 61,
+    "pr": 87,
+    "branch": "g5/rp04-ct07-provenance-61",
+    "implementation_head": "ec8ea174da67f9c6777cb50057d47c0db7532359",
+    "pr_ci": {
+      "id": 44670849200,
+      "conclusion": "SUCCESS"
+    },
+    "push_ci": {
+      "id": 44670824967,
+      "conclusion": "SUCCESS"
+    },
+    "full_validation": "SUCCESS",
+    "candidate_cases": [
+      "CT-07-P1",
+      "CT-07-P2",
+      "CT-07-N1",
+      "CT-07-N2"
+    ],
+    "development_checks_executed": 4,
+    "development_checks_passed": 4,
+    "skips": 0,
+    "artifact": {
+      "name": "rp04-ct07-candidate-61",
+      "push_artifact_id": 14600730168
+    },
+    "final_doc_head_ci": "VERIFY_SEPARATELY"
+  },
+  "actual_methods": [
+    "CT-07-P1 already sealed SRC-14 MOUNTINFO + SRC-15 FS_STAT originals independently evidenced same-run semantic value; both original digests, lengths, source attempt IDs verified",
+    "CT-07-P2 repeated same content across SRC-08 attempt 01 and attempt 02 yields distinct G5-02 evidence IDs with identical hashes, and D-02 correct separate attempt binding",
+    "CT-07-N1 stale/wrong attempt universe or missing original rejected, including simulated ordinary in-memory wrong-attempt observation-link regression; no original record rewrite or rehash",
+    "CT-07-N2 intercepted read returns a bit-flipped ordinary corruption simulation; canonical SHA-256 rejection, unmodified file retained and later normal validation passes"
+  ],
+  "protected": {
+    "source_or_privilege_changed": false,
+    "consent_or_limits_changed": false,
+    "canonical_schema": "1.0.0",
+    "status_pairs": 41,
+    "production_code_changed": false,
+    "raw_original_files_modified": false,
+    "physical_host_test": false,
+    "benchmarks": false,
+    "formal_cp02_total": 39,
+    "formally_executed": 0,
+    "formally_accepted": 0,
+    "requirements_formally_verified": 0,
+    "cp07_or_fat_authorized": false,
+    "pr_draft": true,
+    "pr_merged": false
+  },
+  "conversation_integrity": "Coherent through Increment 61 implementation CI, no substantive failure. Final docs head CI must be checked."
+}

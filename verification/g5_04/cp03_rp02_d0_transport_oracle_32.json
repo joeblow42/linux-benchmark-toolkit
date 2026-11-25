@@ -1,0 +1,37 @@
+{
+  "id": "CP03-RP02-F04-D0-TRANSPORT-32",
+  "authority": "Owner-approved private operational v0.6, unchanged G4-07 worker process call",
+  "assurance": "Source-first synthetic oracle; CP-02 independent acceptance OPEN",
+  "cases": [
+    {
+      "id": "D0-T32-01",
+      "stimulus": "_capture_child stderr reaches exact applied 64KiB cap and records positive omitted lower bound",
+      "expect": "Private v0.6 stderr bytes witness threshold 65536, retained 65536, actual omitted minimum; original source field bytes sealed unchanged"
+    },
+    {
+      "id": "D0-T32-02",
+      "stimulus": "Concurrently timed-out worker and evidenced stderr overflow",
+      "expect": "Two independent CaptureLimit entities, one seconds (applied call cap), one stderr bytes, unique IDs; no dominant dimension inferred"
+    },
+    {
+      "id": "D0-T32-03",
+      "stimulus": "claimed stdout overflow when retained transport size below actual stdout bound",
+      "expect": "Refuse canonical promotion, keep sealed originals, never fabricate cap or missing bytes"
+    },
+    {
+      "id": "D0-T32-04",
+      "stimulus": "reported stderr omission count with exceeded_limit false",
+      "expect": "Refuse contradictory provenance"
+    },
+    {
+      "id": "D0-T32-05",
+      "stimulus": "unknown transport scope/threshold/unit in receipt",
+      "expect": "Receipt validation fail closed"
+    },
+    {
+      "id": "D0-T32-06",
+      "stimulus": "No actual transport overrun",
+      "expect": "No transport CaptureLimit generated; earlier v0.5 and v0.6 source file paths retain compatibility"
+    }
+  ]
+}

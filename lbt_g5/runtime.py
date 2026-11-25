@@ -76,6 +76,7 @@ class SourceCommandOutcome:
     timed_out: bool
     capture_limited: bool
     missing_extent_known_at_least: int
+    limit_witness: dict | None = None
 
 
 def command_plan(source_id: str, subcall: int = 0) -> CommandPlan:
@@ -264,9 +265,11 @@ def execute_source_command(request: SourceRequest, subcall: int,
     denied=decide_source(request,remaining_seconds=writer.meter.time_remaining(),
             remaining_bytes=writer.meter.max_bytes-writer.meter.bytes_reserved)
     def result(disposition,reason,argv=None,out=None,err=None,code=None,
-               elapsed=0.0,timed_out=False,limited=False,missing=0):
+               elapsed=0.0,timed_out=False,limited=False,missing=0,
+               limit_witness=None):
         return SourceCommandOutcome(disposition,reason,request.source_id,argv,
-                                    out,err,code,elapsed,timed_out,limited,missing)
+                                    out,err,code,elapsed,timed_out,limited,missing,
+                                    limit_witness)
     if not denied.allowed:
         return result("DENIED",denied.reason)
     if writer.run_id != request.run_id:
@@ -313,11 +316,40 @@ def execute_source_command(request: SourceRequest, subcall: int,
                     "EXIT_NONZERO" if captured.returncode else "BYTES_PRESERVED")
             if not incomplete and captured.returncode:
                 outcome="PARTIAL" if any(receipts) else "FAILED"
+            # Only actual applied deadlines/capture caps prove the dimension.
+            bound=None
+            scope=f"{request.source_id}:call{subcall+1:04d}:"
+            if captured.timed_out:
+                bound=dict(unit="seconds",threshold=float(limit),
+                           observed_extent=float(captured.elapsed_seconds),
+                           missing_extent=None,affected_scope=scope+"transport",
+                           reason="TIME_BUDGET_EXCEEDED")
+            elif captured.exceeded_limit:
+                if captured.stdout_omitted_at_least>0:
+                    stream="stdout"
+                    threshold=plan.stdout_limit
+                    retained=len(captured.stdout)
+                    omitted=captured.stdout_omitted_at_least
+                elif captured.stderr_omitted_at_least>0:
+                    stream="stderr"
+                    threshold=plan.stderr_limit
+                    retained=len(captured.stderr)
+                    omitted=captured.stderr_omitted_at_least
+                else:
+                    stream="transport"
+                    threshold=(8*_MIB if request.source_id=="SRC-23"
+                               else plan.stdout_limit+plan.stderr_limit)
+                    retained=len(captured.stdout)+len(captured.stderr)
+                    omitted=None
+                bound=dict(unit="bytes",threshold=threshold,
+                           observed_extent=retained,missing_extent=omitted,
+                           affected_scope=scope+stream,reason="CAPTURE_LIMIT")
             return result(outcome,reason,plan.argv,receipts[0],receipts[1],
                           captured.returncode,captured.elapsed_seconds,
                           captured.timed_out,captured.exceeded_limit or writer_truncated,
                           (captured.stdout_omitted_at_least+captured.stderr_omitted_at_least
-                           +sum(receipt.omitted_at_least for receipt in receipts if receipt is not None)))
+                           +sum(receipt.omitted_at_least for receipt in receipts if receipt is not None)),
+                          bound)
     except ProbeCapacityError:
         return result("DENIED","CONCURRENCY_LIMIT")
     finally:

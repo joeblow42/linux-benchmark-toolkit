@@ -1,0 +1,78 @@
+{
+  "record_id": "LBT-G504-CP03-INC08-ORACLE-SRC19",
+  "version": "1.0",
+  "state": "PREIMPLEMENTATION_ORACLE_SPEC",
+  "record_date": "2026-11-04",
+  "authority": {
+    "owner": "CP-03 three sequential increments approved",
+    "requirements": "Approved Rev 1.6",
+    "schema": "canonical 1.0.0; status 1.0",
+    "process": "AI-Assisted Software Engineering Governance Standard v1.0",
+    "sources": [
+      "G4-07 SRC-19 authorization/bounds: COL-GPU D0; 16MiB, 2048 entries, 4s, DRM and PCI identity read-only; no workload or writes",
+      "G4-02/06 SRC-19 Source Evidence Map: per deterministic enumeration/read entry; original path retained",
+      "G5-03 accepted passive_worker.py ROOTS/ATTRS and successful source_paths receipt mapping; G5-04 CP-01 D01..05"
+    ]
+  },
+  "path_contract": {
+    "root": "/sys/class/drm",
+    "devices": "card[0-9]+ directories only, lexical sort",
+    "attrs_in_worker_order": [
+      "device/vendor",
+      "device/device",
+      "device/subsystem_vendor",
+      "device/subsystem_device",
+      "device/revision"
+    ],
+    "recording": "Only successfully sealed original paths in worker acquisition order; item0001 corresponds to source_paths[0], etc. Missing optional attributes preserved separately in unavailable_fields.",
+    "identity": "private gpu.drm.<cardN>.pci.<field> derived from original recorded path, never from bytes",
+    "prohibitions": [
+      "No render node reads",
+      "No hardware workload",
+      "No GPU control writes",
+      "No probing in parser",
+      "No raw-source pointers in public outputs"
+    ]
+  },
+  "interpretation": "Bounded UTF-8 single-line PCI numeric ID raw string starting 0x, 2-8 hex digits; normalize lower-case as identifier STRING only. No invented GPU vendor/model or supported codec, no physical capability assertion.",
+  "ambiguity": "Vendor/PCI attribute values malformed or absent are not fabricated; preserve raw bytes and record real parser error if parse attempted.",
+  "cases": [
+    {
+      "id": "S19-P01",
+      "expected": "2 valid card0 PCI attributes including mixed-case hex produce exact private datum_paths, string identity, 1:1 sealed evidence; manifest validates"
+    },
+    {
+      "id": "S19-P02",
+      "expected": "card10 before card2 in lexical worker order; value-only identity never remaps card paths"
+    },
+    {
+      "id": "S19-P03",
+      "expected": "optional absent attribute yields unavailable_fields only; no semantic observation for missing field"
+    },
+    {
+      "id": "S19-N01",
+      "expected": "source_paths length mismatch with sealed items rejects before manifest"
+    },
+    {
+      "id": "S19-N02",
+      "expected": "swapped fixed attribute order, duplicate path, non-lexical cards, tampered itemNNNN ordinal reject"
+    },
+    {
+      "id": "S19-N03",
+      "expected": "traversal, wrong root, cardX, renderD128, device/driver, unsupported PCI attribute reject without host I/O"
+    },
+    {
+      "id": "S19-N04",
+      "expected": "cross-run sealed identity and changed bytes reject original integrity"
+    },
+    {
+      "id": "S19-N05",
+      "expected": "invalid UTF-8, nonhex IDs, multiple lines, excessive bytes are actual parser failures, original evidence remains unmodified"
+    },
+    {
+      "id": "S19-B01",
+      "expected": "unknown but syntactically valid PCI ID normalized as identifier only, not vendor name or benchmark capability"
+    }
+  ],
+  "independence": "Source-first test expectations drafted before parser implementation; same AI author, not independent human review. CI pass is scoped, not 283-requirement or gate acceptance."
+}
