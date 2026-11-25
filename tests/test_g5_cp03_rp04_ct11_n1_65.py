@@ -89,6 +89,8 @@ class CT11N1Candidate65(unittest.TestCase):
             return reject
 
         with ExitStack() as stack:
+            stack.enter_context(patch.object(
+                Path, "open", new=guarded("pathlib.Path.open", Path.open)))
             for module, names in (
                     (os, ("open", "listdir", "scandir", "stat", "lstat", "readlink")),
                     (builtins, ("open",)), (io, ("open",))):
