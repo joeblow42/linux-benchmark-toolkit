@@ -3,6 +3,7 @@ import argparse
 import json
 from pathlib import Path
 
+from .backup_workload import CASES as BACKUP_CASES, Backup, backup_workloads
 from .core_workloads import MIB, ShortParameters, short_workloads
 from .jellyfin_workloads import (
     ClientProfile, CONCURRENT, JELLYFIN_CASES, direct_play, import_session_evidence, jellyfin_workloads,
@@ -21,6 +22,10 @@ def main(argv=None):
                         help="existing owner-only directory for inventory and benchmark data")
     parser.add_argument("--select", action="append", default=[],
                         help="interactive workload ID or group:NAME, repeatable")
+    parser.add_argument("--backup-destination", type=Path,
+                        help="existing local directory for temporary generated backup copies")
+    parser.add_argument("--backup-large-mib", type=int, default=64)
+    parser.add_argument("--backup-small-files", type=int, default=2048)
     parser.add_argument("--cpu-workers", type=int, default=ShortParameters.cpu_workers)
     parser.add_argument("--disk-reserve-mib", type=int, default=1024)
     parser.add_argument("--sustained-seconds", type=int, default=SustainedParameters.seconds)
@@ -53,12 +58,20 @@ def main(argv=None):
         parser.error("provide --dvd-device, --dvd-bytes and --confirm-unencrypted-dvd together")
     if bool(args.network_peer) != args.authorize_peer:
         parser.error("provide both --network-peer and --authorize-peer")
+    backup_selected = any(item in (*BACKUP_CASES, "group:backup") for item in args.select)
+    if backup_selected != bool(args.backup_destination) or (backup_selected and args.mode != "interactive"):
+        parser.error("backup requires interactive selection and --backup-destination")
+    if "group:backup" in args.select:
+        args.select = [item for item in args.select if item != "group:backup"] + list(BACKUP_CASES)
     try:
         parameters = ShortParameters(cpu_workers=args.cpu_workers)
         sustained = SustainedParameters(seconds=args.sustained_seconds,
                                         cpu_workers=min(2, args.cpu_workers),
                                         max_celsius=args.max_celsius)
         workloads = short_workloads(parameters) + sustained_workloads(sustained)
+        if backup_selected:
+            workloads += backup_workloads(Backup(args.backup_destination, args.disk_reserve_mib * MIB,
+                                                  args.backup_large_mib, args.backup_small_files))
         if args.network_peer:
             workloads += (peer_workload(Peer(args.network_peer, args.authorize_peer)),)
         disk_bytes = 128 * MIB
