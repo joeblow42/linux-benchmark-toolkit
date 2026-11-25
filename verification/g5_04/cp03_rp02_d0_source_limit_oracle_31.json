@@ -1,0 +1,78 @@
+{
+  "id": "CP03-RP02-F04-D0-LIMITS-31",
+  "authority": [
+    "Owner-approved RP-01 FAT scope classification and RP-02 private receipt v0.6, 2026-11-13",
+    "Approved CP-01 D-02 CaptureLimit fields and link ID arrays, schema_version 1.0.0 unchanged",
+    "Approved G4-07 D0 source limits/paths unchanged",
+    "G5-03 single capture_and_record adapter path"
+  ],
+  "evidence_status": "AI-authored source-first executable candidate, independent CP-02 acceptance OPEN",
+  "immutable_constraints": [
+    "No altered source paths/commands, privileged execution, safety ceilings, canonical schema keys or 41 status pairs",
+    "Raw original bytes remain byte-identical; old operational receipts v0.1-v0.5 readable",
+    "Missing extent never substituted with zero; reaching an exact boundary is not proof omitted bytes",
+    "Each limit has distinct effective rule, dimension, observed extent, affected scope and same-run origin"
+  ],
+  "cases": [
+    {
+      "id": "D0-31-01",
+      "stimulus": "Registered worker file exceeds 1 MiB per-file ceiling",
+      "expected": "Measured per-file bytes witness with scope item0001:file, 1048576 applied threshold, observed retained count, unknown omission; original first MiB sealed exactly"
+    },
+    {
+      "id": "D0-31-02",
+      "stimulus": "Registered worker encounters next candidate beyond source max_entries",
+      "expected": "Independent entries witness; source max entries and actual attempted count, no invented missing-entry count"
+    },
+    {
+      "id": "D0-31-03",
+      "stimulus": "Registered worker encounters next candidate after max_bytes exhausted",
+      "expected": "Independent source-total bytes witness; actual source threshold and captured bytes, unknown omitted extent"
+    },
+    {
+      "id": "D0-31-04",
+      "stimulus": "Same candidate independently reaches file cap and source total with next candidate",
+      "expected": "Two independently supported scope-specific witnesses, distinct IDs and status references"
+    },
+    {
+      "id": "D0-31-05",
+      "stimulus": "Source limit and process deadline occur together with full independently authenticated worker event",
+      "expected": "Multiple source/transport witnesses if same-run facts available; never choose dominant dimension"
+    },
+    {
+      "id": "D0-31-06",
+      "stimulus": "Unverified/partial worker stream or forged worker dimension",
+      "expected": "No promotion of unverified event; canonical refuses ambiguous limit or tampered operational receipt"
+    },
+    {
+      "id": "D0-31-07",
+      "stimulus": "Exactly sized file without proof of additional bytes",
+      "expected": "Record that ceiling was reached, missing_extent null rather than claim omission or infer 1 missing byte"
+    },
+    {
+      "id": "D0-31-08",
+      "stimulus": "Writer reaches applied stream/source/run bound",
+      "expected": "Capture independently identified effective writer bound or hold event nonpromotable if ambiguous"
+    },
+    {
+      "id": "D0-31-09",
+      "stimulus": "Legacy v0.5 timeout and v0.4 normal receipt",
+      "expected": "Continue legacy receipt validation byte-for-byte; zero artificial limit records"
+    },
+    {
+      "id": "D0-31-10",
+      "stimulus": "Transport stdout/stderr reported truncated with contradicting retained-byte extents",
+      "expected": "Reject contradictory transport witness; original preserved; no fabricated captured extent"
+    },
+    {
+      "id": "D0-31-11",
+      "stimulus": "Attempt to place v0.6 limit with unit not approved by evidence, missing scope or duplicate event",
+      "expected": "Reject at source receipt validation and/or strict same-run canonical validation"
+    },
+    {
+      "id": "D0-31-12",
+      "stimulus": "Canonical limit records generated",
+      "expected": "No unapproved canonical schema/status keys, unique IDs and accurate multi-ID references; full D-02 F-06 exact conformance remains OPEN"
+    }
+  ]
+}

@@ -1,0 +1,126 @@
+{
+  "record_type": "LBT_G5_04_RP04_INCREMENT64_VERIFIED_IMPLEMENTATION_CHECKPOINT",
+  "date_local": "2026-11-19",
+  "governance": "AI-Assisted Software Engineering Governance Standard v1.0",
+  "roadmap": "Owner-approved Alternative B FAT Readiness Roadmap Rev 0.2",
+  "owner_decision": "Alternative A: correct own staging-file cleanup on failed exclusive receipt publication (APPROVED)",
+  "repository": "https://github.com/joeblow42/linux-benchmark-toolkit",
+  "predecessor": {
+    "increment": 63,
+    "pr": 89,
+    "formal_cp02_executed": 0,
+    "formal_cp02_accepted": 0
+  },
+  "recovery_start": {
+    "increment": 64,
+    "pr": 90,
+    "head": "7cf504f19ed1da0d3ad7ba9da90e109bd8879e96",
+    "pr_ci": {
+      "id": 44672819342,
+      "conclusion": "FAILURE"
+    },
+    "push_ci": {
+      "id": 44672791001,
+      "conclusion": "FAILURE"
+    },
+    "cause": "CT-10-N3 detects dangling private/source_attempt_records/.staging-* after FileExistsError from duplicate receipt exclusive link",
+    "case_results": {
+      "CT-10-P1": "PASS",
+      "CT-10-N1": "PASS",
+      "CT-10-N2": "PASS",
+      "CT-10-N3": "FAIL"
+    },
+    "unified_validation": "NOT_EXECUTED_AFTER_FAILURE"
+  },
+  "correction": {
+    "production_path": "lbt_g5/records.py",
+    "function": "commit_attempt",
+    "implementation_commit": "6fc3c47bafb9f163d82158b5e3afea8667913deb",
+    "scope": "Track successfully exclusive-created staging file; on failure unlink only this operation's staging entry before closing file descriptors; clear marker after normal unlink",
+    "preserves_committed_receipts": true,
+    "preserves_original_evidence": true,
+    "source_commands_changed": false,
+    "privileges_consent_or_limits_changed": false,
+    "canonical_schema_changed": false,
+    "status_vocabulary_changed": false
+  },
+  "implementation_verification": {
+    "exact_head": "6fc3c47bafb9f163d82158b5e3afea8667913deb",
+    "pr": 90,
+    "draft": true,
+    "merged": false,
+    "push_ci": {
+      "id": 44688644290,
+      "event": "push",
+      "head": "6fc3c47bafb9f163d82158b5e3afea8667913deb",
+      "conclusion": "SUCCESS",
+      "ct10": "4/4 PASS",
+      "unified_validation": "21 PASS / 0 FAIL / 0 SKIP"
+    },
+    "pr_ci": {
+      "id": 44688651486,
+      "event": "pull_request",
+      "head": "6fc3c47bafb9f163d82158b5e3afea8667913deb",
+      "conclusion": "SUCCESS",
+      "ct10": "4/4 PASS",
+      "unified_validation": "SUCCESS"
+    },
+    "case_ids": [
+      "CT-10-P1",
+      "CT-10-N1",
+      "CT-10-N2",
+      "CT-10-N3"
+    ],
+    "dedicated_artifacts": {
+      "push": {
+        "name": "rp04-ct10-candidate-64",
+        "id": 14607183014
+      },
+      "pr": {
+        "name": "rp04-ct10-candidate-64",
+        "id": 14607552109
+      }
+    },
+    "validation_artifacts": {
+      "push": {
+        "name": "toolkit-validation-report",
+        "id": 14606844444
+      },
+      "pr": {
+        "name": "toolkit-validation-report",
+        "id": 14607926236
+      }
+    }
+  },
+  "protected": {
+    "schema_version": "1.0.0",
+    "status_pair_count": 41,
+    "raw_originals_modified": false,
+    "original_source_commands_privileges_limits_changed": false,
+    "private_operational_receipts": true,
+    "physical_bodhi7_test": false,
+    "cp07_execution": false,
+    "formal_fat_execution": false,
+    "pr_stack": "draft and unmerged"
+  },
+  "formal": {
+    "original_cp02_cases": 39,
+    "formally_executed": 0,
+    "formally_accepted": 0,
+    "formal_acceptance_claimed": false,
+    "ct08_n2": "G5-06_DOWNSTREAM_NOT_EXECUTED"
+  },
+  "next_gate": {
+    "next_case": "CT-11-P1",
+    "context": "BODHI7_PRE_FAT_READ_ONLY",
+    "authorized_for_physical_host_execution": false,
+    "approval_required": "OWNER_READ_ONLY_HOST_PLAN_APPROVAL_REQUIRED",
+    "related_cases": {
+      "CT-11-N1": "OFFLINE_FIXTURE; OWNER_CP07_CASE_DISPOSITION_REVIEW_REQUIRED",
+      "CT-11-N2": "G5_06_DOWNSTREAM",
+      "CT-11-N3": "TUI_DOWNSTREAM"
+    },
+    "stop_reason": "Explicit physical host owner gate; do not auto-run next increment on Bodhi 7",
+    "documentation_head_ci": "VERIFY_SEPARATELY_AFTER_THIS_DOCUMENTATION_COMMIT"
+  }
+}
