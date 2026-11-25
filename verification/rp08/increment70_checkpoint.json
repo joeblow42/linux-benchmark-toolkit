@@ -1,0 +1,17 @@
+{
+  "increment": 70,
+  "scope": "RP-08 C1 opt-in DVD read, imaging and verification",
+  "branch": "g5/rp08-c1-optical-70",
+  "draft_pr": 96,
+  "parent_draft_pr": 95,
+  "parent_commit": "33829cfa21bd8e580c7add559751efbeec2d13e2",
+  "implementation_commit": "58f768ff0acbbab5efeccadaf9f7d28c95b443e3",
+  "implementation_ci": {"push": 45615877803, "pull_request": 45615908784, "conclusion": "success"},
+  "documentation_ci": "Verify the published documentation commit separately",
+  "local": {"targeted_pass": 4, "unified_pass": 21, "unified_fail": 0, "unified_skip": 0},
+  "host_fixture": {"context": "synthetic ISO in RAM-backed temporary workspace", "bytes": 358400, "result": "IMAGE_VERIFIED"},
+  "physical_optical": "NOT_TESTED: operator media still unconfirmed, and ordinary user lacked read access to the optical device",
+  "requirements": ["LBT-FR-062", "LBT-FR-064", "LBT-FR-065", "LBT-FR-066", "LBT-FR-067", "LBT-FR-068", "LBT-FR-069", "LBT-FR-070", "LBT-FR-156", "LBT-NFR-010", "LBT-NFR-015", "LBT-NFR-020", "LBT-NFR-021"],
+  "formal_cp02": {"executed": 0, "accepted": 0, "total": 39},
+  "next": "RP-08 C2 owned local DVD video fixture measurement with FFmpeg"
+}

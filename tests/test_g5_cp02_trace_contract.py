@@ -10,7 +10,7 @@ from pathlib import Path
 import unittest
 
 from lbt_g5.canonical_contract import (
-    CANONICAL_SCHEMA_VERSION, STATUS_SCHEMA_VERSION,
+    CanonicalContractError, CANONICAL_SCHEMA_VERSION, STATUS_SCHEMA_VERSION,
     STATUS_FIELDS, STATUS_PAIRS,
 )
 from lbt_g5.canonical_session import _status_for
@@ -108,12 +108,11 @@ class G504CP02ControlTests(unittest.TestCase):
         self.assertEqual(STATUS_SCHEMA_VERSION, "1.0")
         self.assertEqual(CANONICAL_SCHEMA_VERSION, "1.0.0")
 
-    @unittest.expectedFailure
-    def test_known_f01_no_parser_cannot_imply_parse_failed(self):
-        """KNOWN FAIL F-01, CT-02-N1: CP-03 must correct then remove xfail."""
+    def test_f01_no_parser_cannot_be_finalized_as_parse_failed(self):
+        """CT-02-N1: a captured original alone cannot prove parser failure."""
         receipt = {"outcome": "CAPTURED", "reason": "BYTES_PRESERVED"}
-        status, reason = _status_for(receipt, [object()])
-        self.assertNotEqual((status, reason), ("PARTIAL", "PARSE_FAILED"))
+        with self.assertRaises(CanonicalContractError):
+            _status_for(receipt, [object()])
 
 
 if __name__ == "__main__":

@@ -1,0 +1,34 @@
+{
+  "record_id": "LBT-G504-CP03-21-SCOPED-ENGINEERING-CHECKPOINT",
+  "date_local": "2026-11-08",
+  "pr_number": 45,
+  "branch": "g5/cp03-lspci-pci-inventory-21",
+  "parent_pr": 44,
+  "parent_sha": "838c9d6b284b9d08dde1e1ee266adfb5cc485203",
+  "source_first_oracle_commit": "37e2586f098678bab585382613426b4e399559d3",
+  "source_first_test_commit": "7033230926a829cb0b2c533ef2f299d701421e3a",
+  "code_head_before_evidence": "d542e4d32f32dc1a58fa65e489b87fd389612f88",
+  "workflow_run_id": 42514719583,
+  "workflow_conclusion": "success",
+  "new_tests": {
+    "PASS": 9,
+    "FAIL": 0
+  },
+  "unified_full": {
+    "PASS": 21,
+    "FAIL": 0,
+    "SKIP": 0,
+    "BLOCKED": 0,
+    "NOT_APPLICABLE": 0
+  },
+  "source": "SRC-20",
+  "authorized_method": "COL-GPU D1 LSPCI lspci -nn one local unprivileged call, 6sec, up to 16MiB total with per-stream bounds",
+  "field_scope": "strict source-reported PCI slot, class code, vendor and device identifiers, display strings; no driver/health inference",
+  "gaps": [
+    "Human-readable lspci output is version-dependent and not guaranteed machine stable; unsupported variant becomes PARTIAL/PARSE_FAILED, original preserved.",
+    "1MiB conservative semantic parser ceiling vs 12MiB acquisition stdout, original bytes preserved on failure.",
+    "No independent human, third-party, or Bodhi Linux 7 AMD64 target validation."
+  ],
+  "baseline": "Controlled Rev1.6 requirements, canonical 1.0.0/status 1.0, source authorizations and public output policy unchanged",
+  "parser_coverage": "25/28; SRC-21 SRC-23 SRC-28 remain; CP-03 G5-04 open; no requirements VERIFIED"
+}
