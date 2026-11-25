@@ -1,0 +1,22 @@
+{
+  "increment": 72,
+  "scope": "RP-08 C3 Jellyfin scenarios, measured concurrency and separate Direct Play evidence",
+  "branch": "g5/rp08-c3-jellyfin-72",
+  "draft_pr": 98,
+  "parent_draft_pr": 97,
+  "parent_commit": "cccf2ffb39b545fddd356f6a18d300f4ec63a50f",
+  "implementation_commit": "6f2f95d53b701152d257269b450c30b9355464be",
+  "implementation_ci": {"push": 45617703623, "pull_request": 45617792645, "conclusion": "success"},
+  "documentation_ci": "Verify the published documentation commit separately",
+  "local": {"targeted_pass": 4, "targeted_skip": 1, "interactive_routing_fixture": "PASS", "unified_pass": 21, "unified_fail": 0, "unified_skip": 0},
+  "synthetic_ci_evidence": {
+    "cases_observed": ["JF-01", "JF-02", "JF-10"],
+    "push_artifact": 15022154936,
+    "pull_request_artifact": 15022428145,
+    "scope": "Actual software FFmpeg with generated H.264 input, including two overlapping processes"
+  },
+  "requirements": ["LBT-FR-081", "LBT-FR-082", "LBT-FR-083", "LBT-FR-084", "LBT-FR-085", "LBT-FR-086", "LBT-FR-087", "LBT-FR-088", "LBT-FR-089", "LBT-FR-090", "LBT-FR-091", "LBT-FR-093", "LBT-FR-094", "LBT-FR-095", "LBT-FR-096", "LBT-FR-097", "LBT-FR-159", "LBT-FR-160", "LBT-NFR-062"],
+  "unverified": ["physical storage under safe host load", "physical DVD and automated profile verification", "ddrescue option", "VA-API hardware comparison", "remaining Jellyfin fixture encodes", "optional actual Jellyfin server/client session", "optional peer traffic"],
+  "formal_cp02": {"executed": 0, "accepted": 0, "total": 39},
+  "next": "Slice D RP-09 backup and data movement when requested. B/C physical verification requires suitable targets and permissions."
+}
