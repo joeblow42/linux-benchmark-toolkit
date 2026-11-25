@@ -1,0 +1,104 @@
+{
+  "record_type": "LBT_RP02_ENGINEERING_HANDOFF_INCREMENT_34_TO_36",
+  "documented_date": "2026-11-14",
+  "authority": {
+    "governance": "AI-Assisted Software Engineering Governance Standard v1.0",
+    "requirements": "Requirements Rev 1.6, 283 controlled requirements; text unmodified",
+    "fat_scope": {
+      "mandatory": 210,
+      "conditional": 65,
+      "deferred": 8,
+      "pending": 0,
+      "owner_approved": "2026-11-13"
+    },
+    "affected_dispositions": "Owner approved FR-134 deferred prior-results view, FR-177 execution controls without report viewer, FR-186 group/individual test selection where practical",
+    "operational_receipt": "Owner Choice A approved private v0.6 multi-event witness; legacy v0.1-v0.5 retained",
+    "hard_boundaries": [
+      "No fixed source command or acquisition source authorization change",
+      "No root-helper privilege/consent broadening",
+      "No G4-07 run/source/per-target ceiling changes",
+      "No production canonical v1.0.0 field or 41 accepted status-pair vocabulary changes"
+    ]
+  },
+  "repository": {
+    "name": "joeblow42/linux-benchmark-toolkit",
+    "entry_checkpoint_sha": "a75bafd0049d5983886908110d90d496f304cb58",
+    "upstream_pr_55_58": "Existing RP01/Increment31-33 stack, all draft unmerged",
+    "increment_records": [
+      {
+        "increment": 34,
+        "pr": 59,
+        "branch": "g5/cp03-rp02-f04-src28-transport-34",
+        "head": "2872bcf288fb479a7dd43216e8b2d433f728e380",
+        "ci_run": 43623201659,
+        "ci_conclusion": "success",
+        "oracle": "verification/g5_04/cp03_rp02_src28_transport_oracle_34.json",
+        "tests": "tests/test_g5_cp03_rp02_src28_transport_34.py",
+        "oracle_cases": 8,
+        "synthetic_tests": 8,
+        "scope": "SRC-28 actual D1 process stderr/combined byte caps and deadline, conflicting dimensions fail closed"
+      },
+      {
+        "increment": 35,
+        "pr": 60,
+        "branch": "g5/cp03-rp02-f04-src15-calls-35",
+        "head": "2213639ec952616fcb3973ff01abfc0aff45688e",
+        "ci_run": 43623766237,
+        "ci_conclusion": "success",
+        "oracle": "verification/g5_04/cp03_rp02_src15_calls_oracle_35.json",
+        "tests": "tests/test_g5_cp03_rp02_src15_calls_35.py",
+        "oracle_cases": 9,
+        "synthetic_tests": 6,
+        "scope": "SRC-15 first/later D1 per-call 2s and stream cap dimensions with same-run SRC-14 source binding"
+      },
+      {
+        "increment": 36,
+        "pr": 61,
+        "branch": "g5/cp03-rp02-f04-src15-entries-36",
+        "head": "b98deb0a119f01cc4a08f460931cdd2b66e0f2c3",
+        "ci_run": 43624385094,
+        "ci_conclusion": "success",
+        "oracle": "verification/g5_04/cp03_rp02_src15_entries_oracle_36.json",
+        "tests": "tests/test_g5_cp03_rp02_src15_entries_36.py",
+        "oracle_cases": 7,
+        "synthetic_tests": 5,
+        "scope": "SRC-15 128-target count only after all 128 evidence-bound calls and 129th SRC14 eligible mount; exact boundary no false truncation"
+      }
+    ],
+    "last_verified_implementation_sha": "b98deb0a119f01cc4a08f460931cdd2b66e0f2c3",
+    "pending_handoff_record_commit_validation": "Record will be committed separately and exact-head CI must be verified before using as tested handoff",
+    "worktree": "Remote GitHub draft branches; no local Bodhi host worktree tested",
+    "protected_unchanged_by_blob_sha": [
+      "lbt_g5/safety.py",
+      "lbt_g5/canonical_contract.py",
+      "lbt_g5/runtime.py",
+      "lbt_g5/o1_execution.py",
+      "lbt_g5/o1.py",
+      "lbt_g5/local_space.py"
+    ]
+  },
+  "assurance": {
+    "current_increments_oracle_cases": 24,
+    "current_increments_synthetic_tests": 19,
+    "evidence": "Each increment exact-head CI succeeded including unit and unified validation; no independent CP-02 acceptance is claimed",
+    "counts": "All 283 requirements NOT_VERIFIED; original 39 CP-02 cases NOT_ACCEPTED",
+    "approved_schema": "Canonical v1.0.0 and status v1.0 remain frozen; exact F-06 conformance OPEN",
+    "G5_04": "OPEN",
+    "FAT_entry": "NOT AUTHORIZED",
+    "repository_merge": "All PR 55–61 draft, open and unmerged",
+    "Bodhi7_AMD64": "No host validation in these increments"
+  },
+  "open_work": [
+    "RP-02.2: SRC-15 overall 15-second wall clock expiry needs distinct witnessed source-level timing, not to be conflated with per-call child timeout",
+    "RP-02.2: SRC-15 source-total and evidence-writer byte limits, with exact event source and cap and no resumed acquisition after unknown limitation",
+    "RP-02.2: SRC-28 evidence writer/source aggregate bounds and ambiguous simultaneous cap treatment",
+    "RP-02.3: optional O1 SRC-13 SMART/NVMe, SRC-18 optical, SRC-21 VA-API, privileged helper, exact consent provenance, time/byte/writer limits",
+    "RP-03: exact frozen D-02 F-06 canonical schema/type/null/limit-reference producer-consumer conformance and independent oracle",
+    "RP-04: independent G5-04 CP-02 proof including original 39 cases, design fixtures, host validation, integrity and owner gate",
+    "FAT packages RP-05 through RP-13 continue under accepted roadmap and owner gates"
+  ],
+  "next_action": "Begin with source-first SRC-15 cumulative source time and writer/aggregate quota oracle (Increment 37) stacked on PR #61, author negative tests first, keep source commands/privileges/quotas/canonical/status immutable; stop for any material owner-boundary decision.",
+  "conversation_safety": "STOP HERE due accumulated multi-increment context; previous checkpoint also recommended new chat after three increments. Use this durable GitHub record plus PRs 55–61 to recover authority and exact SHAs. User requested stop when continuation concern arises.",
+  "corrections": "G4-10 70-fixture design and 283 RTM routing are not accepted tests or verified requirements; 25 inherited fixture routes still lack direct requirement links.",
+  "disallowed_promotions": "No synthetic fixture PASS becomes CP-02 accepted, no draft PR merges, no G5-04/FAT completion without independent evidence."
+}

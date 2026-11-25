@@ -1,0 +1,70 @@
+{
+  "record_id": "LBT-G504-CP03-INC04-CI-20261104",
+  "record_type": "verification_evidence",
+  "revision": "1.0",
+  "state": "CI_PASSED_NOT_GATE_ACCEPTED",
+  "baseline": "Requirements Rev 1.6; canonical schema 1.0.0; status schema 1.0; approved CP-01 D-01..D-05; AI engineering standard 1.0",
+  "implementation": {
+    "pr": 27,
+    "commit": "5d06c3f9e04754b4ca1c17d4db0033c719249042",
+    "branch": "g5/cp03-sysfs-provenance-governance-04",
+    "base_pr": 26,
+    "source_family": "SRC-04",
+    "candidate_coverage": "10/28"
+  },
+  "execution": {
+    "url": "https://github.com/joeblow42/linux-benchmark-toolkit/actions/runs/41878986355",
+    "run_id": 41878986355,
+    "run_number": 461,
+    "head_sha": "5d06c3f9e04754b4ca1c17d4db0033c719249042",
+    "workflow_conclusion": "success",
+    "job": "checks",
+    "job_conclusion": "success",
+    "checks": [
+      "Shell and Python syntax",
+      "G5-04 canonical status registry and strict envelope fixtures",
+      "G5-04 private canonical session persistence and integrity fixtures",
+      "G5-04 real Linux IC-02 to private canonical smoke",
+      "G5-04 CP-02 independent requirement trace and accepted-contract oracles",
+      "G5-04 CP-02 expanded requirement trace provenance fixtures",
+      "G5-04 CP-03 typed normalization and status-source attribution fixtures",
+      "G5-04 CP-03 incremental platform EFI and tool parser contracts",
+      "G5-04 CP-03 CPU and optical capabilities normalization fixtures",
+      "G5-04 CP-03 SRC-04 DMI provenance and adversarial path oracles",
+      "Unified Full validation (unit and acceptance once)"
+    ],
+    "observation": "All listed steps completed SUCCESS in one GitHub workflow run; no local Bodhi host test evidenced"
+  },
+  "oracle": {
+    "source": "verification/g5_04/cp03_sysfs_oracle_review_04.json",
+    "independence": "source-first separate review logic by same AI agent; human independent signoff not obtained",
+    "status": "PROVISIONAL"
+  },
+  "trace": {
+    "file": "verification/g5_04/requirements_traceability_rev1_6.csv",
+    "rows": 283,
+    "reference_ids": [
+      "LBT-FR-168",
+      "LBT-NFR-068",
+      "LBT-NFR-070"
+    ],
+    "verification_state": "NOT_VERIFIED",
+    "evidence_field_at_inc04": "empty; this separate record documents completed CI scope only"
+  },
+  "remaining": [
+    "18 registered source families have no implemented parser",
+    "CP-03 source-wide completion open",
+    "CP-04 F-02/F-04/F-05/F-06/F-07 open",
+    "39 CP-02 specified acceptance cases are not each separately evidenced as executed",
+    "Bodhi 7 host validation CP-06 pending",
+    "G5-04 owner acceptance CP-07 pending"
+  ],
+  "approval": "No gate acceptance; draft PR #27 unmerged",
+  "change_history": [
+    {
+      "date": "2026-11-04",
+      "revision": "1.0",
+      "event": "Recorded observed passing CI result after queued state resolved"
+    }
+  ]
+}

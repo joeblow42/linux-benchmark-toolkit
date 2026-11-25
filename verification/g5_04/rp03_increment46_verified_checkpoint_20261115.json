@@ -1,0 +1,93 @@
+{
+  "record_type": "LBT_G5_04_RP03_CP03_INCREMENT_46_VERIFIED_CANDIDATE_CHECKPOINT",
+  "date": "2026-11-15",
+  "governance": "AI-Assisted Software Engineering Governance Standard v1.0",
+  "roadmap": "Owner-approved FAT Readiness Roadmap, RP-03.2",
+  "repository": {
+    "full_name": "joeblow42/linux-benchmark-toolkit",
+    "branch": "g5/cp03-rp03-multioriginal-46",
+    "pr": 71,
+    "stacked_on": 70,
+    "parent_head": "b9187732b414c6cfcbec77e07fa677cabe758685",
+    "implementation_verified_head": "b515e66585c4bb1b8a1e5b75ec53afc78f6da20a",
+    "implementation_ci": {
+      "pr": {
+        "run": 43751900734,
+        "result": "completed/success"
+      },
+      "push": {
+        "run": 43751895329,
+        "result": "completed/success"
+      }
+    },
+    "note": "Recovery/handoff files follow tested implementation; verify final current branch head and exact-head PR/push CI before another increment."
+  },
+  "frozen_authority": {
+    "controlling_cp01_d02_ledger": "verification/g5_04/rp03_cp01_d02_approved_contract_43.json",
+    "source_odt_sha256": "6d836d28af086a0fec7df2ca0949faf9447f9cee29cfabb8751344bd5104c98b",
+    "canonical_schema": "1.0.0",
+    "status_schema": "1.0",
+    "status_fields": 14,
+    "status_pairs": 41,
+    "controlled_requirements_rev": "1.6",
+    "controlled_requirements_count": 283,
+    "receipt_approval": "RP-02 v0.6 Choice A"
+  },
+  "source_first": {
+    "test_file": "tests/test_g5_cp03_rp03_multioriginal_46.py",
+    "case_count": 7,
+    "expected_red": {
+      "head": "ec25de8a56f8daacfb847b82ab23e79f9c18167d",
+      "push_run": 43751645202,
+      "reason": "4 targeted provenance/byte contradiction tests failed while two controls passed"
+    },
+    "implementation_green": {
+      "head": "b515e66585c4bb1b8a1e5b75ec53afc78f6da20a",
+      "pr_ci": 43751900734,
+      "push_ci": 43751895329,
+      "reason": "6 initial cases, all workflow checks and unified validation passed"
+    },
+    "added_registry_guard": "46_07 asserted all 28 source families registered/parsed; validate with final current-head CI"
+  },
+  "source_family_audit": "verification/g5_04/rp03_increment46_source_family_coverage_audit_20261115.json",
+  "implementation": [
+    "Typed SRC-15 FS_STAT semantic records cite both actually sealed SRC-15 stdout and SRC-14 mountinfo originals with attempt IDs; exact D-02 fields unchanged.",
+    "Independent read-only verifier reparses SRC-14 sealed mountinfo and SRC-15 sealed stdout to prove each typed value and mount label and refuses sibling-artifact substitution.",
+    "Every raw observed_value is checked against sealed raw UTF-8 or lossless BYTES_REF; same bytes from distinct attempts keep distinct IDs.",
+    "Primary acquisition status remains SRC-15-only; no fabricated aggregate/multi-source acquisition status.",
+    "Legacy SRC-15 test oracle reconciled to proven two-original lineage."
+  ],
+  "changed_paths": [
+    "lbt_g5/canonical_session.py",
+    "tests/test_g5_cp03_rp03_multioriginal_46.py",
+    "tests/test_g5_cp03_fs_stat_19.py",
+    ".github/workflows/test.yml",
+    "verification/g5_04/rp03_increment46_source_family_coverage_audit_20261115.json"
+  ],
+  "protected_unchanged": [
+    "lbt_g5/safety.py",
+    "lbt_g5/o1.py",
+    "lbt_g5/privilege_contract.py",
+    "lbt_g5/privileged_session.py",
+    "packaging/lbt_root_helper.py",
+    "lbt_g5/evidence.py",
+    "lbt_g5/canonical_contract.py",
+    "lbt_g5/o1_execution.py",
+    "lbt_g5/records.py",
+    "lbt_g5/d02_schema.py",
+    "lbt_g5/engine.py"
+  ],
+  "gates": {
+    "RP03_2": "PARTIAL_CANDIDATE_VERIFICATION",
+    "RP03": "OPEN",
+    "RP04": "OPEN",
+    "G504": "OPEN",
+    "original_CP02_39": "0 FORMALLY ACCEPTED",
+    "requirements_Rev16": "283 NOT_VERIFIED",
+    "Bodhi7_host": "NOT_EXECUTED",
+    "FAT": "NOT_ESTABLISHED",
+    "release": "NOT_AUTHORIZED"
+  },
+  "next": "Increment47: bounded independent semantic reparse and source binding for remaining registered 27 families, starting with D0; source-first negatives. Then RP-03.3 D-05 validity/completeness, RP-04.1 39 original CP-02 cases, RP-04.2 persistence, RP-04.3 cumulative RTM / real Bodhi 7 host, RP-04.4 owner CP-07 gate.",
+  "conversation_safety": "Review context integrity after Increment46; no owner decisions pending. Do not infer acceptance or merge candidate PRs."
+}

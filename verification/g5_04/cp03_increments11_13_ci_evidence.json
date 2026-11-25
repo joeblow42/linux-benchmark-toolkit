@@ -1,0 +1,78 @@
+{
+  "record_id": "LBT-G504-CP03-INC11-13-CI-20261104",
+  "record_type": "scoped_ci_evidence",
+  "revision": "1.0",
+  "date": "2026-11-04",
+  "status": "THREE_INCREMENT_SCOPED_CI_PASSED_OWNER_D1_DECISION_OPEN",
+  "authority": "Owner-approved CP-03 sequential implementation within G4-07, accepted G5-03 worker/runtime, CP-01 D01..D05 and AI-Assisted Software Engineering Governance Standard 1.0",
+  "runs": [
+    {
+      "increment": 11,
+      "source": "SRC-25",
+      "pr": 34,
+      "sha": "e392ba51e288bab78024821c1068c00ff24082e0",
+      "workflow": 577,
+      "id": 41932375859,
+      "conclusion": "success",
+      "url": "https://github.com/joeblow42/linux-benchmark-toolkit/actions/runs/41932375859",
+      "scope": "HWMON source paths, source-identity exact ordering, signed raw sensor readings with no unsubstantiated units"
+    },
+    {
+      "increment": 12,
+      "source": "SRC-26",
+      "pr": 35,
+      "sha": "2211e0f22fd748b26766b68416b3f459e1c63b6e",
+      "workflow": 596,
+      "id": 41932832432,
+      "conclusion": "success",
+      "url": "https://github.com/joeblow42/linux-benchmark-toolkit/actions/runs/41932832432",
+      "scope": "Power supply identity/metrics private raw interpretation, exact path/ordinal and adversarial preservation"
+    },
+    {
+      "increment": 13,
+      "source": "SRC-05",
+      "pr": 36,
+      "sha": "f5676b30cad0d0992a95352a15f08ffd3cd32aab",
+      "workflow": 617,
+      "id": 41933621030,
+      "conclusion": "success",
+      "url": "https://github.com/joeblow42/linux-benchmark-toolkit/actions/runs/41933621030",
+      "scope": "D1 lscpu stdout key:value opaque strings and stderr diagnostic-only source classification; nonzero exit remains fail-closed"
+    }
+  ],
+  "candidate_parser_coverage": "19 of 28 registered source families",
+  "source_families_remaining": [
+    "SRC-11",
+    "SRC-13",
+    "SRC-14",
+    "SRC-15",
+    "SRC-18",
+    "SRC-20",
+    "SRC-21",
+    "SRC-23",
+    "SRC-28"
+  ],
+  "independence": "Test expectations separately source-first by same AI implementing agent; independently reviewed by a human: NO",
+  "rtm": {
+    "requirement_rows": 283,
+    "states": "all NOT_VERIFIED",
+    "original_20_columns": "unchanged",
+    "new_implementation_refs": [
+      "LBT-FR-168",
+      "LBT-NFR-068",
+      "LBT-NFR-070"
+    ]
+  },
+  "policy_blocker": "governance/cp03_d1_nonzero_status_owner_decision_2026-11-04.json",
+  "open_work": [
+    "Owner status mapping for runtime PARTIAL / EXIT_NONZERO before next D1 source",
+    "9 source-family parser candidates remain",
+    "CP-02 39 independent cases not each linked to execution result",
+    "CP-04 persistence, provenance, timing, strict cross-file canonical validation",
+    "CP-05 integration",
+    "CP-06 Bodhi 7 host",
+    "CP-07 gate acceptance"
+  ],
+  "gate": "G5-04 OPEN, CP-03 IN_PROGRESS; draft PRs #34-#36 remain unmerged; no release or production transition authorized",
+  "note": "Workflow PASS confirms fixture execution, not complete source semantic correctness or requirements-wide verification"
+}
