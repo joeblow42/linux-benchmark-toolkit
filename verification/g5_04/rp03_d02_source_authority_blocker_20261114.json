@@ -1,0 +1,36 @@
+{
+  "record_type": "LBT_RP03_D02_SOURCE_AUTHORITY_BLOCKER",
+  "date": "2026-11-14",
+  "status": "MATERIAL_ENGINEERING_SOURCE_BLOCKER",
+  "authority": "Approved CP-01 D-01..D-05, canonical 1.0.0, exact D-02 §6 field/type/nullability; approved FAT Roadmap RP-03.1",
+  "verified_predecessor": {
+    "increment": 42,
+    "commit": "86a60481b50bd4265f953596c4f65dd9f1c126ac",
+    "pr": 67,
+    "exact_head_ci": 43643242099,
+    "conclusion": "SUCCESS"
+  },
+  "controlling_document": {
+    "name": "LBT_G5_04_CP01_Contract_Reconciliation_Approval_Review_2026-11-02.odt",
+    "archive": "LBT_G5_04_CP02_Traceability_and_Test_Specification_Recovery_2026-11-02.zip",
+    "internal_path": "03_DECISION_AUTHORITY/LBT_G5_04_CP01_Contract_Reconciliation_Approval_Review_2026-11-02.odt",
+    "sha256_from_retention_audit": "6d836d28af086a0fec7df2ca0949faf9447f9cee29cfabb8751344bd5104c98b",
+    "retention_audit": "LBT_Archive_Unique_Content_Retention_Audit_2026-11-04.csv, entry 76",
+    "availability": "Document identified by retained audit/handoff but complete §6 exact field/type/nullability content not independently retrievable in current GitHub checkout or presently accessible files"
+  },
+  "evidenced_candidate_mismatch": {
+    "finding": "R25-03 / F-06",
+    "review": "verification/g5_04/cp03_adversarial_findings_review_25.json",
+    "candidate_system_json": "lbt_g5/canonical_session.py currently emits platform_scope and normalization_state top-level; approved expected top-level requires header and closed-world names",
+    "candidate_manifest": "Existing session_manifest.json omits documented manifest_version, minimum_usable, finalized_utc, counts, source_receipts, observation_ids, source_attempt_ids and limit_record_ids",
+    "exact_contract": "Full closed-world field lists, types, nullability and enumerations must be read from approved CP-01 ODT §6, not reconstructed from candidate, partial handoff snippets or expectedFailure tests"
+  },
+  "protected_change_disallowed": [
+    "Do not change canonical schema_version 1.0.0 or the frozen D-02 entity/field contract",
+    "Do not change approved status schema_version 1.0/41 pairs",
+    "Do not modify fixed source commands, helper protocol, privilege/consent, approved ceilings or original sealed evidence"
+  ],
+  "next_required_input": "Recover byte-verified CP-01 ODT from the identified recovery ZIP, verify SHA256 against retention audit, extract §6 verbatim, and record accessible authoritative copy or precise contract in durable repository verification paths. If digest mismatches or contract contradicts owner's approval, stop for owner decision.",
+  "disposition": "Do not implement RP-03.1 producer/validator against a reconstructed field contract. RP-02 candidate assurance verified; RP-03 OPEN/BLOCKED_SOURCE; RP-04 and later FAT stages not started.",
+  "independent_assurance": "CP-02 original 39 cases NOT_ACCEPTED; all 283 Rev 1.6 requirements NOT_VERIFIED; Bodhi 7 host FAT NOT_EXECUTED; release NOT_AUTHORIZED"
+}

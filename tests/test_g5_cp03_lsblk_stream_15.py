@@ -66,7 +66,8 @@ class LsblkD1Oracles(unittest.TestCase):
     def test_approved_fixed_command_and_only_stdout_is_data(self):
         self.assertEqual(command_plan("SRC-11").argv, APPROVED)
         self.assertTrue(parser_available("SRC-11"))
-        self.assertFalse(parser_available("SRC-13"))
+        # SRC-13 becomes available in later CP03-17, with O1 verification.
+        self.assertTrue(parser_available("SRC-13"))
         got=normalize_sealed_source("SRC-11",RAW,source_stream="stdout")
         self.assertEqual(got.values[0].datum_path,"storage.lsblk.blockdevices")
         self.assertEqual(got.values[0].value_type,"ARRAY")
@@ -83,7 +84,7 @@ class LsblkD1Oracles(unittest.TestCase):
                  ("call0001-stderr",b"sample diagnostic\n"))
         with self.original(streams) as (folder,run,evid):
             manifest=build_canonical(folder,run)
-            self.assertEqual(manifest["observation_count"],3)
+            self.assertEqual(manifest["counts"]["observations"],3)
             self.assertEqual(validate_canonical(folder),manifest)
             obs=json.loads((folder/"private/system.json").read_text())["observations"]
             semantic=[v for v in obs if v["transformation_ids"]]
@@ -124,7 +125,7 @@ class LsblkD1Oracles(unittest.TestCase):
         with self.original((("call0001-stderr",b"error\n"),),
               outcome="PARTIAL",reason="EXIT_NONZERO",exit_code=2) as (folder,run,_):
             manifest=build_canonical(folder,run)
-            self.assertEqual(manifest["observation_count"],1)
+            self.assertEqual(manifest["counts"]["observations"],1)
             status=json.loads((folder/"private/status_records.json").read_text())
             self.assertEqual(status["status_records"][0]["reason_code"],
                              "SOURCE_INCOMPLETE")
@@ -185,7 +186,7 @@ class LsblkD1Oracles(unittest.TestCase):
             normalize_sealed_source("SRC-11",many,source_stream="stdout")
         with self.original((("call0001-stdout",b"not json"),)) as (folder,run,evid):
             manifest=build_canonical(folder,run)
-            self.assertEqual(manifest["observation_count"],1)
+            self.assertEqual(manifest["counts"]["observations"],1)
             state=json.loads((folder/"private/status_records.json").read_text())
             self.assertEqual(state["status_records"][0]["reason_code"],"PARSE_FAILED")
             self.assertEqual((folder/evid[0].private_relative_path).read_bytes(),b"not json")

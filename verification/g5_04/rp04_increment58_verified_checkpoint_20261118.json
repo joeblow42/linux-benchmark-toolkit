@@ -1,0 +1,78 @@
+{
+  "record_type": "LBT_G5_04_RP04_INCREMENT58_VERIFIED_IMPLEMENTATION_CHECKPOINT",
+  "date_local": "2026-11-18",
+  "governance": "AI-Assisted Software Engineering Governance Standard v1.0",
+  "roadmap": "Owner-approved Alternative B FAT Readiness Roadmap Rev 0.2",
+  "predecessor": {
+    "increment": 57,
+    "pr": 83,
+    "final_head": "45b6ce9f5525d3e8be77bb87773e1c9e8be22669",
+    "final_pr_ci": 44452408992,
+    "final_push_ci": 44452402860
+  },
+  "current": {
+    "increment": 58,
+    "pr": 84,
+    "branch": "g5/rp04-ct04-status-evidence-58",
+    "implementation_head": "2b6db29f4ae2e38f482a9aa455d002d58ccb6c03",
+    "pr_ci": {
+      "id": 44452888106,
+      "status": "SUCCESS",
+      "head": "2b6db29f4ae2e38f482a9aa455d002d58ccb6c03"
+    },
+    "push_ci": {
+      "id": 44452862393,
+      "status": "SUCCESS",
+      "head": "2b6db29f4ae2e38f482a9aa455d002d58ccb6c03"
+    },
+    "unified_full_validation": "SUCCESS",
+    "candidate_case_ids": [
+      "CT-04-P1",
+      "CT-04-P2",
+      "CT-04-N1",
+      "CT-04-N2"
+    ],
+    "development_cases_executed": 4,
+    "development_cases_passed": 4,
+    "development_cases_failed": 0,
+    "development_cases_skipped": 0,
+    "machine_artifact": {
+      "name": "rp04-ct04-candidate-58",
+      "pr_run_artifact_id": 14496122886
+    },
+    "final_documentation_head_ci": "VERIFY_SEPARATELY"
+  },
+  "case_evidence": [
+    "CT-04-P1: actual G5-02 O1 DENY/DENIED OPERATOR_AUTH_REQUIRED receipt, zero privilege execution, canonical UNAUTHORIZED with same attempt binding",
+    "CT-04-P2: offline already-sealed SRC-27 resolver fixture reports lscpu null path, and matching SRC-05 unavailable receipt produces TOOL_MISSING with same attempt binding; this is fixture not a real machine observation or proof of production cross-source causal correlation",
+    "CT-04-N1: unrecognized transport disposition/reason fails closed, no completed canonical status/manifest, no invented FAILED/ACQUISITION_ERROR",
+    "CT-04-N2: unavailable SRC-02 yields UNAVAILABLE/SOURCE_ABSENT, not COMPLETE; captured with no original is rejected"
+  ],
+  "protected_contracts": {
+    "canonical_schema_version": "1.0.0",
+    "approved_status_pair_count": 41,
+    "source_commands_unchanged": true,
+    "source_privileges_unchanged": true,
+    "consent_bounds_unchanged": true,
+    "raw_originals_untouched": true,
+    "production_code_unchanged": true,
+    "real_host_test": false
+  },
+  "formal_acceptance": {
+    "controlled_cp02_cases": 39,
+    "formally_executed": 0,
+    "formally_accepted": 0,
+    "requirements_formally_verified": 0,
+    "physical_bodhi7": "NOT_EXECUTED",
+    "cp07_approved": false,
+    "fat_approved": false,
+    "pr_draft": true,
+    "pr_merged": false
+  },
+  "known_limitations": [
+    "P2 proves correct offline result classification for paired source-reported values; it does not attest actual lscpu absence on a live host",
+    "No independent CP-02 or CP-07 test acceptance performed",
+    "Final documentation-head CI should be explicitly rechecked"
+  ],
+  "context_integrity": "Owner authority and protected boundaries checked through Increment 58; next CT-05 requires source-first measured limit proofs, not guessed threshold/omission values"
+}

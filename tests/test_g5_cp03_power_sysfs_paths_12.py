@@ -66,7 +66,7 @@ class PowerSysfsOracles(unittest.TestCase):
         self.assertEqual(ROOTS["SRC-26"], ROOT.rstrip("/"))
         self.assertEqual(ATTRS["SRC-26"], FIELDS)
         self.assertTrue(parser_available("SRC-26"))
-        self.assertFalse(parser_available("SRC-13"))
+        self.assertTrue(parser_available("SRC-13"))  # CP03-17 O1 verified stdout
 
     def test_private_identity_and_signed_numeric_originals(self):
         attrs = ("type", "status", "capacity", "current_now",
@@ -76,7 +76,7 @@ class PowerSysfsOracles(unittest.TestCase):
                 b"PRIVATE123\n", b"400\n")
         with self.sealed(raws, paths) as (directory, run, originals):
             manifest = build_canonical(directory, run)
-            self.assertEqual(manifest["observation_count"], 12)
+            self.assertEqual(manifest["counts"]["observations"], 12)
             self.assertEqual(validate_canonical(directory), manifest)
             values = json.loads((directory / "private/system.json").read_text())
             typed = [x for x in values["observations"] if x["transformation_ids"]]
@@ -108,8 +108,8 @@ class PowerSysfsOracles(unittest.TestCase):
     def test_no_supply_does_not_invent_battery(self):
         with self.sealed((), (), outcome="UNAVAILABLE",
                          reason="SOURCE_ABSENT") as (directory, run, _):
-            self.assertEqual(build_canonical(directory, run)["observation_count"], 0)
-            self.assertEqual(validate_canonical(directory)["observation_count"], 0)
+            self.assertEqual(build_canonical(directory, run)["counts"]["observations"], 0)
+            self.assertEqual(validate_canonical(directory)["counts"]["observations"], 0)
 
     def test_wrong_count_order_duplicate_and_artifact_index_fail_closed(self):
         cases = (
@@ -164,7 +164,7 @@ class PowerSysfsOracles(unittest.TestCase):
             directory, run, original
         ):
             manifest = build_canonical(directory, run)
-            self.assertEqual(manifest["observation_count"], 1)
+            self.assertEqual(manifest["counts"]["observations"], 1)
             states = json.loads((directory/"private/status_records.json").read_text())
             self.assertEqual(states["status_records"][0]["reason_code"], "PARSE_FAILED")
             self.assertEqual((directory/original[0].private_relative_path).read_bytes(),

@@ -1,0 +1,103 @@
+{
+  "record_id": "LBT-G504-CP03-INCREMENT16-EVIDENCE-20261104",
+  "date": "2026-11-04",
+  "checkpoint": "CP-03 Increment 16 — approved O1 nonzero provenance/status",
+  "disposition": "CANDIDATE_IMPLEMENTED_SCOPED_CI_PASS",
+  "owner_approval": {
+    "original_record": "governance/cp03_o1_nonzero_status_owner_review_2026-11-04.json",
+    "choice": "Alternative A",
+    "continuation_approval": "Narrow G5-02 operational receipt and G5-03 provenance contract amendment; no production schema or source permissions",
+    "approved_mapping": "O1 PARTIAL/ACQUISITION_ERROR -> acquisition PARTIAL/SOURCE_INCOMPLETE only with verified nonzero exit and hash-sealed originals; preserve actual exit and original transport reason; no device-health inference",
+    "preservation": "Original owner decision record unaltered"
+  },
+  "source_first": {
+    "oracle": "verification/g5_04/cp03_o1_provenance_nonzero_oracle_16.json",
+    "executable_oracles": "tests/test_g5_cp03_o1_provenance_16.py",
+    "authorship": "AI implementation assistant, NOT independent human/third-party review"
+  },
+  "implementation_files": [
+    "lbt_g5/records.py",
+    "lbt_g5/o1_execution.py",
+    "lbt_g5/receipt_dispatch.py",
+    "lbt_g5/engine.py",
+    "lbt_g5/canonical_session.py",
+    ".github/workflows/test.yml"
+  ],
+  "behavior": {
+    "registered_o1_sources": [
+      "SRC-13",
+      "SRC-18",
+      "SRC-21"
+    ],
+    "required_proof": [
+      "valid source/operation and matching one-run acknowledged consent",
+      "exact fixed command/target identity",
+      "G5-03 trusted device target bound to sealed same-run D0 original",
+      "G5-02 private operational receipt version 0.2 with consent and inventory witness",
+      "matching in-memory recorded outcome witness",
+      "one or more sealed, SHA-256-checked stdout/stderr original",
+      "authentic nonzero integer exit_code"
+    ],
+    "legacy_receipts": "0.1 serialization retained when no O1 provenance",
+    "status_schema": "1.0 unchanged; 14 fields unchanged",
+    "canonical_schema": "1.0.0 unchanged",
+    "unapproved_actions": "none: no new command, device action, privilege, consent bypass, source scope, or public evidence reference",
+    "limitations": [
+      "Not a cryptographic operator signature; provenance integrity rests on trusted run-scoped G5-03 pipeline and protected original records",
+      "SRC-21 render/card association is checked by G5-03 at execution and not reprobed by canonicalization",
+      "Partial status does not classify device health",
+      "SRC-13 semantic SMART/NVMe parser not implemented in this increment"
+    ]
+  },
+  "verification": {
+    "code_head_sha": "63970c119c8e89c765b4ceb2b95daeb9aa84d49d",
+    "workflow_run_id": 41952153724,
+    "workflow_url": "https://github.com/joeblow42/linux-benchmark-toolkit/actions/runs/41952153724",
+    "workflow_job_id": 126998383476,
+    "workflow_conclusion": "success",
+    "new_o1_suite": "12/12 PASS",
+    "unified_validation": "21 PASS, 0 FAIL, 0 SKIP, 0 BLOCKED, 0 NOT_APPLICABLE",
+    "existing_d1_mapping": "retained, CI PASS",
+    "claim_boundary": "Linux CI synthetic/mock and scoped integration verification; not Bodhi Linux 7 host acceptance or CP-03 closure"
+  },
+  "traceability": {
+    "working_csv": "LBT_CP03_Trace_20261104_Increment16.csv",
+    "sha256": "dfa71307e341b33dfa2b5e70536dc421eb68f161ce843b8fe3bc3f5c83ff29a0",
+    "requirements_rev1_6_sha256": "04849cd13ecc75c803839ab7c59a1015c5b92d1f05bf31422b54406c188e2702",
+    "row_count": 283,
+    "column_count": 31,
+    "controlled_cells_preserved": 5660,
+    "scoped_rows": [
+      "LBT-FR-168",
+      "LBT-NFR-068",
+      "LBT-NFR-070"
+    ],
+    "verification_states": {
+      "NOT_VERIFIED": 283
+    }
+  },
+  "gate_state": {
+    "cp03": "IN_PROGRESS; 20 of 28 candidate parser families (SRC-13 still outstanding)",
+    "remaining_sources": [
+      "SRC-13",
+      "SRC-14",
+      "SRC-15",
+      "SRC-18",
+      "SRC-20",
+      "SRC-21",
+      "SRC-23",
+      "SRC-28"
+    ],
+    "g5_04": "OPEN",
+    "pr39": "DRAFT UNMERGED",
+    "pending": [
+      "SRC-13 source-first semantic parser",
+      "CP-02 39-case comprehensive requirement reconciliation",
+      "CP-03 normalization closeout and independent assurance",
+      "CP-04 strict canonical integrity",
+      "CP-05 end-to-end integrated validation",
+      "CP-06 Bodhi Linux 7 AMD64 host evidence",
+      "CP-07 explicit owner acceptance"
+    ]
+  }
+}
