@@ -36,7 +36,7 @@ class SustainedWorkloadsTests(unittest.TestCase):
 
     @patch("lbt_g5.sustained_workloads.check_pressure")
     @patch("lbt_g5.sustained_workloads.local_filesystem", return_value="fixture")
-    @patch("lbt_g5.sustained_workloads.pressure", return_value={"avg10_percent": 0})
+    @patch("lbt_g5.core_workloads.pressure", return_value={"avg10_percent": 0})
     def test_bounded_sustained_cpu_and_storage(self, *_):
         with patch("lbt_g5.sustained_workloads._sensor_paths", return_value=(self.sensor,)):
             cpu = run_sustained_cpu(self.context, self.parameters)
