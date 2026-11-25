@@ -189,17 +189,30 @@ def collect(source, *, roots=None, max_bytes=None, max_entries=None):
     attempted=0
     captured=0
     limited=False
+    # Private transport facts: reached effective ceilings, not inferred lost data.
+    # A source-total or entry ceiling is witnessed only when another candidate
+    # was actually found after the ceiling; simultaneous ceilings are independent.
+    end_limits=[]
     for candidate in _paths(source,roots):
-        if max_entries is not None and attempted>=max_entries:
+        entry_hit=max_entries is not None and attempted>=max_entries
+        bytes_hit=max_bytes is not None and captured>=max_bytes
+        if entry_hit or bytes_hit:
             limited=True
-            break
-        if max_bytes is not None and captured>=max_bytes:
-            limited=True
+            if entry_hit:
+                end_limits.append({"dimension":"source_entries",
+                                   "threshold":max_entries,
+                                   "observed_extent":attempted})
+            if bytes_hit:
+                end_limits.append({"dimension":"source_bytes",
+                                   "threshold":max_bytes,
+                                   "observed_extent":captured})
             break
         attempted+=1
+        applied_file_cap=min(
+            MAX_PER_FILE,
+            max_bytes-captured if max_bytes is not None else MAX_PER_FILE)
         try:
-            data,at_limit=_read_regular(candidate,allowed,
-                  min(MAX_PER_FILE,max_bytes-captured if max_bytes is not None else MAX_PER_FILE))
+            data,at_limit=_read_regular(candidate,allowed,applied_file_cap)
         except OSError as exc:
             record={"path":candidate,"error":type(exc).__name__,
                     "errno":getattr(exc,"errno",None)}
@@ -209,15 +222,23 @@ def collect(source, *, roots=None, max_bytes=None, max_entries=None):
             continue
         count+=1
         captured+=len(data)
-        yield {"path":candidate,"bytes_b64":base64.b64encode(data).decode("ascii"),
-               "limited":at_limit}
-    # An explicit end record makes zero-read distinguishable from a truncated stream.
-    # Hitting an exact numeric boundary is not evidence of truncation.
-    # The lookahead guard above sets limited only when an additional candidate
-    # exists after the authorized count/byte budget is exhausted. Per-file
-    # possibly truncated data are reported independently in each item record.
-    yield {"end":True,"entries":count,"bytes":captured,
-           "limited":limited,"attempted":attempted}
+        record={"path":candidate,"bytes_b64":base64.b64encode(data).decode("ascii"),
+                "limited":at_limit}
+        # Do not relabel a source-total cap as a per-file cap.
+        # Exactly MAX_PER_FILE bytes might also be exact EOF, so omitted extent
+        # remains UNKNOWN; this event witnesses the applied ceiling only.
+        if at_limit and applied_file_cap==MAX_PER_FILE:
+            record["limit_events"]=[{
+                "dimension":"file_bytes","threshold":MAX_PER_FILE,
+                "observed_extent":len(data)}]
+        yield record
+    # No extra candidate => exact count/byte boundary is not evidence of
+    # skipped records. Worker metadata is private, never a source-original.
+    end={"end":True,"entries":count,"bytes":captured,
+         "limited":limited,"attempted":attempted}
+    if end_limits:
+        end["limit_events"]=end_limits
+    yield end
 
 def main():
     # No user-supplied roots, paths, flags, commands, or output destinations.

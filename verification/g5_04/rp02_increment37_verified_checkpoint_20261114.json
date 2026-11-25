@@ -1,0 +1,78 @@
+{
+  "record_type": "LBT_G5_04_RP02_CP03_INCREMENT_37_VERIFIED_IMPLEMENTATION_CHECKPOINT",
+  "documented_date": "2026-11-14",
+  "authority": {
+    "governance": "AI-Assisted Software Engineering Governance Standard v1.0",
+    "scope": "Owner-approved FAT Roadmap, RP-02.2 F-04; private v0.6 operational multi-limit receipt",
+    "requirements_rev": "Rev 1.6 (283), unchanged",
+    "fat_applicability": {
+      "mandatory": 210,
+      "conditional": 65,
+      "deferred": 8,
+      "owner_approved": "2026-11-13"
+    },
+    "approved_dispositions": "FR-134, FR-177, FR-186 unchanged",
+    "protected": "No fixed source commands, source permissions, O1 consent/root helper, G4-07 run/source/target ceilings, canonical v1.0.0 schema, status v1.0 41-pair vocabulary, or original sealed evidence byte modifications"
+  },
+  "repository": {
+    "full_name": "joeblow42/linux-benchmark-toolkit",
+    "entry_checkpoint": "27a60a29cbbeff1f066c4f864ddc093096474668",
+    "branch": "g5/cp03-rp02-f04-src15-aggregate-37",
+    "pr": 62,
+    "stacked_on_pr": 61,
+    "prior_pr_stack": "PR #55–61 open draft unmerged; PR #62 is also open draft",
+    "implementation_verified_head": "137a1d421e7037e6c46dfaa5e8bb8abc37e67759",
+    "exact_head_workflow_run": 43627893673,
+    "ci_conclusion": "success",
+    "recovery_record_commit": "Recorded after the above exact-head implementation run; verify its own new head CI before treating this as the latest verified PR head"
+  },
+  "scope": {
+    "source": "SRC-15 FS_STAT D1, existing same-run SRC-14 mount lineage",
+    "source_total_wall_seconds": 15,
+    "source_aggregate_writer_bytes": 2097152,
+    "existing_per_target_seconds": 2,
+    "source_witness": "SRC-15:call0001:source:time with monotonic elapsed >=15 and linked source_timing elapsed_ms >=15000; never relabel mere child timeout",
+    "writer_witness": "SRC-15:call0001:source:writer only on actual writer_source_bytes event with positive omitted byte extent, exactly 2MiB sealed in this attempt, source cap; early stop after quota truncation",
+    "excluded": "No invented independent second source limit, no fabricated source quota on exact preserved threshold without omitted bytes, no reinterpretation of run-wide writer limit"
+  },
+  "source_first_evidence": {
+    "oracle": "verification/g5_04/cp03_rp02_src15_aggregate_oracle_37.json",
+    "tests": "tests/test_g5_cp03_rp02_src15_aggregate_37.py",
+    "executable_tests": 9,
+    "oracle_cases": 9,
+    "method": "Provenance-linked SRC-14 mountinfo and first-preserved SRC-15 slots; synthetic clock/evidence-writer controlled receipts; positive, negative, boundary, overlapping time/bytes; independent validation of receipt and D-02 canonical",
+    "result": "nine tests PASS on implementation head; unified full validation PASS",
+    "limitation": "Mock-only tests, no actual Bodhi 7 AMD64 host FAT acquisition and no independent CP-02 acceptance"
+  },
+  "changed_files": [
+    ".github/workflows/test.yml",
+    "lbt_g5/additional.py",
+    "lbt_g5/records.py",
+    "lbt_g5/canonical_session.py",
+    "tests/test_g5_cp03_rp02_src15_aggregate_37.py",
+    "verification/g5_04/cp03_rp02_src15_aggregate_oracle_37.json"
+  ],
+  "assurance": {
+    "G5_04": "OPEN",
+    "RP_02": "PARTIALLY_COMPLETE",
+    "requirements_283": "NOT_VERIFIED",
+    "original_CP02_39": "NOT_ACCEPTED",
+    "independent_source_first_assurance": "OPEN",
+    "frozen_D02_F06_conformance": "OPEN",
+    "Bodhi_Linux_7_AMD64_host_test": "NOT_EXECUTED",
+    "FAT_entry": "NOT_AUTHORIZED",
+    "release": "NOT_AUTHORIZED",
+    "publication_schema_changed": false,
+    "privileges_changed": false,
+    "acquisition_limits_changed": false
+  },
+  "next_work": [
+    "RP-02.2 remaining SRC-15 competing/unknown writer dimension and SRC-28 source aggregate/evidence-writer F-04 cases",
+    "RP-02.3 optional O1 SRC-13/SRC-18/SRC-21 and helper capture-limit evidence with consent lineage",
+    "RP-03 exact frozen D-02 F-06 canonical producer/consumer conformance",
+    "RP-04 independent CP-02 original 39-case assurance, Bodhi 7 AMD64 host proof, and owner gates",
+    "Remaining approved FAT roadmap packages, with owner approval at specified gates"
+  ],
+  "conversation_safety": "Assess after each completed increment. For this checkpoint, source contracts and owners are consistent; continue only if exact-head CI, authority and context integrity remain sound.",
+  "invalid_promotions": "Candidate CI success does not constitute CP-02 case acceptance, requirements verification, G5-04 closure or FAT authorization."
+}

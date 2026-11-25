@@ -119,6 +119,8 @@ def capture_and_record(request:SourceRequest,attempt,writer,slots,calls,
                               if request.source_id=="SRC-28" else None),
         source_timing=source_timing,
         limit_witness=(outcome.get("limit_witness") if isinstance(outcome,dict)
-                       else getattr(outcome,"limit_witness",None)))
+                       else getattr(outcome,"limit_witness",None)),
+        limit_witnesses=(outcome.get("limit_witnesses",()) if isinstance(outcome,dict)
+                         else getattr(outcome,"limit_witnesses",())))
     location=commit_attempt(writer.run_directory,record)
     return RecordedOutcome(outcome,location,provenance,source_timing)
