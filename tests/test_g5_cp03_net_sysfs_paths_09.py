@@ -74,7 +74,7 @@ class NetSysfsSourceOracles(unittest.TestCase):
                 b"1000\n", b"1\n", b"full\n", b"2\n")
         with self.captured(raws, paths) as (folder, engine, artifacts):
             manifest = build_canonical(folder, engine)
-            self.assertEqual(manifest["observation_count"], 16)
+            self.assertEqual(manifest["counts"]["observations"], 16)
             self.assertEqual(validate_canonical(folder), manifest)
             data = json.loads((folder / "private/system.json").read_text())
             sem = [x for x in data["observations"] if x["transformation_ids"]]
@@ -127,7 +127,7 @@ class NetSysfsSourceOracles(unittest.TestCase):
         with self.captured((), (), outcome="UNAVAILABLE", reason="SOURCE_ABSENT"
         ) as (folder, engine, originals):
             manifest = build_canonical(folder, engine)
-            self.assertEqual(manifest["observation_count"], 0)
+            self.assertEqual(manifest["counts"]["observations"], 0)
             self.assertEqual(validate_canonical(folder), manifest)
 
     def test_mismatched_order_duplicates_count_and_item_slot_rejected(self):
@@ -171,7 +171,7 @@ class NetSysfsSourceOracles(unittest.TestCase):
         with self.captured((b"\xff\n",), (ROOT + "eth0/address",)
         ) as (folder, engine, originals):
             manifest = build_canonical(folder, engine)
-            self.assertEqual(manifest["observation_count"], 1)
+            self.assertEqual(manifest["counts"]["observations"], 1)
             status = json.loads((folder / "private/status_records.json").read_text())
             self.assertEqual(status["status_records"][0]["reason_code"], "PARSE_FAILED")
             self.assertEqual((folder / originals[0].private_relative_path).read_bytes(),
