@@ -1,0 +1,93 @@
+{
+  "record_type": "LBT_G5_04_RP04_INCREMENT65_VERIFIED_IMPLEMENTATION_CHECKPOINT",
+  "date_local": "2026-11-19",
+  "governance": "AI-Assisted Software Engineering Governance Standard v1.0",
+  "roadmap": "Owner-approved Alternative B FAT Readiness Roadmap Rev 0.2",
+  "predecessor": {
+    "increment": 64,
+    "pr": 90,
+    "verified_final_head": "7ab7721d44c4042af7b360687c317d0b9b26212e",
+    "pr_ci": 44689065471,
+    "push_ci": 44689058926
+  },
+  "current": {
+    "increment": 65,
+    "pr": 91,
+    "branch": "g5/rp04-ct11-n1-no-reacquire-65",
+    "implementation_head": "f3f88818105b87a46b268e604ef521f489eb7e50",
+    "draft": true,
+    "merged": false,
+    "base_pr": 90,
+    "case_id": "CT-11-N1",
+    "case_context": "OFFLINE_FIXTURE",
+    "pr_ci": {
+      "id": 44690512554,
+      "status": "SUCCESS"
+    },
+    "push_ci": {
+      "id": 44690484616,
+      "status": "SUCCESS"
+    },
+    "candidate_result": "2/2 PASS",
+    "unified_validation": "21 PASS/0 FAIL/0 SKIP",
+    "candidate_artifacts": {
+      "push": {
+        "id": 14608925570,
+        "name": "rp04-ct11-n1-candidate-65"
+      },
+      "pr": {
+        "id": 14608965068,
+        "name": "rp04-ct11-n1-candidate-65"
+      }
+    },
+    "unified_artifacts": {
+      "push": 14608556689,
+      "pr": 14608985030
+    },
+    "final_documentation_head_ci": "VERIFY_SEPARATELY"
+  },
+  "checks": [
+    {
+      "method": "test_65_01_CT_11_N1_actual_canonical_private_replay_no_acquisition",
+      "result": "PASS",
+      "scope": "real sealed SRC-02 source fixture canonicalized/validated/consumed under test-only host source + command + engine rerun tripwires"
+    },
+    {
+      "method": "test_65_02_CT_11_N1_injected_duplicate_source_is_detected",
+      "result": "PASS",
+      "scope": "test-only fault injection in canonical code path detects attempted /proc, /sys, subprocess or collector re-entry before host read"
+    }
+  ],
+  "limitations": [
+    "No production runtime source-access monitor added",
+    "Tripwires cover tested execution paths, not arbitrary hypothetical APIs",
+    "No physical Bodhi7 execution",
+    "Offline development candidate not independent formal CP-02 case execution"
+  ],
+  "protected": {
+    "production_code_changed": false,
+    "source_commands_privileges_consents_limits_changed": false,
+    "canonical_schema": "1.0.0",
+    "controlled_status_pair_count": 41,
+    "sealed_raw_originals_changed": false,
+    "no_hypothetical_hostile_actor_assumptions": true,
+    "all_prs_draft_unmerged": true
+  },
+  "formal": {
+    "original_cp02_count": 39,
+    "formally_executed": 0,
+    "formally_accepted": 0,
+    "ct11_p1": "OWNER_READ_ONLY_HOST_PLAN_APPROVAL_REQUIRED",
+    "ct11_n1_independent_review": "NOT_REVIEWED",
+    "ct11_n2": "G5_06_DOWNSTREAM_NOT_EXECUTED",
+    "ct11_n3": "TUI_DOWNSTREAM_NOT_EXECUTED",
+    "cp07": "SEPARATELY_GATED",
+    "fat": "SEPARATELY_GATED"
+  },
+  "next_action": {
+    "suggested": "Prepare bounded physical read-only CT-11-P1 verification protocol for owner review; do not execute or approve it implicitly",
+    "owner_approval_needed": true,
+    "physical_test_allowed": false,
+    "documentation_final_ci": "VERIFY_SEPARATELY"
+  }
+}
