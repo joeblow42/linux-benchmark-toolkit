@@ -1,0 +1,68 @@
+{
+  "record_type": "LBT_G5_04_RP02_CP03_INCREMENT_42_CANDIDATE_CHECKPOINT",
+  "date": "2026-11-14",
+  "authority": "AI-Assisted Software Engineering Governance Standard v1.0; owner-approved FAT Readiness Roadmap RP-02.3; controlled Requirements Rev 1.6; RP-02 receipt v0.6 Choice A",
+  "repository": {
+    "full_name": "joeblow42/linux-benchmark-toolkit",
+    "branch": "g5/cp03-rp02-o1-limits-42",
+    "pr": 67,
+    "stacked_on": 66,
+    "base_head": "fef623af250edd37552ca985b81fd4275ab3f388",
+    "implementation_verified_head": "4d94b03de99a3f879dcaf91ac4666cbb185b0c7b",
+    "exact_head_pr_ci": 43643119681,
+    "pr_ci_conclusion": "completed/success",
+    "note": "Verify separately after this checkpoint file commit that the new PR head has exact-head CI SUCCESS"
+  },
+  "increment": {
+    "number": 42,
+    "title": "O1 time/count and SRC-13 helper cumulative effective limit assurance",
+    "character": "Source-first assurance-only, no production behavior changes",
+    "oracle": "verification/g5_04/cp03_rp02_o1_limits_oracle_42.json",
+    "test": "tests/test_g5_cp03_rp02_o1_limits_42.py",
+    "cases": 9,
+    "outcome": "PASS at implementation head after correcting test fixture mismatched run ID",
+    "source_first_negative": "Initial PR CI 43643045357 failed 4 assertions solely due to an incorrect test request run ID; fixed test and reran successful PR exact-head CI 43643119681; no production fix or helper alteration was warranted",
+    "findings": [
+      "SRC-13/18/21 count exactly exhausted yields DENIED/SOURCE_CALL_LIMIT before the next child is invoked; this is not executed CaptureLimit",
+      "Cumulative source time exactly exhausted yields refusal without positive timeout event; source wall includes capture and sealing and is not child timeout",
+      "Transport timeouts faithfully remain TIME_BUDGET_EXCEEDED in private receipt, but selected effective cap is not independently attested; canonical refuses invented D-02",
+      "SRC-13 helper independently reduces 32MiB/60s cumulative remaining quotas, but protocol response lacks effective cap; no guessing of reduced applied threshold",
+      "At helper cumulative exhaustion, request is rejected without device execution"
+    ],
+    "limitations": [
+      "Remaining RP-02 O1 time/call-count/helper-effective-threshold D-02 coverage must not be reported accepted",
+      "Candidate mocks are not independent CP-02 or real device/privilege evidence"
+    ]
+  },
+  "paths_added": [
+    "tests/test_g5_cp03_rp02_o1_limits_42.py",
+    "verification/g5_04/cp03_rp02_o1_limits_oracle_42.json",
+    "verification/g5_04/rp02_increment42_verified_checkpoint_20261114.json"
+  ],
+  "other_change": ".github/workflows/test.yml test-only gate",
+  "protected_unchanged": [
+    "lbt_g5/safety.py",
+    "lbt_g5/o1.py",
+    "lbt_g5/privilege_contract.py",
+    "lbt_g5/privileged_session.py",
+    "packaging/lbt_root_helper.py",
+    "lbt_g5/evidence.py",
+    "lbt_g5/canonical_contract.py",
+    "lbt_g5/o1_execution.py",
+    "lbt_g5/records.py",
+    "lbt_g5/canonical_session.py"
+  ],
+  "gates": {
+    "G5_04": "OPEN",
+    "RP_02": "PARTIAL_GAP_DISPOSITION",
+    "RP_03": "OPEN",
+    "RP_04": "OPEN",
+    "CP_02_39_case": "NOT_ACCEPTED",
+    "Rev_1_6_283_requirements": "NOT_VERIFIED",
+    "Bodhi_7_host": "NOT_EXECUTED",
+    "FAT": "NOT_ESTABLISHED",
+    "release": "NOT_AUTHORIZED"
+  },
+  "next": "RP-03 F-06/D-02 exact producer-validator contract conformance using source-first independent oracles. Do not treat mock CI or candidate trace as acceptance.",
+  "conversation_safety": "Safe to continue in current conversation after Increment 42 (pending exact-head checkpoint CI)."
+}
