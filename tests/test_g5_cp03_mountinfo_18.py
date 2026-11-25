@@ -194,7 +194,7 @@ class MountinfoOracles(unittest.TestCase):
     def test_canonical_original_hash_and_single_semantic_reference(self):
         with self.original() as (folder,run,evidence):
             manifest=build_canonical(folder,run)
-            self.assertEqual(manifest["observation_count"],2)
+            self.assertEqual(manifest["counts"]["observations"],2)
             self.assertEqual(validate_canonical(folder),manifest)
             obs=json.loads((folder/"private/system.json").read_text())["observations"]
             semantic=[x for x in obs if x["transformation_ids"]]

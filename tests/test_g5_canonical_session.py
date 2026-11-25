@@ -53,10 +53,10 @@ class G504CanonicalSession(unittest.TestCase):
     def test_text_original_and_provenance_committed_and_revalidated(self):
         x = self.recorded()
         manifest = build_canonical(self.folder, self.run_for(x))
-        self.assertEqual(manifest["observation_count"], 3)
-        self.assertEqual(manifest["original_byte_count"], len(b"ID=testos\nNAME=TestOS\n"))
+        self.assertEqual(manifest["counts"]["observations"], 3)
+        self.assertEqual(manifest["counts"]["original_bytes"], len(b"ID=testos\nNAME=TestOS\n"))
         self.assertEqual(manifest["completion_state"], "INCOMPLETE")
-        self.assertFalse(manifest["semantic_normalization_complete"])
+        self.assertTrue(manifest["minimum_usable"])
         system = json.loads((self.folder / "private/system.json").read_text())
         obs = system["observations"][0]
         self.assertEqual(obs["value_type"], "STRING")
@@ -84,7 +84,7 @@ class G504CanonicalSession(unittest.TestCase):
         x = self.recorded(sid="SRC-13", outcome="DENIED",
                           reason="OPERATOR_AUTH_REQUIRED", fail=True)
         m = build_canonical(self.folder, self.run_for(x, cid="COL-BLOCK"))
-        self.assertEqual(m["observation_count"], 0)
+        self.assertEqual(m["counts"]["observations"], 0)
         statuses = json.loads((self.folder / "private/status_records.json").read_text())
         self.assertEqual(statuses["status_records"][0]["status"], "UNAUTHORIZED")
         self.assertEqual(statuses["status_records"][0]["reason_code"],
