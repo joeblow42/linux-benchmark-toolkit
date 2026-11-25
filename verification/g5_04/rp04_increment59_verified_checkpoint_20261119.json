@@ -1,0 +1,71 @@
+{
+  "record_type": "LBT_G5_04_RP04_INCREMENT59_VERIFIED_IMPLEMENTATION_CHECKPOINT",
+  "date_local": "2026-11-19",
+  "governance": "AI-Assisted Software Engineering Governance Standard v1.0",
+  "roadmap": "Owner-approved Alternative B FAT Readiness Roadmap Rev 0.2",
+  "predecessor": {
+    "increment": 58,
+    "pr": 84,
+    "head": "c17b966759d98686d815ca7012b783c18b585283",
+    "pr_ci": 44453156471,
+    "push_ci": 44453149825
+  },
+  "current": {
+    "increment": 59,
+    "pr": 85,
+    "branch": "g5/rp04-ct05-measured-limits-59",
+    "implementation_head": "0fde92dbd0a6b3759d780a05784d7d927263b0ea",
+    "pr_ci": {
+      "id": 44669323852,
+      "conclusion": "SUCCESS"
+    },
+    "push_ci": {
+      "id": 44669297804,
+      "conclusion": "SUCCESS"
+    },
+    "case_ids": [
+      "CT-05-P1",
+      "CT-05-P2",
+      "CT-05-N1"
+    ],
+    "candidate_tests_executed": 3,
+    "candidate_tests_passed": 3,
+    "candidate_tests_skipped": 0,
+    "unified_full_validation": "SUCCESS",
+    "artifact": {
+      "name": "rp04-ct05-candidate-59",
+      "push_artifact_id": 14599377688
+    },
+    "final_docs_head_ci": "VERIFY_SEPARATELY"
+  },
+  "case_methods": [
+    "CT-05-P1: SOURCE SRC-15 controlled unprivileged CI scenario measures actual monotonic wall time through actual G5-03 wrapper to 15-second approved ceiling; synthetic FS_STAT worker outputs, no physical filesystem probing; v0.6 source clock, null omitted bytes and D-02 canonical limits verified",
+    "CT-05-P2: SOURCE SRC-15 actual EvidenceWriter temporary original bytes retained at 2 MiB ceiling; the third 8-byte synthetic item is physically rejected by writer quota; G5-04 records measured preserved and omitted-at-least bytes, unit bytes",
+    "CT-05-N1: intentionally invalid negative fixtures relabel source time as bytes or invent omitted bytes; G5-02 guard rejects"
+  ],
+  "controls": {
+    "source_commands_changed": false,
+    "privilege_or_consent_changed": false,
+    "limits_changed": false,
+    "schema_version": "1.0.0",
+    "status_pairs": 41,
+    "raw_originals_modified": false,
+    "production_code_changed": false,
+    "physical_host_test": false
+  },
+  "formal": {
+    "cp02_original_cases": 39,
+    "formally_executed": 0,
+    "formally_accepted": 0,
+    "requirements_formally_verified": 0,
+    "cp07_approved": false,
+    "fat_approved": false,
+    "pr_draft": true,
+    "pr_merged": false
+  },
+  "limitations": [
+    "P1 genuine measured source-wrapper walltime uses a mocked child transport with synthetic records; cannot claim physical-host timing or actual statvfs elapsed",
+    "P2 writer measured bytes on controlled synthetic temp originals, not user/device data",
+    "Formal FAT remains separately owner gated"
+  ]
+}
