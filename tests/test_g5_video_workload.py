@@ -44,9 +44,10 @@ class VideoWorkloadTests(unittest.TestCase):
             runner.assert_not_called()
 
     @unittest.skipUnless(os.getenv("LBT_RUN_VIDEO_SMOKE") == "1", "dedicated FFmpeg smoke only")
+    @patch("lbt_g5.core_workloads.pressure", return_value={"avg10_percent": 0})
     @patch("lbt_g5.video_workload.check_pressure")
     @patch("lbt_g5.video_workload.Monitor")
-    def test_real_ffmpeg_h264_and_hevc_on_synthetic_vob(self, monitor, _):
+    def test_real_ffmpeg_h264_and_hevc_on_synthetic_vob(self, monitor, *_):
         tool = shutil.which("ffmpeg")
         self.assertIsNotNone(tool)
         source = self.root / "sample.mpg"

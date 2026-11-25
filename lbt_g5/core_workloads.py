@@ -8,14 +8,17 @@ from pathlib import Path
 import random
 import re
 import stat
+import sys
 import threading
 import time
 
 from .local_space import LOCAL_TYPES, _unescape
-from .workload_runtime import Mode, Resources, Unavailable, Workload
+from .workload_runtime import Context, Mode, Resources, Unavailable, Unsafe, Workload
 
 MIB = 1024 * 1024
 BLOCK = 4096
+IO_NOTIFY_PERCENT = 50
+IO_STOP_PERCENT = 75
 _HASH_INPUT = bytes(64 * 1024)
 
 
@@ -70,6 +73,40 @@ def check_pressure(resource, ceiling):
     if observed["avg10_percent"] >= ceiling:
         raise Unavailable(f"PREEXISTING_{resource.upper()}_PRESSURE")
     return observed
+
+
+class IOPressureGuard:
+    """Apply the owner-approved limits to the host Linux I/O PSI some avg10."""
+
+    def __init__(self, check_stop):
+        self.check_stop = check_stop
+        self.peak = 0.0
+        self.last_sample = None
+        self.notified = False
+        self.poll()
+
+    def poll(self, *, force=False):
+        self.check_stop()
+        now = time.monotonic()
+        starting = self.last_sample is None
+        if not starting and not force and now - self.last_sample < .25:
+            return
+        self.last_sample = now
+        sample = pressure("io")
+        if sample is None:
+            if starting:
+                raise Unavailable("IO_PRESSURE_UNAVAILABLE")
+            raise Unsafe("IO_PRESSURE_TELEMETRY_LOST")
+        observed = sample["avg10_percent"]
+        self.peak = max(self.peak, observed)
+        if observed > IO_NOTIFY_PERCENT and not self.notified:
+            print(f"Host I/O pressure is {observed:.1f}% (10-second average)",
+                  file=sys.stderr, flush=True)
+            self.notified = True
+        if observed >= IO_STOP_PERCENT:
+            if starting:
+                raise Unavailable("PREEXISTING_IO_PRESSURE")
+            raise Unsafe("IO_PRESSURE_STOP")
 
 
 def _hash_sample(context, workers, seconds):
@@ -234,7 +271,8 @@ def _random_sample(context, file, offsets, operation):
 
 def run_storage(context, parameters):
     filesystem = local_filesystem(context.scratch)
-    check_pressure("io", 25)
+    io_guard = IOPressureGuard(context.check_stop)
+    context = Context(context.scratch, io_guard.poll, context.inventory, context.evidence)
     size = parameters.storage_bytes
     # Generate once outside timed regions. Do not write sparse or zero-fill data.
     pattern = random.Random(66).randbytes(min(size, MIB))
@@ -260,7 +298,8 @@ def run_storage(context, parameters):
         random_write = _random_sample(context, stream.fileno(), random_offsets,
                                      lambda fd, offset: _write_exact(fd, pattern[:BLOCK], offset))
         os.fsync(stream.fileno())
-    return {"filesystem": filesystem, "io_mode": "buffered",
+    io_guard.poll(force=True)
+    return {"filesystem": filesystem, "io_mode": "buffered", "peak_io_pressure_percent": io_guard.peak,
             "sequential_write_includes_fsync": True, "random_write_includes_fsync": False,
             "random_block_bytes": BLOCK, "sequential_write": sequential_write,
             "sequential_read": sequential_read, "random_read": random_read,

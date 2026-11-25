@@ -5,7 +5,9 @@ from pathlib import Path
 import random
 import time
 
-from .core_workloads import MIB, _hash_sample, _rate, _write_exact, check_pressure, local_filesystem, pressure
+from .core_workloads import (
+    IOPressureGuard, MIB, _hash_sample, _rate, _write_exact, check_pressure, local_filesystem,
+)
 from .workload_runtime import Context, Mode, Resources, Unavailable, Unsafe, Workload
 
 THERMAL = Path("/sys/class/thermal")
@@ -139,8 +141,9 @@ def run_sustained_cpu(context, parameters):
 
 def run_sustained_storage(context, parameters):
     filesystem = local_filesystem(context.scratch)
-    check_pressure("io", 15)
-    monitor = Monitor(context, parameters.max_celsius)
+    io_guard = IOPressureGuard(context.check_stop)
+    guarded = Context(context.scratch, io_guard.poll, context.inventory, context.evidence)
+    monitor = Monitor(guarded, parameters.max_celsius)
     block = random.Random(69).randbytes(MIB)
     samples = []
     started = time.monotonic()
@@ -152,9 +155,6 @@ def run_sustained_storage(context, parameters):
     with (context.scratch / "sustained-data").open("xb", buffering=0) as file:
         while time.monotonic() < deadline:
             monitor.poll()
-            io_pressure = pressure("io")
-            if io_pressure is None or io_pressure["avg10_percent"] >= 50:
-                raise Unsafe("IO_PRESSURE_STOP")
             _write_exact(file.fileno(), block, written % parameters.storage_bytes)
             written += MIB
             sample_bytes += MIB
@@ -170,9 +170,11 @@ def run_sustained_storage(context, parameters):
             os.fsync(file.fileno())
             samples.append(_rate(sample_start, sample_bytes))
     monitor.poll(force=True)
+    io_guard.poll(force=True)
     return {"filesystem": filesystem, "io_mode": "buffered", "includes_fsync": True,
             "maximum_write_mib_per_second": parameters.storage_mib_per_second,
-            "sampled_bytes": written, "storage_samples": samples, **monitor.result()}
+            "sampled_bytes": written, "storage_samples": samples,
+            "peak_io_pressure_percent": io_guard.peak, **monitor.result()}
 
 
 def sustained_workloads(parameters=SustainedParameters()):

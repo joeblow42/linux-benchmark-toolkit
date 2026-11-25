@@ -69,6 +69,7 @@ class JellyfinWorkloadTests(unittest.TestCase):
         self.assertNotIn("Client", outcome)
 
     @unittest.skipUnless(os.getenv("LBT_RUN_VIDEO_SMOKE") == "1", "dedicated FFmpeg smoke only")
+    @patch("lbt_g5.core_workloads.pressure", return_value={"avg10_percent": 0})
     @patch("lbt_g5.jellyfin_workloads.check_pressure")
     @patch("lbt_g5.video_workload.check_pressure")
     @patch("lbt_g5.video_workload.Monitor")

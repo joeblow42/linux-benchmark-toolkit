@@ -8,7 +8,7 @@ import re
 import stat
 import time
 
-from .core_workloads import MIB, check_pressure
+from .core_workloads import IOPressureGuard, MIB, check_pressure
 from .sustained_workloads import Monitor
 from .workload_process import ProcessLimit, capture, tool_path
 from .workload_runtime import Context, Mode, Resources, Unavailable, Workload
@@ -158,7 +158,8 @@ def transcode(context, case, video, *, synchronize=None):
     if video.path is None or not Path(video.path).is_file():
         raise Unavailable("VIDEO_FIXTURE_MISSING")
     check_pressure("cpu", 15)
-    check_pressure("io", 25)
+    io_guard = IOPressureGuard(context.check_stop)
+    context = Context(context.scratch, io_guard.poll, context.inventory, context.evidence)
     if video.render_device:
         try:
             device = os.stat(video.render_device, follow_symlinks=False)
@@ -212,6 +213,7 @@ def transcode(context, case, video, *, synchronize=None):
         raise RuntimeError("FFmpeg transcode failed")
     frames, seconds = _progress(result.stdout)
     monitor.poll(force=True)
+    io_guard.poll(force=True)
     interval = {"capture_start_monotonic": capture_start,
                 "capture_end_monotonic": capture_end} if synchronize is not None else {}
     return {**interval, "fixture_sha256": digest, "encoder": encoder, "threads": video.threads,
@@ -219,7 +221,8 @@ def transcode(context, case, video, *, synchronize=None):
             "input_codec": stream["codec_name"], "input_height": stream.get("height"),
             "output_height": case.output_height or stream.get("height"),
             "frames": frames, "media_seconds": seconds, "elapsed_seconds": result.seconds,
-            "realtime_factor": seconds / result.seconds, **monitor.result()}
+            "realtime_factor": seconds / result.seconds,
+            "peak_io_pressure_percent": io_guard.peak, **monitor.result()}
 
 
 DVD_CASES = (
