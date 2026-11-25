@@ -16,6 +16,7 @@ import json
 import math
 import os
 from pathlib import Path
+from types import SimpleNamespace
 import re
 import secrets
 import stat
@@ -36,6 +37,7 @@ from .normalization import (normalize_sealed_source, parser_available,
                             thermal_sysfs_path_identity,
                             hwmon_sysfs_path_identity, power_sysfs_path_identity)
 from .safety import initial_source_policies, valid_run_id, RUN_BYTES
+from .session_lifecycle import reconcile_execution, validate_persisted_lifecycle
 
 PRIVATE_FILES = ("system.json", "source_attempts.json", "status_records.json")
 MANIFEST_NAME = "session_manifest.json"
@@ -62,6 +64,28 @@ def _check_run(path, run_id):
     # Denied-only and zero-observation runs need not have an evidence folder.
     if os.path.lexists(path / "private" / "evidence"):
         _check_private_dir(path / "private" / "evidence")
+
+
+def _initialize_zero_attempt_session(folder, run_id):
+    """Create only empty private journals for an actual zero-attempt run.
+
+    The existing evidence writer materializes its private directories when
+    the first source is sealed/recorded. Cooperative cancellation before the
+    first source must still produce the owner-approved zero-observation
+    minimum-usable canonical session. No evidence directory or fake source
+    receipt is created. Every directory is owner-only and checked in order.
+    """
+    if (not valid_run_id(run_id) or folder.name != run_id
+            or not folder.is_absolute()
+            or os.path.realpath(folder) != str(folder)):
+        raise CanonicalContractError("invalid zero-attempt run identity")
+    _check_private_dir(folder)
+    for path in (folder / "private", folder / "private" / "source_attempt_records"):
+        try:
+            path.mkdir(mode=0o700)
+        except FileExistsError:
+            pass
+        _check_private_dir(path)
 
 
 def _read_restricted(path, ceiling):
@@ -625,8 +649,14 @@ def _status_for(receipt, artifacts, *, parser_state="NOT_RUN",
     if state == "CAPTURED":
         if reason != "BYTES_PRESERVED":
             raise CanonicalContractError("captured source has unapproved reason")
-        if not artifacts or parser_state == "NOT_RUN":
-            raise CanonicalContractError("captured source has no supported parser result")
+        if not artifacts:
+            raise CanonicalContractError("captured source has no original evidence")
+        if parser_state == "NOT_RUN":
+            # G5-02 receipt remains durably status_record_pending; source
+            # evidence is preserved, but no production status is emitted.
+            raise CanonicalContractError(
+                "NORMALIZATION_PENDING: captured source preserved; "
+                "parser not executed; production acquisition status withheld")
         if parser_state == "FAILED":
             return "PARTIAL", "PARSE_FAILED"
         return "COMPLETE", "OK"
@@ -718,8 +748,13 @@ def _observation(artifact, raw, attempt_id, *, status_record_id,
     }
 
 
-def _semantic_observation(artifact, attempt_id, datum, index, parser_id):
-    """One typed observation derived from a precisely identified sealed original."""
+def _semantic_observation(artifact, attempt_id, datum, index, parser_id,
+                          *, supporting_originals=()):
+    """Typed value with each actually sealed original contributing to derivation.
+
+    supporting_originals is an ordered sequence of (evidence_id, attempt_id)
+    already verified by the producer; it is not inferred from an input label.
+    """
     return {
         "observation_id": "obs:" + artifact.evidence_id + ":sem:" + str(index),
         "collector_id": artifact.collector_id,
@@ -731,8 +766,10 @@ def _semantic_observation(artifact, attempt_id, datum, index, parser_id):
         "normalized_value": datum.normalized_value,
         "value_type": datum.value_type,
         "unit": datum.unit,
-        "evidence_refs": [artifact.evidence_id],
-        "source_attempt_ids": [attempt_id],
+        "evidence_refs": [artifact.evidence_id] +
+                         [eid for eid, _ in supporting_originals],
+        "source_attempt_ids": [attempt_id] +
+                              [aid for _, aid in supporting_originals],
         "transformation_ids": [parser_id],
         "acquired_utc": None,
         "capture_limit_ids": [],
@@ -749,9 +786,11 @@ def build_canonical(run_directory, engine_run):
     """
     folder = Path(run_directory)
     run_id = engine_run.run_id
-    _check_run(folder, run_id)
     if engine_run.canonical_status_pending is not True:
         raise CanonicalContractError("unexpected engine canonical state")
+    if engine_run.source_attempt_count == 0:
+        _initialize_zero_attempt_session(folder, run_id)
+    _check_run(folder, run_id)
     if (folder / "private" / MANIFEST_NAME).exists():
         raise FileExistsError("canonical session already finalized")
     private = folder / "private"
@@ -767,6 +806,7 @@ def build_canonical(run_directory, engine_run):
     all_original_bytes = 0
     semantic_field_count = 0
     verified_local_mounts = None
+    verified_mountinfo = None
     all_attempts = [item for collector in engine_run.collectors
                     for item in collector.source_attempts]
     for item in all_attempts:
@@ -988,6 +1028,9 @@ def build_canonical(run_directory, engine_run):
             if parsed is not None:
                 if source_id == "SRC-14" and metadata["outcome"] == "CAPTURED":
                     # Registered original grammar, not a new live mount read.
+                    if verified_mountinfo is not None:
+                        raise CanonicalContractError("ambiguous mountinfo contributor")
+                    verified_mountinfo = (eid, attempt_id)
                     ordered = (rec["mount_point"] for rec in
                                parsed.values[0].normalized_value
                                if rec["filesystem_type"] in LOCAL_TYPES)
@@ -997,8 +1040,17 @@ def build_canonical(run_directory, engine_run):
                     parser_findings=("ORIGINAL_PRESERVED", "SOURCE_PARSER_SUCCEEDED"),
                     limitations=()))
                 for index, datum in enumerate(parsed.values):
+                    support = ()
+                    if source_id == "SRC-15":
+                        # A statvfs record is valid for the mount selected by
+                        # a separately sealed same-run SRC-14 original.
+                        if verified_mountinfo is None:
+                            raise CanonicalContractError(
+                                "FS_STAT missing sealed selection contributor")
+                        support = (verified_mountinfo,)
                     observations.append(_semantic_observation(
-                        artifact, attempt_id, datum, index, parsed.parser_id))
+                        artifact, attempt_id, datum, index, parsed.parser_id,
+                        supporting_originals=support))
                     semantic_field_count += 1
             else:
                 observations.append(_observation(
@@ -1328,40 +1380,63 @@ def build_canonical(run_directory, engine_run):
         raise CanonicalContractError("engine attempt count mismatch")
     if any(a["source_id"] not in source_ids for a in attempts):
         raise CanonicalContractError("invalid source allocation")
-    orchestrated_state = "PARTIAL"
-    orchestrated_reason = "MINIMUM_WITH_GAPS"
+    # The selected plan/terminal clock comes ONLY from the actual single
+    # engine, never from source presence or a completed parser alone.
+    witnessed = reconcile_execution(
+        getattr(engine_run, "execution", None), run_id,
+        tuple(c.collector_id for c in engine_run.collectors),
+        tuple(a["attempt_id"] for a in attempts),
+        tuple((s["status"], s["reason_code"]) for s in statuses
+              if s["domain"] == "acquisition"))
+    orchestrated_state = (witnessed["orchestration"] if witnessed else "PARTIAL")
+    orchestrated_reason = (witnessed["reason"] if witnessed else "MINIMUM_WITH_GAPS")
     statuses.append(new_status(
         record_id="st:session", domain="orchestration",
         component_id="SES-CANONICAL", subject_id=run_id,
         status=orchestrated_state, reason_code=orchestrated_reason,
-        detail=("Raw originals validated; semantic normalization incomplete; " +
-                str(len(observations)) + " original/semantic observation records; " +
-                str(len(attempts)) + " source attempts")[:1024],
-        evidence_refs=[], source_attempt_ids=sorted(all_attempt_ids)))
+        detail=(witnessed["detail"] if witnessed else
+                ("Raw originals validated; semantic normalization incomplete; " +
+                 str(len(observations)) + " original/semantic observation records; " +
+                 str(len(attempts)) + " source attempts")[:1024]),
+        started_utc=(witnessed["started_utc"] if witnessed else None),
+        completed_utc=(witnessed["completed_utc"] if witnessed else None),
+        elapsed_ms=(witnessed["elapsed_ms"] if witnessed else None),
+        evidence_refs=[],
+        source_attempt_ids=([a["attempt_id"] for a in attempts]
+                            if witnessed else sorted(all_attempt_ids))))
     system = {
         "schema_version": CANONICAL_SCHEMA_VERSION,
         "run_id": run_id,
         "header": {
-            # EngineRun has no durable whole-run clock. SourceAttempt clock
-            # facts are preserved individually; run clock stays nullable.
-            "started_utc": None, "completed_utc": None,
+            # Use only witnessed actual engine clocks; historical source
+            # fixtures without a session witness remain nullable.
+            "started_utc": witnessed["started_utc"] if witnessed else None,
+            "completed_utc": witnessed["completed_utc"] if witnessed else None,
             "platform_scope": "Linux-AMD64",
             "requested_mode": "ACQUISITION",
-            "lifecycle_state": "INCOMPLETE",
-            # Include every actual source contributor even when a synthetic
-            # EngineRun groups an upstream receipt with its dependent source.
-            "collector_ids": list(dict.fromkeys(
+            "lifecycle_state": witnessed["lifecycle"] if witnessed else "INCOMPLETE",
+            # Witnessed selection includes collectors not yet reached by a
+            # cancelled run; legacy fixtures keep original owned contributors.
+            "collector_ids": (list(witnessed["selected_collectors"])
+                              if witnessed else list(dict.fromkeys(
                 [c.collector_id for c in engine_run.collectors] +
-                [a["collector_id"] for a in attempts])),
+                [a["collector_id"] for a in attempts]))),
             "created_by_version": None,
         },
         "observations": observations,
         "capture_limits": limits,
-        "limitations": ["Lifecycle/completeness reconciliation pending RP-03.3",
+        "limitations": [(
+            "Selected acquisition scope completed; not a benchmark or hardware-wide result"
+            if witnessed and witnessed["completion"] == "COMPLETE" else
+            "Selected acquisition was interrupted; unattempted sources not acquired"
+            if witnessed and witnessed["completion"] == "INTERRUPTED" else
+            "Selected acquisition has incomplete/denied/unavailable results"
+            if witnessed else
+            "Lifecycle/completeness reconciliation pending RP-03.3"),
                         ("Registered semantic parsers: " +
                          str(sum(1 for source in policies if parser_available(source))) +
                          " of " + str(len(policies)) + " source families; " +
-                         "this is not complete acquisition or validation"),
+                         "unselected sources and benchmark validation are not inferred"),
                         "Zero observations permitted; no benchmark measurements inferred"],
     }
     outputs = {
@@ -1388,11 +1463,13 @@ def build_canonical(run_directory, engine_run):
         "schema_version": CANONICAL_SCHEMA_VERSION,
         "manifest_version": "1.0",
         "run_id": run_id,
-        # RP-03.3 must establish final D-05 lifecycle; avoid claiming COMPLETE.
-        "completion_state": "INCOMPLETE",
+        # Only witnessed, fully reconciled selected acquisition may be COMPLETE.
+        "completion_state": witnessed["completion"] if witnessed else "INCOMPLETE",
         "integrity_verified": True,
         "minimum_usable": True,
-        "finalized_utc": None,
+        "finalized_utc": (datetime.now(timezone.utc).isoformat(
+            timespec="milliseconds").replace("+00:00", "Z")
+            if witnessed else None),
         "counts": {
             "attempts": len(attempts), "sources": len(source_ids),
             "observations": len(observations),
@@ -1604,25 +1681,203 @@ def validate_canonical(run_directory):
                 or cap["limit_id"] not in attempt_by_id[
                     cap["source_attempt_id"]]["limit_record_ids"]):
             raise CanonicalContractError("orphan source capture limit")
+    # RP-03.2: independently reconstruct FS_STAT contributor identity from
+    # sealed SRC-14 mountinfo and original SRC-15 worker stream labels.
+    # Never trust self-declared canonical references or a rehashed manifest.
+    fsstat_cache = {}
+
+    def fsstat_witness(aid):
+        if aid not in fsstat_cache:
+            source = attempt_by_id[aid]
+            mount_sources = [
+                a for a in attempts if a["source_id"] == "SRC-14"
+                and a["evidence_ids"]
+            ]
+            if (len(mount_sources) != 1
+                    or len(mount_sources[0]["evidence_ids"]) != 1):
+                raise CanonicalContractError(
+                    "FS_STAT mountinfo contributor not unique")
+            mount_attempt = mount_sources[0]
+            mount_eid = mount_attempt["evidence_ids"][0]
+            mount_receipt = _json_load(_read_restricted(
+                folder / mount_attempt["receipt_private_path"],
+                MAX_RECEIPT_BYTES))
+            if (mount_eid not in evidence
+                    or mount_receipt.get("source_paths") !=
+                       ["/proc/self/mountinfo"]
+                    or mount_receipt.get("invocation") != "MOUNTINFO"
+                    or mount_receipt.get("outcome") != "CAPTURED"
+                    or mount_eid.rsplit(":", 1)[-1] != "item0001"):
+                raise CanonicalContractError("FS_STAT unverified mountinfo original")
+            raw_mount = _read_restricted(
+                folder / evidence[mount_eid]["restricted_relative_path"],
+                evidence[mount_eid]["byte_count"])
+            try:
+                parsed_mount = normalize_sealed_source(
+                    "SRC-14", raw_mount, source_path="/proc/self/mountinfo")
+            except SourceParseError as exc:
+                raise CanonicalContractError(
+                    "FS_STAT mountinfo no longer parsable") from exc
+            if parsed_mount is None or not parsed_mount.values:
+                raise CanonicalContractError("FS_STAT mountinfo parser missing")
+            mounts_allowed = tuple(dict.fromkeys(
+                row["mount_point"]
+                for row in parsed_mount.values[0].normalized_value
+                if row["filesystem_type"] in LOCAL_TYPES))
+            fs_receipt = _json_load(_read_restricted(
+                folder / source["receipt_private_path"], MAX_RECEIPT_BYTES))
+            slots = [
+                SimpleNamespace(artifact=eid.rsplit(":", 1)[-1])
+                for eid in source["evidence_ids"]
+            ]
+            fs_mounts, fs_streams = _verified_fsstat_streams(
+                fs_receipt, slots, mounts_allowed,
+                {p.source_id: p for p in initial_source_policies()}["SRC-15"])
+            fsstat_cache[aid] = (
+                mount_eid, mount_attempt["attempt_id"],
+                dict(zip(source["evidence_ids"], zip(fs_mounts, fs_streams)))
+            )
+        return fsstat_cache[aid]
+
+    # RP-03.2 Increment 47: independent, read-only D0 semantic witnesses.
+    # Reparse each actual sealed original, not the canonical value or its
+    # digest, and require an exact 1:1 match for the entire parser output.
+    # Only these four simple fixed-format D0 families are covered here.
+    d0_families_47 = frozenset(("SRC-02", "SRC-08", "SRC-09", "SRC-10"))
+    d0_expected_47 = {}
+    d0_semantic_seen_47 = {}
+    d0_raw_seen_47 = {}
+    for candidate in attempts:
+        sid = candidate["source_id"]
+        if sid not in d0_families_47:
+            continue
+        aid = candidate["attempt_id"]
+        receipt = _json_load(_read_restricted(
+            folder / candidate["receipt_private_path"], MAX_RECEIPT_BYTES))
+        for eid in candidate["evidence_ids"]:
+            original = evidence[eid]
+            sealed = _read_restricted(
+                folder / original["restricted_relative_path"],
+                original["byte_count"])
+            parsed = None
+            if receipt.get("outcome") in ("CAPTURED", "PARTIAL"):
+                try:
+                    parsed = normalize_sealed_source(sid, sealed)
+                except SourceParseError:
+                    # A failed pure parser cannot justify typed observations.
+                    pass
+            artifact = SimpleNamespace(
+                evidence_id=eid, collector_id=candidate["collector_id"])
+            expected = tuple(
+                _semantic_observation(
+                    artifact, aid, datum, index, parsed.parser_id)
+                for index, datum in enumerate(parsed.values)
+            ) if parsed is not None else ()
+            d0_expected_47[eid] = expected
+            d0_semantic_seen_47[eid] = set()
+            d0_raw_seen_47[eid] = 0
+
     for observation in observations:
         aids = observation["source_attempt_ids"]
         eid_refs = observation["evidence_refs"]
+        primary_eid = observation["instance_key"]
         if (not aids or not eid_refs
                 or any(e not in evidence for e in eid_refs)
                 or any(a not in attempt_by_id for a in aids)
+                or primary_eid not in evidence
+                or eid_refs[0] != primary_eid
+                or evidence[primary_eid]["source_attempt_id"] != aids[0]
                 or any(evidence[e]["source_attempt_id"] not in aids
                        for e in eid_refs)):
-            raise CanonicalContractError("observation provenance failure")
+            raise CanonicalContractError("observation original attribution failure")
+        primary_attempt = attempt_by_id[aids[0]]
         st = status_by_id.get(observation["status_record_id"])
-        if (st is None or not set(aids).issubset(st["source_attempt_ids"])
-                or observation["collector_id"] not in
-                    {attempt_by_id[a]["collector_id"] for a in aids}
-                or any(l not in limit_by_id for l in observation["capture_limit_ids"])):
-            raise CanonicalContractError("observation/status provenance mismatch")
-        # A single-source observation cannot cite session/orchestration
-        # status as though it were the supported source-status witness.
-        if len(aids) == 1 and (
-                st["record_id"] != attempt_by_id[aids[0]]["status_record_id"]
-                or not set(eid_refs).issubset(set(st["evidence_refs"]))):
-            raise CanonicalContractError("observation source status not evidenced")
+        if (st is None or st["record_id"] != primary_attempt["status_record_id"]
+                or st["domain"] != "acquisition"
+                or primary_eid not in st["evidence_refs"]
+                or observation["collector_id"] != primary_attempt["collector_id"]
+                or any(l not in limit_by_id or
+                       limit_by_id[l]["source_attempt_id"] not in aids
+                       for l in observation["capture_limit_ids"])):
+            raise CanonicalContractError("observation primary status/provenance mismatch")
+
+        semantic = bool(observation["transformation_ids"])
+        expected_id = ("obs:" + primary_eid +
+                       (":sem:" + str(observation["ordinal"]) if semantic else ""))
+        if observation["observation_id"] != expected_id:
+            raise CanonicalContractError("observation original identity mismatch")
+        raw = _read_restricted(
+            folder / evidence[primary_eid]["restricted_relative_path"],
+            evidence[primary_eid]["byte_count"])
+        if primary_attempt["source_id"] == "SRC-15" and semantic:
+            mount_eid, mount_aid, associated = fsstat_witness(aids[0])
+            if (primary_eid not in associated
+                    or associated[primary_eid][1] != "stdout"
+                    or eid_refs != [primary_eid, mount_eid]
+                    or aids != [primary_attempt["attempt_id"], mount_aid]):
+                raise CanonicalContractError("FS_STAT semantic contributor mismatch")
+            try:
+                parsed = normalize_sealed_source(
+                    "SRC-15", raw, source_path=associated[primary_eid][0],
+                    source_stream="stdout")
+            except SourceParseError as exc:
+                raise CanonicalContractError(
+                    "FS_STAT semantic unsupported by sealed bytes") from exc
+            idx = observation["ordinal"]
+            if parsed is None or idx >= len(parsed.values):
+                raise CanonicalContractError("FS_STAT semantic ordinal unsupported")
+            raw_artifact = SimpleNamespace(
+                evidence_id=primary_eid, collector_id=primary_attempt["collector_id"])
+            expected = _semantic_observation(
+                raw_artifact, aids[0], parsed.values[idx], idx, parsed.parser_id,
+                supporting_originals=((mount_eid, mount_aid),))
+            if observation != expected:
+                raise CanonicalContractError("FS_STAT semantic original/value mismatch")
+        elif semantic and primary_attempt["source_id"] in d0_families_47:
+            expected_rows = d0_expected_47.get(primary_eid)
+            idx = observation["ordinal"]
+            if (expected_rows is None or idx >= len(expected_rows)
+                    or observation != expected_rows[idx]):
+                raise CanonicalContractError(
+                    "D0 semantic row not supported by sealed original")
+            d0_semantic_seen_47[primary_eid].add(idx)
+        elif semantic:
+            # Other registered single-source parsers remain individually
+            # attributable; full per-family semantic reparse is later RP-03.2.
+            if aids != [primary_attempt["attempt_id"]] or eid_refs != [primary_eid]:
+                raise CanonicalContractError("unsupported semantic contributor set")
+        else:
+            if (aids != [primary_attempt["attempt_id"]]
+                    or eid_refs != [primary_eid]
+                    or observation["ordinal"] != 0
+                    or observation["normalized_value"] is not None
+                    or observation["datum_path"] !=
+                       "unclassified.source." + primary_attempt["source_id"] +
+                       "." + primary_eid.rsplit(":", 1)[-1]):
+                raise CanonicalContractError("raw observation attribution mismatch")
+            try:
+                if len(raw) > MAX_LITERAL_TEXT:
+                    raise UnicodeDecodeError("utf-8", raw, 0, 1, "literal bound")
+                literal = raw.decode("utf-8", "strict")
+            except UnicodeDecodeError:
+                literal = None
+            expected_value = (literal if literal is not None
+                              else {"sealed_bytes_ref": primary_eid})
+            if (observation["observed_value"] != expected_value
+                    or observation["value_type"] !=
+                       ("STRING" if literal is not None else "BYTES_REF")):
+                raise CanonicalContractError("raw observation differs from sealed bytes")
+            if primary_eid in d0_raw_seen_47:
+                d0_raw_seen_47[primary_eid] += 1
+    for eid, expected_rows in d0_expected_47.items():
+        if (d0_raw_seen_47[eid] != 1 or
+                d0_semantic_seen_47[eid] != set(range(len(expected_rows)))):
+            raise CanonicalContractError(
+                "D0 sealed original parser output incomplete or duplicated")
+    session_rows = [r for r in statuses if r["domain"] == "orchestration"
+                    and r["subject_id"] == run_id]
+    if len(session_rows) != 1:
+        raise CanonicalContractError("missing or ambiguous session orchestration status")
+    validate_persisted_lifecycle(
+        system["header"], manifest, session_rows[0], attempts, statuses)
     return manifest

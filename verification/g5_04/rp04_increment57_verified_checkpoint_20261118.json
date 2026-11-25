@@ -1,0 +1,73 @@
+{
+  "record_type": "LBT_G5_04_RP04_INCREMENT57_VERIFIED_IMPLEMENTATION_CHECKPOINT",
+  "date_local": "2026-11-18",
+  "governance": "AI-Assisted Software Engineering Governance Standard v1.0",
+  "roadmap": "Owner-approved Alternative B FAT Readiness Roadmap Rev 0.2",
+  "owner_authority": "Prior approval of RP-04 Alternative A and narrowed Alternative A for CT-02; continued sequential bounded offline verification",
+  "predecessor": {
+    "increment": 56,
+    "pr": 82,
+    "final_head": "e6bda12eaaf7f8c1aed0dc8f12961e85818352cf",
+    "final_pr_ci": 44235808399,
+    "final_push_ci": 44235801796
+  },
+  "current": {
+    "increment": 57,
+    "pr": 83,
+    "branch": "g5/rp04-ct03-parser-evidence-57",
+    "implementation_head": "a2b63ddeeb387a56d5c6e8367edf54bb93abded1",
+    "pr_ci": {
+      "run_id": 44452155651,
+      "status": "SUCCESS",
+      "head": "a2b63ddeeb387a56d5c6e8367edf54bb93abded1"
+    },
+    "push_ci": {
+      "run_id": 44452126355,
+      "status": "SUCCESS",
+      "head": "a2b63ddeeb387a56d5c6e8367edf54bb93abded1"
+    },
+    "case_ids": [
+      "CT-03-P1",
+      "CT-03-N1",
+      "CT-03-N2"
+    ],
+    "checks_run": 3,
+    "checks_passed": 3,
+    "checks_failed": 0,
+    "checks_skipped": 0,
+    "unified_validation": "SUCCESS",
+    "artifact_name": "rp04-ct03-candidate-57",
+    "push_run_artifact_id": 14495229949,
+    "documentation_head_ci": "VERIFY_SEPARATELY"
+  },
+  "verification_scope": [
+    "Actual SRC-02 parser invocation and bounded malformed assignment rejection on an already-sealed original; record PARTIAL/PARSE_FAILED, parser finding, raw byte preservation and one evidence reference",
+    "Parser absent only inside deterministic fixture; no parser invoked; NORMALIZATION_PENDING and no finalized status or manifest",
+    "Missing original evidence reference fails independent status validator; simulated ordinary original read failure fails canonical session validator; no raw evidence edited and normal read revalidates"
+  ],
+  "protected": {
+    "source_commands_modified": false,
+    "privileges_modified": false,
+    "approved_capture_bounds_modified": false,
+    "canonical_schema": "1.0.0",
+    "status_pair_count": 41,
+    "raw_logs_modified": false,
+    "production_code_changed": false,
+    "physical_host_action": false,
+    "benchmark_or_publication": false
+  },
+  "formal_acceptance": {
+    "original_cp02_cases": 39,
+    "formally_executed": 0,
+    "formally_accepted": 0,
+    "formal_requirements_verified": 0,
+    "independent_reviewer_state": "NOT_REVIEWED"
+  },
+  "release": {
+    "pr_draft": true,
+    "pr_merged": false,
+    "cp07_authorized": false,
+    "fat_authorized": false
+  },
+  "context_integrity": "Authority consistent through Increment 57 implementation-head CI; review final doc-head CI separately"
+}
