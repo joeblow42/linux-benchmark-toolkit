@@ -142,7 +142,7 @@ class Runtime:
             raise PermissionError("run the workload runtime as an ordinary user")
         mode = Mode(mode)
         workloads = self.plan(mode, selections=selections)
-        directory = Path(directory)
+        directory = Path(directory).absolute()
         mode_bits = directory.stat()
         if (directory.is_symlink() or not directory.is_dir()
                 or mode_bits.st_uid != os.geteuid() or mode_bits.st_mode & 0o077):
