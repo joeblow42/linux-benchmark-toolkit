@@ -58,3 +58,12 @@ Timings include flushing destination file data. Cache and shared-device effects
 can influence the results. The worker has a five-minute deadline and uses the
 ordinary host I/O pressure guard. Physical USB behavior and SMB peer behavior
 require an appropriate host and destination.
+
+Select `backup-smb` with `--authorize-smb` to write and verify a generated
+fixture on a guest-accessible SMB share. This case requires the system Samba
+client library (`libsmbclient.so.0`). Set `smb_target` in the checkout-local
+`config/backup.local.json` or pass `--smb-target //host/share` for one run.
+Keep local target settings out of Git. The default fixture is 16 MiB and
+`--smb-mib` accepts 1–256 MiB. The report separates write throughput, readback
+integrity and cleanup. An interrupted run attempts bounded cleanup and reports
+the temporary filename if removal fails.
