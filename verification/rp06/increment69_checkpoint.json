@@ -1,0 +1,16 @@
+{
+  "increment": 69,
+  "scope": "RP-07 B3 sustained CPU and storage, thermal monitoring, optional bounded peer",
+  "branch": "g5/rp07-b3-sustained-69",
+  "draft_pr": 95,
+  "parent_draft_pr": 94,
+  "parent_commit": "80fbb85e05e7c6052ed074684ed8e7fd262ef746",
+  "implementation_commit": "91104639bb02c3cd555028f337274064206a1666",
+  "implementation_ci": {"push": 45614782701, "pull_request": 45614926877, "conclusion": "success"},
+  "documentation_ci": "Verify the published documentation commit separately",
+  "local": {"targeted_pass": 4, "unified_pass": 21, "unified_fail": 0, "unified_skip": 0},
+  "host_smoke": {"cpu": "COMPLETE for a two-second single-worker sensor smoke", "storage": "FIXTURE_ONLY", "network_peer": "NOT_TESTED"},
+  "requirements": ["LBT-FR-036", "LBT-FR-037", "LBT-FR-038", "LBT-FR-046", "LBT-FR-057", "LBT-NFR-010", "LBT-NFR-012", "LBT-NFR-013", "LBT-NFR-014", "LBT-NFR-017", "LBT-NFR-065"],
+  "formal_cp02": {"executed": 0, "accepted": 0, "total": 39},
+  "next": "RP-08 C1 optical read, imaging and verification"
+}
