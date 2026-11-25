@@ -1,0 +1,56 @@
+{
+  "oracle_id": "CP03-RP02-F04-SRC28-TRANSPORT-34",
+  "control": [
+    "Owner Choice A private v0.6; approved D-02 canonical v1.0.0; existing G4-07 SRC-28 D1 template and caps; prior PR #54 operational SRC-28 provenance"
+  ],
+  "evidence_status": "candidate source-first mock-only, NOT independently accepted CP-02",
+  "unchanged": [
+    "fixed dpkg-query argv",
+    "no live host reads in fixtures",
+    "no privilege or consent expansion",
+    "max_seconds 20, per-target seconds 8, per-target bytes 8 MiB, stdout cap 8 MiB, stderr 1 MiB, combined 8 MiB",
+    "41 status/reason pairs; canonical 1.0.0 fields"
+  ],
+  "cases": [
+    {
+      "id": "R28-34-01",
+      "when": "stderr transport reaches 1 MiB with positive actual omitted lower bound and valid same-run command witness",
+      "expect": "v0.6 single stderr CaptureLimit bytes 1048576; retained extent 1048576; missing extent observed lower bound; exact original stderr sealed"
+    },
+    {
+      "id": "R28-34-02",
+      "when": "SRC-28 transport independently timed_out and stderr overflow",
+      "expect": "v0.6 two distinct limits, time actual _capture_child seconds and stderr byte 1 MiB, both referenced by one status"
+    },
+    {
+      "id": "R28-34-03",
+      "when": "stderr omission reported but retained fewer than 1 MiB and combined output below 8 MiB",
+      "expect": "fail closed; no fabricated bound or missing count"
+    },
+    {
+      "id": "R28-34-04",
+      "when": "transport cap exceeded flag but no omitted lower bound",
+      "expect": "fail closed: precise bound unproved"
+    },
+    {
+      "id": "R28-34-05",
+      "when": "ordinary successful SRC-28 with no limits",
+      "expect": "legacy v0.4 command/execution witness preserved exactly"
+    },
+    {
+      "id": "R28-34-06",
+      "when": "single verified timeout without overflow",
+      "expect": "legacy v0.5 seconds witness remains unchanged"
+    },
+    {
+      "id": "R28-34-07",
+      "when": "invalid v0.6 SRC-28 limit scope, unit, threshold or duplicate fact",
+      "expect": "reject private receipt before persistence; reject forged metadata at canonical"
+    },
+    {
+      "id": "R28-34-08",
+      "when": "captured bytes are parse-error diagnostic",
+      "expect": "preserve original bytes/hash without claiming source status PASS or semantic valid data"
+    }
+  ]
+}
