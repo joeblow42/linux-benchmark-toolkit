@@ -1,11 +1,15 @@
 """RP-07 short workload regression and bounded functional checks."""
+from contextlib import redirect_stderr
+from io import StringIO
 from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
 
-from lbt_g5.core_workloads import MIB, ShortParameters, run_cpu, run_memory, run_storage
-from lbt_g5.workload_runtime import Context, Unavailable
+from lbt_g5.core_workloads import (
+    IOPressureGuard, MIB, ShortParameters, local_filesystem, run_cpu, run_memory, run_storage,
+)
+from lbt_g5.workload_runtime import Context, Unavailable, Unsafe
 
 
 class CoreWorkloadsTests(unittest.TestCase):
@@ -41,12 +45,46 @@ class CoreWorkloadsTests(unittest.TestCase):
         with self.assertRaises(FileExistsError):
             run_storage(self.context, self.parameters)
 
-    @patch("lbt_g5.core_workloads.pressure", return_value={"avg10_percent": 40, "total_us": 10})
+    @patch("lbt_g5.core_workloads.pressure", return_value={"avg10_percent": 75, "total_us": 10})
     @patch("lbt_g5.core_workloads.local_filesystem", return_value="fixture")
     def test_pressure_skips_before_writing(self, *_):
-        with self.assertRaisesRegex(Unavailable, "PREEXISTING_IO_PRESSURE"):
+        with redirect_stderr(StringIO()), self.assertRaisesRegex(Unavailable, "PREEXISTING_IO_PRESSURE"):
             run_storage(self.context, self.parameters)
         self.assertEqual(list(self.context.scratch.iterdir()), [])
+
+    def test_io_notifies_above_50_and_stops_at_75(self):
+        samples = [{"avg10_percent": value} for value in (50, 55, 74.9, 75)]
+        output = StringIO()
+        with patch("lbt_g5.core_workloads.pressure", side_effect=samples), redirect_stderr(output):
+            guard = IOPressureGuard(lambda: None)
+            self.assertEqual(output.getvalue(), "")
+            guard.poll(force=True)
+            guard.poll(force=True)
+            with self.assertRaisesRegex(Unsafe, "IO_PRESSURE_STOP"):
+                guard.poll(force=True)
+        self.assertEqual(output.getvalue().count("55.0%"), 1)
+        self.assertEqual(len(output.getvalue().splitlines()), 1)
+        self.assertEqual(guard.peak, 75)
+
+    def test_fuse_block_mount_requires_proven_usb_backing(self):
+        mountpoint = self.context.scratch / "New Volume"
+        mountpoint.mkdir()
+        escaped = str(mountpoint).replace(" ", r"\040")
+        table = ("1 0 0:1 / / rw - overlay overlay rw\n"
+                 f"2 1 0:2 / {escaped} rw - fuseblk /dev/sdc1 rw\n")
+        with patch("lbt_g5.core_workloads.Path.read_text", return_value=table), patch(
+                "lbt_g5.core_workloads._usb_block_source", return_value=True) as backing:
+            self.assertEqual(local_filesystem(mountpoint), "fuseblk")
+            backing.assert_called_once_with("/dev/sdc1")
+            backing.return_value = False
+            with self.assertRaisesRegex(Unavailable, "LOCAL_STORAGE_REQUIRED"):
+                local_filesystem(mountpoint)
+            backing.reset_mock()
+            with patch("lbt_g5.core_workloads.Path.read_text",
+                       return_value=table.replace("fuseblk", "fuse.sshfs")):
+                with self.assertRaisesRegex(Unavailable, "LOCAL_STORAGE_REQUIRED"):
+                    local_filesystem(mountpoint)
+                backing.assert_not_called()
 
     def test_rejects_out_of_range_parameters(self):
         for args in ({"cpu_workers": 0}, {"storage_bytes": 4097}, {"memory_seconds": float("nan")}):
