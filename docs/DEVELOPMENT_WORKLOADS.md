@@ -76,31 +76,13 @@ Use `--private` for the owner-only view with unmasked inventory. The default
 publication view applies a field allowlist, withholds unclassified fields, and
 keeps raw acquisitions and private evidence outside the report.
 
-The optional configuration files are `config/privacy.yaml` and
-`config/outputs.yaml`. With no configuration, privacy is enabled and only HTML
-is generated. The current publication increment supports selected JSON and
-assessment CSV. The complete approved conditional-output registry remains an
-open authority dependency.
-
-Example configuration (JSON syntax is also accepted in these YAML files):
-
-```yaml
-# privacy.yaml, owner-only (chmod 600)
-version: 1
-enabled: true
-mask:
-  platform.dmi.product_serial: true
-  platform.dmi.board_serial: true
-```
-
-```yaml
-# outputs.yaml
-version: 1
-selected: [json, csv]
-```
-
-Validate with `python3 -m lbt_g5.workload_report --check-config`. Use
-`--config DIRECTORY` for an alternate configuration directory. Non-JSON YAML
+Publication configuration is stored separately in `config/privacy.yaml` and
+`config/outputs.yaml`. The candidate Dialog offers Privacy Options and Output
+Options. The approved schemas use `schema_version: "1.0"`, 25 semantic mask
+flags, and nine optional `PUB-02` through `PUB-10` export flags. With no
+settings, privacy is enabled and only the mandatory combined HTML publishes.
+Each regeneration creates a UTC ordinal-day directory inside the saved run.
+Validate with `python3 -m lbt_g5.workload_report --check-config`. Non-JSON YAML
 syntax requires PyYAML.
 
 ## Candidate launcher and relocatable archive

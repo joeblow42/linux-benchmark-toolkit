@@ -201,9 +201,24 @@ def publish(session, config, *, private=False):
     return directory / report_name
 
 
+def latest_session(root):
+    candidates = []
+    for session in Path(root).glob("workload-*"):
+        if session.is_symlink() or not session.is_dir():
+            continue
+        for run in session.glob("run-*"):
+            if re.fullmatch(r"run-\d{13}", run.name) and run.is_dir() and not run.is_symlink():
+                candidates.append((run.name, run.stat().st_mtime_ns, session))
+    if not candidates:
+        raise ValueError("no saved workload acquisition found")
+    return max(candidates)[2]
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("session", nargs="?", type=Path)
+    selection = parser.add_mutually_exclusive_group()
+    selection.add_argument("session", nargs="?", type=Path)
+    selection.add_argument("--latest-under", type=Path, help="select the latest attempted acquisition")
     parser.add_argument("--config", type=Path, default=Path(__file__).resolve().parents[1] / "config")
     parser.add_argument("--private", action="store_true", help="include private inventory for local use")
     parser.add_argument("--check-config", action="store_true")
@@ -212,8 +227,9 @@ def main(argv=None):
         if args.check_config:
             load_policy(args.config)
             print("Publication configuration valid")
-        elif args.session:
-            print(publish(args.session, args.config, private=args.private))
+        elif args.session or args.latest_under:
+            session = args.session if args.session else latest_session(args.latest_under)
+            print(publish(session, args.config, private=args.private))
         else:
             parser.error("provide a saved session or --check-config")
     except (OSError, KeyError, ValueError) as error:
