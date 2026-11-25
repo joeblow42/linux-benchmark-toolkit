@@ -1,0 +1,40 @@
+{
+  "id": "LBT-G504-CP03-F02-27",
+  "authority": "Approved CP-01 D-04 exact source timing and D-02 SourceAttempt+StatusRecord fields",
+  "state": "SOURCE_FIRST",
+  "parent_sha": "ba75b172fe3c77acd775c93b8f09e84ac0480473",
+  "constraint": "Existing single G5-03 capture-and-record boundary only; no duplicate collectors, no invented timestamps or durations, preserve historical receipt bytes; canonical/status schema versions unchanged.",
+  "cases": [
+    {
+      "case": "F02-P1",
+      "given": "Real adapter invocation returned CAPTURED with sealed original",
+      "expect": "Source receipt new version carries UTC actual boundary start/end and monotonic elapsed; corresponding status and D-02 entity use exactly measured facts"
+    },
+    {
+      "case": "F02-P2",
+      "given": "Denied before execution",
+      "expect": "No execution timing and no fabricated elapsed; older receipt envelope unchanged"
+    },
+    {
+      "case": "F02-N1",
+      "given": "Recorded UTC end precedes start, non-UTC, negative elapsed",
+      "expect": "Fail closed before committing a source receipt"
+    },
+    {
+      "case": "F02-N2",
+      "given": "Historical receipt without source timing",
+      "expect": "Never synthesize execution timing or claim authoritative measurement from observed_utc"
+    },
+    {
+      "case": "F02-N3",
+      "given": "Attempt from O1 or SRC28 already uses optional provenance",
+      "expect": "Preserve original O1 consent and SRC28 execution witnesses while source timing remains correctly attributed"
+    },
+    {
+      "case": "F02-N4",
+      "given": "source timed out/partial but acquisition adapter actually started",
+      "expect": "Record measured completed call clock as a fact, without inferring process success"
+    }
+  ],
+  "independence": "AI-authored source-first tests are not independent owner acceptance"
+}

@@ -66,7 +66,7 @@ class G504DmiSourcePathOracles(unittest.TestCase):
     def test_approved_dmi_allowlist_cross_checks_worker(self):
         self.assertEqual(DMI, APPROVED_DMI)
         self.assertTrue(parser_available("SRC-04"))
-        self.assertFalse(parser_available("SRC-26"))
+        self.assertTrue(parser_available("SRC-13"))  # CP03-17 O1 verified stdout
 
     def test_source_path_required_and_values_never_define_field_identity(self):
         path = ROOT + "product_name"
@@ -90,7 +90,7 @@ class G504DmiSourcePathOracles(unittest.TestCase):
         values = (b"Sample computer\n", b"Sample manufacturer\n")
         with self.recorded(values, paths) as (folder, engine, originals):
             manifest = build_canonical(folder, engine)
-            self.assertEqual(manifest["observation_count"], 4)
+            self.assertEqual(manifest["counts"]["observations"], 4)
             self.assertEqual(validate_canonical(folder), manifest)
             obs = json.loads((folder / "private/system.json").read_text())["observations"]
             sem = [x for x in obs if x["transformation_ids"]]
@@ -116,7 +116,7 @@ class G504DmiSourcePathOracles(unittest.TestCase):
                              [x["datum_path"] for x in obs])
             attempts = json.loads((folder / "private/source_attempts.json").read_text())
             self.assertEqual(len(attempts["attempts"][0]["unavailable_fields"]), 1)
-            self.assertEqual(validate_canonical(folder)["original_byte_count"], 7)
+            self.assertEqual(validate_canonical(folder)["counts"]["original_bytes"], 7)
 
     def test_mismatched_path_count_order_duplicate_and_identity_fail_closed(self):
         cases = [
@@ -166,7 +166,7 @@ class G504DmiSourcePathOracles(unittest.TestCase):
             with self.subTest(value=value[:15]):
                 with self.recorded((value,), (ROOT + "board_name",)) as (folder, engine, original):
                     manifest = build_canonical(folder, engine)
-                    self.assertEqual(manifest["observation_count"], 1)
+                    self.assertEqual(manifest["counts"]["observations"], 1)
                     statuses = json.loads((folder / "private/status_records.json").read_text())
                     self.assertEqual(statuses["status_records"][0]["reason_code"],
                                      "PARSE_FAILED")

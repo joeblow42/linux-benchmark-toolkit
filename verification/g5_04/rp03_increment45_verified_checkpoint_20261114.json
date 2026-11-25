@@ -1,0 +1,123 @@
+{
+  "record_type": "LBT_G5_04_RP03_CP03_INCREMENT_45_VERIFIED_CANDIDATE_CHECKPOINT",
+  "date": "2026-11-14",
+  "governance": "AI-Assisted Software Engineering Governance Standard v1.0",
+  "roadmap": "Owner-approved First Article Test Readiness Roadmap; RP-03.1",
+  "repo": {
+    "full_name": "joeblow42/linux-benchmark-toolkit",
+    "branch": "g5/cp03-rp03-d02-producer-45",
+    "pr": 70,
+    "stacked_on": 69,
+    "predecessor_head": "c2003906c10e9351b49814869e55a97c545c60db",
+    "implementation_verified_head": "fe208c1abb9ab441c332b1187ad9373b17561c00",
+    "pr_ci_run": 43655270253,
+    "push_ci_run": 43655266526,
+    "pr_ci_status": "completed/success",
+    "push_ci_status": "completed/success",
+    "note": "Checkpoint/handoff commit follows these tested implementation-head runs. Re-verify exact final branch head and CI; record final checkpoint SHA/CI in PR #70 comment."
+  },
+  "source_authority": {
+    "controlling_odt_sha256": "6d836d28af086a0fec7df2ca0949faf9447f9cee29cfabb8751344bd5104c98b",
+    "frozen_ledger": "verification/g5_04/rp03_cp01_d02_approved_contract_43.json",
+    "status_schema": "1.0",
+    "status_fields": 14,
+    "approved_status_combinations": 41,
+    "canonical_schema": "1.0.0",
+    "controlled_requirements_rev": "1.6",
+    "controlled_requirements_count": 283,
+    "approved_CP01_decisions": "D-01 through D-05",
+    "operational_receipt": "RP-02 v0.6 Choice A"
+  },
+  "increment": {
+    "number": 45,
+    "title": "RP-03.1 exact D-02 canonical producer and validator conformance",
+    "source_first_red": [
+      {
+        "head": "cb8d31041c20336606b7b71d5e4ee98ace18706f",
+        "pr_ci_run": 43653874608,
+        "conclusion": "expected failure",
+        "finding": "Eight new produced-file tests failed in closed-world shapes, nested field structure and rehashed canonical mutation validation"
+      },
+      {
+        "head": "0f4b3b591d5c6085b143b14b50f02e7111334f44",
+        "push_ci_run": 43654885809,
+        "conclusion": "expected failure",
+        "finding": "Three new rehashed referential integrity contradictions not rejected: observation/session status, evidence representation, receipt original-byte aggregate"
+      },
+      {
+        "head": "432c7d5464ef0e5002884cee6640172cf6184e6a",
+        "pr_ci_run": 43655175070,
+        "conclusion": "expected failure",
+        "finding": "Approved-shape additional orphan acquisition status was accepted absent direct reference guard"
+      }
+    ],
+    "implementation_verified_ci": {
+      "head": "fe208c1abb9ab441c332b1187ad9373b17561c00",
+      "pr_ci": 43655270253,
+      "push_ci": 43655266526,
+      "conclusion": "success/success"
+    },
+    "source_first_test_file": "tests/test_g5_cp03_rp03_producer_45.py",
+    "source_first_case_count": 13,
+    "cross_file_scope": "4 exact private D-02 file shapes and 9 entity shapes; nullable fields, original evidence and G5-02 receipt digest/count maps, approved-source attempt/status/limit references, authorized D0 actual limit, zero-observation source denial, rehashed tamper and orphan/representation/byte contradiction refusal",
+    "changed_production": [
+      "lbt_g5/canonical_session.py",
+      "lbt_g5/host_smoke.py"
+    ],
+    "changed_workflow": [
+      ".github/workflows/test.yml"
+    ],
+    "changes_summary": "Migrated provisional canonical file fields to exact frozen D-02; strict prepublication shape verification and read-only status/attempt/evidence/limit/receipt/manifest integrity; legacy test assumptions reconciled to exact frozen counts, with F-06 candidate guard no longer expected-failure, not independently accepted.",
+    "immutable_originals": "No original evidence bytes modified by production logic; only re-read restricted sealed originals/operational receipts.",
+    "scope_limits": [
+      "D-05 full lifecycle truthful validity/completeness and interruptions are RP-03.3, not established by this candidate",
+      "Not every source-family semantic normalization and multi-original contributor has been independently completed; RP-03.2 remains",
+      "No fabricated whole-run timestamps, tool versions or error numbers; nullable when not evidenced",
+      "Per-original CaptureLimit.limit_record_ids are left empty where per-artifact attribution is not individually proved; attempt/status-level links remain",
+      "No independent execution/acceptance of original 39 CP-02 acceptance cases; passing CI is candidate evidence only"
+    ]
+  },
+  "protected_unchanged": [
+    "lbt_g5/safety.py",
+    "lbt_g5/o1.py",
+    "lbt_g5/privilege_contract.py",
+    "lbt_g5/privileged_session.py",
+    "packaging/lbt_root_helper.py",
+    "lbt_g5/evidence.py",
+    "lbt_g5/canonical_contract.py",
+    "lbt_g5/o1_execution.py",
+    "lbt_g5/records.py",
+    "lbt_g5/d02_schema.py",
+    "lbt_g5/engine.py"
+  ],
+  "branch_diff": {
+    "base": "c2003906c10e9351b49814869e55a97c545c60db",
+    "candidate_head": "fe208c1abb9ab441c332b1187ad9373b17561c00",
+    "status": "ahead",
+    "ahead_by": 14,
+    "behind_by": 0,
+    "non_checkpoint_modified_paths": 25
+  },
+  "next": {
+    "increment46": "RP-03.2 source-first independently verified typed/lossless multi-original/source-to-evidence provenance, multi-artifact attribution, all registered source families; do not infer missing facts or change contract",
+    "then": [
+      "RP-03.3 D-05 lifecycle: validity vs completeness, zero observations, interruption and limitations",
+      "RP-04.1 original 39 independent CP-02 acceptance cases",
+      "RP-04.2 CP-04 persistence/atomicity/tamper",
+      "RP-04.3 CP-05 end-to-end, cumulative RTM and genuine CP-06 Bodhi 7 AMD64 host verification",
+      "RP-04.4 CP-07 explicit owner gate review"
+    ]
+  },
+  "gates": {
+    "RP03_1": "CANDIDATE_IMPLEMENTATION_VERIFIED_NOT_ACCEPTED",
+    "RP03": "OPEN",
+    "RP04": "OPEN",
+    "G504": "OPEN",
+    "CP02_original_39": "0 ACCEPTED",
+    "Rev16_requirements": "283 NOT_VERIFIED",
+    "Bodhi7_host": "NOT_EXECUTED",
+    "FAT": "NOT_ESTABLISHED",
+    "release": "NOT_AUTHORIZED"
+  },
+  "conversation_safety": "Recommend clean handoff after completing Increment45 and final CI because extensive recovery, schema migration and repeated source-first/CI iterations are costly to context integrity; no owner decision currently required."
+}

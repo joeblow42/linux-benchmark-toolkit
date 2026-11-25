@@ -66,7 +66,7 @@ class DRMSourceFirstOracles(unittest.TestCase):
         self.assertEqual(ROOTS["SRC-19"], ROOT.rstrip("/"))
         self.assertEqual(ATTRS["SRC-19"], ATTRIBUTES)
         self.assertTrue(parser_available("SRC-19"))
-        self.assertFalse(parser_available("SRC-26"))
+        self.assertTrue(parser_available("SRC-13"))  # CP03-17 O1 verified stdout
 
     def test_sealed_identity_and_observation_provenance(self):
         paths = (ROOT + "card0/device/vendor", ROOT + "card0/device/device",
@@ -74,7 +74,7 @@ class DRMSourceFirstOracles(unittest.TestCase):
         raws = (b"0x8086\n", b"0xA7a1\n", b"0x103C\n", b"0x02\n")
         with self.saved(raws, paths) as (directory, engine, artifacts):
             manifest = build_canonical(directory, engine)
-            self.assertEqual(manifest["observation_count"], 8)
+            self.assertEqual(manifest["counts"]["observations"], 8)
             self.assertEqual(validate_canonical(directory), manifest)
             sys = json.loads((directory / "private/system.json").read_text())
             sem = [x for x in sys["observations"] if x["transformation_ids"]]
@@ -109,7 +109,7 @@ class DRMSourceFirstOracles(unittest.TestCase):
         with self.saved((), (), outcome="UNAVAILABLE", reason="SOURCE_ABSENT"
         ) as (directory, engine, _):
             manifest = build_canonical(directory, engine)
-            self.assertEqual(manifest["observation_count"], 0)
+            self.assertEqual(manifest["counts"]["observations"], 0)
             self.assertEqual(validate_canonical(directory), manifest)
 
     def test_reordered_duplicate_count_and_artifact_ordinal_are_rejected(self):
@@ -162,7 +162,7 @@ class DRMSourceFirstOracles(unittest.TestCase):
         with self.saved((b"\xff\n",), (ROOT + "card0/device/vendor",)
         ) as (directory, engine, originals):
             manifest = build_canonical(directory, engine)
-            self.assertEqual(manifest["observation_count"], 1)
+            self.assertEqual(manifest["counts"]["observations"], 1)
             status = json.loads((directory / "private/status_records.json").read_text())
             self.assertEqual(status["status_records"][0]["reason_code"], "PARSE_FAILED")
             self.assertEqual((directory / originals[0].private_relative_path).read_bytes(),
