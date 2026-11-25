@@ -67,3 +67,38 @@ Keep local target settings out of Git. The default fixture is 16 MiB and
 `--smb-mib` accepts 1–256 MiB. The report separates write throughput, readback
 integrity and cleanup. An interrupted run attempts bounded cleanup and reports
 the temporary filename if removal fails.
+
+## Reports from a saved session
+
+Run `python3 -m lbt_g5.workload_report SESSION_DIR` to generate a standalone
+HTML report without reacquiring data. Each publication uses a fresh directory.
+Use `--private` for the owner-only view with unmasked inventory. The default
+publication view applies a field allowlist, withholds unclassified fields, and
+keeps raw acquisitions and private evidence outside the report.
+
+The optional configuration files are `config/privacy.yaml` and
+`config/outputs.yaml`. With no configuration, privacy is enabled and only HTML
+is generated. The current publication increment supports selected JSON and
+assessment CSV. The complete approved conditional-output registry remains an
+open authority dependency.
+
+Example configuration (JSON syntax is also accepted in these YAML files):
+
+```yaml
+# privacy.yaml, owner-only (chmod 600)
+version: 1
+enabled: true
+mask:
+  platform.dmi.product_serial: true
+  platform.dmi.board_serial: true
+```
+
+```yaml
+# outputs.yaml
+version: 1
+selected: [json, csv]
+```
+
+Validate with `python3 -m lbt_g5.workload_report --check-config`. Use
+`--config DIRECTORY` for an alternate configuration directory. Non-JSON YAML
+syntax requires PyYAML.
