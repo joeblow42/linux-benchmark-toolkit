@@ -158,7 +158,7 @@ class G504CP03CanonicalIntegrationTests(unittest.TestCase):
         saved, original = self.saved("SRC-02", raw)
         engine_run = EngineRun(RUN, (CollectorRun("COL-OS", (saved,)),))
         manifest = build_canonical(self.run, engine_run)
-        self.assertEqual(manifest["observation_count"], 1)
+        self.assertEqual(manifest["counts"]["observations"], 1)
         self.assertEqual(validate_canonical(self.run), manifest)
         system = json.loads((self.run / "private/system.json").read_text())
         obs = system["observations"][0]
@@ -186,7 +186,7 @@ class G504CP03CanonicalIntegrationTests(unittest.TestCase):
         saved, original = self.saved("SRC-08", b"MemTotal: 1024 kB\nMemFree: 128 kB\n")
         engine_run = EngineRun(RUN, (CollectorRun("COL-MEM", (saved,)),))
         manifest = build_canonical(self.run, engine_run)
-        self.assertEqual(manifest["observation_count"], 3)
+        self.assertEqual(manifest["counts"]["observations"], 3)
         sys = json.loads((self.run / "private/system.json").read_text())
         for obs in sys["observations"]:
             self.assertEqual(obs["evidence_refs"], [original.evidence_id])

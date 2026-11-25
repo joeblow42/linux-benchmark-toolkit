@@ -1,0 +1,44 @@
+{
+  "record_type": "LBT_G5_04_RP03_2_INCREMENT48_VERIFIED_IMPLEMENTATION_CHECKPOINT",
+  "date_local": "2026-11-16",
+  "repo": "https://github.com/joeblow42/linux-benchmark-toolkit",
+  "governing_process": "AI-Assisted Software Engineering Governance Standard v1.0",
+  "approved_planning_commit": "8599b227cb151f669315e3770258e1be3175ca4b",
+  "approved_owner_decision": "verification/fat/altb_owner_approval_rev02_20261116.json",
+  "increment": 48,
+  "draft_pr": 74,
+  "branch": "g5/cp03-rp03-private-consumer-48",
+  "base_pr": 73,
+  "base_sha": "8599b227cb151f669315e3770258e1be3175ca4b",
+  "verified_implementation_head": "a7661b110fdc12060ee0bd62fbfa824c9efbd2c7",
+  "exact_implementation_head_ci": {
+    "pull_request": {
+      "id": 44025661781,
+      "status": "SUCCESS",
+      "head": "a7661b110fdc12060ee0bd62fbfa824c9efbd2c7"
+    },
+    "push": {
+      "id": 44025654554,
+      "status": "SUCCESS",
+      "head": "a7661b110fdc12060ee0bd62fbfa824c9efbd2c7"
+    }
+  },
+  "changes": [
+    ".github/workflows/test.yml",
+    "lbt_g5/private_inventory.py",
+    "tests/test_g5_cp03_rp03_private_consumer_48.py",
+    "verification/g5_04/rp03_increment48_private_consumer_review_20261116.md"
+  ],
+  "incremental_tests": "6 source-first read-only private consumer integration test cases — PASS (dedicated CI step)",
+  "product_behavior": "existing sealed G5-03 receipts to D-02 private canonical then validated read-only internal inventory values/statuses; no new source collection, no public output",
+  "public_report_safe": false,
+  "protected_authorities_unchanged": true,
+  "original_39_cp02_cases_formally_accepted": 0,
+  "requirements_verified": 0,
+  "physical_host_fat": "NOT_EXECUTED",
+  "rp03_2": "OPEN",
+  "rp03_3": "NOT_COMPLETE",
+  "merge_authorized": false,
+  "fat_entry_authorized": false,
+  "subsequent_checkpoint_note": "The documentation commit occurs after the verified implementation CI; check new documentation head exact-head PR and push CI before declaring final checkpoint verified."
+}

@@ -1,0 +1,61 @@
+{
+  "record_type": "LBT_G5_04_RP02_CP03_INCREMENT_40_CANDIDATE_CHECKPOINT",
+  "date": "2026-11-14",
+  "authority": "AI-Assisted Software Engineering Governance Standard v1.0; owner-approved FAT Readiness Roadmap RP-02.3; Rev 1.6 283 requirements; RP-02 v0.6 Choice A",
+  "repository": {
+    "full_name": "joeblow42/linux-benchmark-toolkit",
+    "branch": "g5/cp03-rp02-o1-transport-40",
+    "pull_request": 65,
+    "stacked_on": 64,
+    "parent_verified_head": "b7797b80188f228b4a7d15f5cc8ba28e9d71062f",
+    "implementation_verified_head": "4166c2bcd08450f6246f9df42f27bee3811c647d",
+    "exact_head_ci_run": 43632760912,
+    "ci_result": "completed/success",
+    "pr_state": "DRAFT/OPEN/UNMERGED",
+    "note": "Record committed after implementation CI; verify record-head exact CI before claiming final record-commit validation."
+  },
+  "increment": {
+    "title": "O1 transport byte applied-threshold assurance, including SRC-13 helper cumulative ambiguity",
+    "oracle": "verification/g5_04/cp03_rp02_o1_transport_oracle_40.json",
+    "tests": "tests/test_g5_cp03_rp02_o1_transport_40.py",
+    "test_methods": 8,
+    "source_first": "oracle and tests committed and negative CI witnessed before production modifications",
+    "positive": "SRC-18 direct 4MiB and SRC-21 direct 8MiB unambiguous combined; SRC-13 installed helper full 8MiB per-request saturation",
+    "unsupported": "SRC-13 shortened internal helper cumulative byte cap, helper time cap, direct tied per-stream/combined limits, source totals, timeout and simultaneous competing dimensions; no invented exact threshold",
+    "provenance": "Same-run sealed D0 inventory, exact consent/target/argv and in-memory transport fact checked against immutable original and approved ceiling",
+    "canonical": "Private operational receipt v0.6 and existing D-02 CaptureLimit entity only; no production schema/status vocabulary change"
+  },
+  "changes": [
+    ".github/workflows/test.yml",
+    "lbt_g5/o1_execution.py",
+    "lbt_g5/records.py",
+    "lbt_g5/canonical_session.py",
+    "tests/test_g5_cp03_rp02_o1_transport_40.py",
+    "verification/g5_04/cp03_rp02_o1_transport_oracle_40.json"
+  ],
+  "protected_unchanged": [
+    "lbt_g5/safety.py",
+    "lbt_g5/o1.py",
+    "lbt_g5/privilege_contract.py",
+    "lbt_g5/privileged_session.py",
+    "packaging/lbt_root_helper.py",
+    "lbt_g5/evidence.py",
+    "lbt_g5/canonical_contract.py"
+  ],
+  "gates": {
+    "G5_04": "OPEN",
+    "RP_02": "PARTIALLY_COMPLETE",
+    "RP_03": "OPEN",
+    "RP_04": "OPEN",
+    "original_39_CP_02": "NOT_ACCEPTED",
+    "requirements_283": "NOT_VERIFIED",
+    "Bodhi7_AMD64_host": "NOT_EXECUTED",
+    "FAT": "NOT_ESTABLISHED",
+    "release": "NOT_AUTHORIZED"
+  },
+  "next": {
+    "increment41": "Source-first remaining O1 aggregate source writer bytes/source-time/call-count feasibility; no helper protocol modification",
+    "after": "RP-03 D-02/F-06 and RP-04 independent cases, requirements verification and Bodhi7 host FAT"
+  },
+  "conversation_safety": "After Increment 40 implementation: safe to continue sequentially. No owner approval necessary for preserved boundaries."
+}

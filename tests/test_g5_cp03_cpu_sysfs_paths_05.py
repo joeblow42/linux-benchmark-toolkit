@@ -82,7 +82,7 @@ class CpuSysfsSourceFirstOracles(unittest.TestCase):
         originals = (b"0-1,4\n", b"2\n", b"1400000\n")
         with self.captured(originals, paths) as (folder, engine, artifacts):
             manifest = build_canonical(folder, engine)
-            self.assertEqual(manifest["observation_count"], 6)
+            self.assertEqual(manifest["counts"]["observations"], 6)
             self.assertEqual(validate_canonical(folder), manifest)
             system = json.loads((folder / "private/system.json").read_text())
             self.assertIn("Registered semantic parsers: ",
@@ -220,7 +220,7 @@ class CpuSysfsSourceFirstOracles(unittest.TestCase):
                            (ROOT + "cpu0/cpufreq/scaling_cur_freq",)) as (
                            folder, engine, originals):
             manifest = build_canonical(folder, engine)
-            self.assertEqual(manifest["observation_count"], 1)
+            self.assertEqual(manifest["counts"]["observations"], 1)
             obs = json.loads((folder / "private/system.json").read_text())["observations"]
             self.assertEqual(obs[0]["evidence_refs"], [originals[0].evidence_id])
             status = json.loads((folder / "private/status_records.json").read_text())

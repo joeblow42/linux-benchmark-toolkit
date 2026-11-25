@@ -82,7 +82,7 @@ class LscpuD1SourceFirstOracles(unittest.TestCase):
                  ("call0001-stderr", b"warning: synthetic diagnostic\n"))
         with self.sealed(items) as (folder, run, originals):
             manifest = build_canonical(folder, run)
-            self.assertEqual(manifest["observation_count"], 3)
+            self.assertEqual(manifest["counts"]["observations"], 3)
             self.assertEqual(validate_canonical(folder), manifest)
             obs = json.loads((folder/"private/system.json").read_text())["observations"]
             typed = [x for x in obs if x["transformation_ids"]]
@@ -158,7 +158,7 @@ class LscpuD1SourceFirstOracles(unittest.TestCase):
         with self.sealed((("call0001-stdout", b"not key value\n"),)
         ) as (folder, run, originals):
             manifest = build_canonical(folder, run)
-            self.assertEqual(manifest["observation_count"], 1)
+            self.assertEqual(manifest["counts"]["observations"], 1)
             states = json.loads((folder/"private/status_records.json").read_text())
             self.assertEqual(states["status_records"][0]["reason_code"], "PARSE_FAILED")
             self.assertEqual((folder/originals[0].private_relative_path).read_bytes(),
@@ -178,7 +178,7 @@ class LscpuD1SourceFirstOracles(unittest.TestCase):
             self.assertIn("transport=PARTIAL/EXIT_NONZERO", status["detail"])
             self.assertIn("exit_code=2", status["detail"])
             self.assertNotIn("PARSE_FAILED", status["reason_code"])
-            self.assertEqual(manifest["observation_count"], 2)
+            self.assertEqual(manifest["counts"]["observations"], 2)
             self.assertEqual((folder / originals[0].private_relative_path).read_bytes(),
                              b"CPU(s): 1\n")
 
