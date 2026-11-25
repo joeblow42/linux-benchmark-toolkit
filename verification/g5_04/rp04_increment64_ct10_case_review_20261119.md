@@ -1,0 +1,10 @@
+# LBT G5-04 RP-04 Increment 64 — CT-10 ordered private commit and integrity checks
+
+Date: 2026-11-19 local. Governed by AI-Assisted Software Engineering Governance Standard v1.0; approved Alternative B FAT Rev 0.2; original CP-02 cases. All candidate tests operate on genuinely sealed G5-02 original SRC-02 fixture bytes, append-only receipt, and actual G5-04 private canonical writer in disposable temporary paths. No host probe or production change.
+
+- **CT-10-P1**: observe actual private write method invocation order; verify system/source attempts/status files are exclusively committed before session manifest. Cross-check manifest D-02 schema, SHA-256/byte-count for each canonical file, original sealed evidence, original attempt receipt, counts, identities and reference relationships. Integrity VERIFIED and operational completion INCOMPLETE remain distinct.
+- **CT-10-N1**: simulate an ordinary failing manifest disk publish at the final exclusive create step, after the three private canonical files have been written. No session manifest exists; validating that incomplete directory fails. Original source/receipt bytes not modified.
+- **CT-10-N2**: simulate ordinary corrupt reads (canonical file, source receipt or original evidence) with temporary read interception, plus a mismatched manifest observation count in an in-memory JSON decode. All must fail canonical validation; exact original persisted bytes/digests before and after are unchanged and a normal validation succeeds. No rehashed-manifest attack tests or modified raw files.
+- **CT-10-N3**: duplicate canonical finalization and duplicate attempt-receipt exclusive publication must reject with FileExistsError, preserving an exact private-file SHA-256 snapshot.
+
+Dedicated CI emits actual per-case candidate PASS/FAIL/ERROR/SKIP JSON. These results **do not execute or accept original CP-02 formal acceptance**: 39 original cases remain formally NOT_EXECUTED, zero accepted. No CP-07, physical Bodhi 7, FAT, merge or release. D-02 1.0.0, 41 controlled pairs, authorized commands/privileges/consent/limits, raw evidence and one engine remain protected.
