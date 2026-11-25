@@ -1,0 +1,33 @@
+{
+  "increment": 66,
+  "case": "CT-11-P1",
+  "branch": "g5/rp04-ct11-p1-bodhi-66",
+  "parent_pr": 91,
+  "parent_commit": "8d46206ea67c3606c1e6cc104b117858ade85a01",
+  "local_implementation_commit": "d188342de272ad54f6c8ec1565f77d1f1df49e10",
+  "physical_candidate": "PASS",
+  "physical_evidence_summary": "rp04_increment66_ct11_p1_bodhi_evidence_20261124.json",
+  "baseline_ct11_n1_after_python310_test_fix": "2 PASS",
+  "private_inventory_regression": "6 PASS",
+  "unified_full": "21 PASS, 0 FAIL, 0 SKIP",
+  "controlled_requirement_overlap_checks": "1981 PASS, 0 mismatches",
+  "missing_data_replay": "PARTIAL, 3 TOOL_MISSING/EXECUTABLE_NOT_FOUND, 0 facts",
+  "publication": "IMPLEMENTATION_PUBLISHED",
+  "draft_pr": 92,
+  "implementation_head_push_ci": {
+    "run_id": 45554692230,
+    "conclusion": "success"
+  },
+  "implementation_head_pr_ci": {
+    "run_id": 45554717079,
+    "conclusion": "success"
+  },
+  "documentation_head_push_ci": "VERIFY_ON_PUBLISHED_DOCUMENTATION_HEAD",
+  "documentation_head_pr_ci": "VERIFY_ON_PUBLISHED_DOCUMENTATION_HEAD",
+  "formal_cp02": {
+    "total": 39,
+    "executed": 0,
+    "accepted": 0
+  },
+  "next": "Verify documentation-head CI. CP-07 stage disposition remains an owner gate. RP-06 B1 is the next roadmap implementation slice."
+}

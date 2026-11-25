@@ -11,6 +11,24 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y dialog
+      - name: Verify software video workloads with a synthetic DVD fixture
+        run: |
+          if ! command -v ffmpeg || ! command -v ffprobe; then
+            sudo apt-get update
+            sudo apt-get install -y ffmpeg
+          fi
+          LBT_RUN_VIDEO_SMOKE=1 python3 -m unittest discover -s tests -p 'test_g5_video_workload.py' -v
+      - name: Verify Jellyfin scenarios with overlapping synthetic transcodes
+        env:
+          LBT_RUN_VIDEO_SMOKE: '1'
+          LBT_JELLYFIN_EVIDENCE: validation-results/ci/jellyfin-workloads.json
+        run: python3 -m unittest discover -s tests -p 'test_g5_jellyfin_workloads.py' -v
+      - name: Upload synthetic Jellyfin workload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: jellyfin-workload-ci
+          path: validation-results/ci/jellyfin-workloads.json
+          if-no-files-found: error
       - name: Shell and Python syntax
         run: |
           bash -n benchmark lib/*.sh tui/*.sh packaging/*.sh tests/*.sh
@@ -145,8 +163,115 @@ jobs:
         run: python3 -m unittest discover -s tests -p 'test_g5_cp03_rp03_d1_o1_consumer_49.py' -v
       - name: G5-04 RP-03.2 dependent FS_STAT/VAINFO private-consumer integration (Increment 50)
         run: python3 -m unittest discover -s tests -p 'test_g5_cp03_rp03_dependent_consumers_50.py' -v
+      - name: G5-04 RP-03.3 factual runtime session-plan and cancellation witness (Increment 51)
+        run: python3 -m unittest discover -s tests -p 'test_g5_cp03_rp03_lifecycle_witness_51.py' -v
+      - name: G5-04 RP-03.3 source-reconciled canonical session lifecycle (Increment 52)
+        run: python3 -m unittest discover -s tests -p 'test_g5_cp03_rp03_lifecycle_reconciliation_52.py' -v
+      - name: G5-04 RP-03.3 real unprivileged host selected-acquisition lifecycle (Increment 53)
+        run: python3 -m unittest discover -s tests -p 'test_g5_cp03_rp03_host_lifecycle_53.py' -v
+      - name: G5-04 RP-04 Increment 54 original 39-case execution readiness plan audit (NOT acceptance)
+        run: python3 -m unittest discover -s tests -p 'test_g5_cp03_rp04_case_plan_54.py' -v
+      - name: G5-04 RP-04 Increment 55 exact CT-01 offline development checks (NOT CP-02 acceptance)
+        run: python3 scripts/rp04_ct01_case_runner_55.py --output validation-results/ci/rp04_ct01_candidate_55.json
+      - name: G5-04 RP-04 Increment 56 CT-02 offline parser-not-run candidate checks (NOT acceptance)
+        run: python3 scripts/rp04_ct02_case_runner_56.py --output validation-results/ci/rp04_ct02_candidate_56.json
+      - name: G5-04 RP-04 Increment 57 CT-03 source-first parser-error candidate checks (NOT acceptance)
+        run: python3 scripts/rp04_ct03_case_runner_57.py --output validation-results/ci/rp04_ct03_candidate_57.json
+      - name: G5-04 RP-04 Increment 58 CT-04 factual source-outcome candidate checks (NOT acceptance)
+        run: python3 scripts/rp04_ct04_case_runner_58.py --output validation-results/ci/rp04_ct04_candidate_58.json
+      - name: G5-04 RP-04 Increment 59 CT-05 measured source limits (NOT formal acceptance)
+        run: python3 scripts/rp04_ct05_case_runner_59.py --output validation-results/ci/rp04_ct05_candidate_59.json
+      - name: G5-04 RP-04 Increment 60 CT-06 actual source timing and null boundary (NOT acceptance)
+        run: python3 scripts/rp04_ct06_case_runner_60.py --output validation-results/ci/rp04_ct06_candidate_60.json
+      - name: G5-04 RP-04 Increment 61 CT-07 source provenance candidate checks (NOT acceptance)
+        run: python3 scripts/rp04_ct07_case_runner_61.py --output validation-results/ci/rp04_ct07_candidate_61.json
+      - name: G5-04 RP-04 Increment 62 CT-08 two offline cases (CT-08-N2 downstream NOT RUN)
+        run: python3 scripts/rp04_ct08_case_runner_62.py --output validation-results/ci/rp04_ct08_candidate_62.json
+      - name: G5-04 RP-04 Increment 63 CT-09 typed/lossless source candidate checks (NOT acceptance)
+        run: python3 scripts/rp04_ct09_case_runner_63.py --output validation-results/ci/rp04_ct09_candidate_63.json
+      - name: G5-04 RP-04 Increment 64 CT-10 commit-order and ordinary-integrity candidate checks (NOT acceptance)
+        run: python3 scripts/rp04_ct10_case_runner_64.py --output validation-results/ci/rp04_ct10_candidate_64.json
+      - name: G5-04 RP-04 Increment 65 CT-11-N1 offline no-reacquisition development checks (NOT acceptance)
+        run: python3 scripts/rp04_ct11_n1_case_runner_65.py --output validation-results/ci/rp04_ct11_n1_candidate_65.json
       - name: Unified Full validation (unit and acceptance once)
         run: python3 -m validation.suites full --output validation-results/ci
+      - name: Upload RP-04 CT-01 bounded candidate evidence (NOT formal acceptance)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rp04-ct01-candidate-55
+          path: validation-results/ci/rp04_ct01_candidate_55.json
+          if-no-files-found: warn
+      - name: Upload RP-04 CT-02 private candidate evidence (NOT formal acceptance)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rp04-ct02-candidate-56
+          path: validation-results/ci/rp04_ct02_candidate_56.json
+          if-no-files-found: warn
+      - name: Upload RP-04 CT-03 candidate evidence (NOT formal acceptance)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rp04-ct03-candidate-57
+          path: validation-results/ci/rp04_ct03_candidate_57.json
+          if-no-files-found: warn
+      - name: Upload RP-04 CT-04 candidate evidence (NOT formal acceptance)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rp04-ct04-candidate-58
+          path: validation-results/ci/rp04_ct04_candidate_58.json
+          if-no-files-found: warn
+      - name: Upload RP-04 CT-05 measured candidate evidence (NOT formal acceptance)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rp04-ct05-candidate-59
+          path: validation-results/ci/rp04_ct05_candidate_59.json
+          if-no-files-found: warn
+      - name: Upload RP-04 CT-06 source timing candidate evidence (NOT formal acceptance)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rp04-ct06-candidate-60
+          path: validation-results/ci/rp04_ct06_candidate_60.json
+          if-no-files-found: warn
+      - name: Upload RP-04 CT-07 provenance candidate evidence (NOT formal acceptance)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rp04-ct07-candidate-61
+          path: validation-results/ci/rp04_ct07_candidate_61.json
+          if-no-files-found: warn
+      - name: Upload RP-04 CT-08 bounded offline candidate evidence (NOT formal acceptance)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rp04-ct08-candidate-62
+          path: validation-results/ci/rp04_ct08_candidate_62.json
+          if-no-files-found: warn
+      - name: Upload RP-04 CT-09 source data candidate evidence (NOT formal acceptance)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rp04-ct09-candidate-63
+          path: validation-results/ci/rp04_ct09_candidate_63.json
+          if-no-files-found: warn
+      - name: Upload RP-04 CT-10 commit-integrity candidate evidence (NOT formal acceptance)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rp04-ct10-candidate-64
+          path: validation-results/ci/rp04_ct10_candidate_64.json
+          if-no-files-found: warn
+      - name: Upload RP-04 CT-11-N1 offline negative candidate (NOT acceptance)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rp04-ct11-n1-candidate-65
+          path: validation-results/ci/rp04_ct11_n1_candidate_65.json
+          if-no-files-found: warn
       - name: Upload unified validation report
         if: always()
         uses: actions/upload-artifact@v4
