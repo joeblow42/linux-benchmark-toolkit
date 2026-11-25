@@ -1,0 +1,15 @@
+Field
+schema_version
+record_id
+domain
+component_id
+subject_id
+status
+reason_code
+detail
+started_utc
+completed_utc
+elapsed_ms
+evidence_refs
+limit_record_ids
+source_attempt_ids

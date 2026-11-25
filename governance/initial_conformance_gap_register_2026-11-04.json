@@ -1,0 +1,104 @@
+{
+  "record_id": "LBT-GOV-GAPS-20261104-01",
+  "revision": "1.0",
+  "record_type": "governance_conformance_gap_register",
+  "authority_level": "process_record",
+  "status": "UNDER_REVIEW",
+  "effective_from": "2026-11-04",
+  "last_updated": "2026-11-04",
+  "source_reference": "Owner-authorized 2026-11-04 initial conformance-gap reconciliation",
+  "source_csv_sha256": "c034e8f808bd4a4b4e41fbe9110ab642401157c6fde0aea0b8181cdc0e7c3076",
+  "report_odt_sha256": "632cdee091596a66133ba1a29c7afbd52368ab6dd252c4382297586c58024ee6",
+  "approved_methodology_record": "governance/authority_decision_2026-11-04.json",
+  "responsible_role": "implementation_and_independent_review",
+  "change_history": [
+    {
+      "revision": "1.0",
+      "date": "2026-11-04",
+      "description": "Initial bounded 10-item gap register; no gap closes solely because a draft PR or fixture was created"
+    }
+  ],
+  "findings": [
+    {
+      "id": "GOV-01",
+      "priority": "Critical",
+      "domain": "Authority and persistent state",
+      "state": "IN_PROGRESS",
+      "evidence_or_limit": "Approval record committed; standard ODT SHA pinned, exact source bytes must be retained externally",
+      "disposition": "REQUIRES_EVIDENCE_AND_REVIEW_BEFORE_CLOSURE"
+    },
+    {
+      "id": "GOV-02",
+      "priority": "High",
+      "domain": "Stakeholder needs and validation",
+      "state": "OPEN",
+      "evidence_or_limit": "Integrated validated stakeholder needs and complete need trace not established in active ZIP",
+      "disposition": "REQUIRES_EVIDENCE_AND_REVIEW_BEFORE_CLOSURE"
+    },
+    {
+      "id": "GOV-03",
+      "priority": "High",
+      "domain": "Requirements authority and quality",
+      "state": "IN_PROGRESS",
+      "evidence_or_limit": "Non-destructive authority overlay records 11 historical proposed/pending cases; FR-186 remains unresolved",
+      "disposition": "REQUIRES_EVIDENCE_AND_REVIEW_BEFORE_CLOSURE"
+    },
+    {
+      "id": "GOV-04",
+      "priority": "High",
+      "domain": "Independent test oracles",
+      "state": "IN_PROGRESS",
+      "evidence_or_limit": "Preimplementation SRC-04 path oracle specified; CT-01..CT-11 still 39 NOT_EXECUTED specification cases",
+      "disposition": "REQUIRES_EVIDENCE_AND_REVIEW_BEFORE_CLOSURE"
+    },
+    {
+      "id": "GOV-05",
+      "priority": "High",
+      "domain": "Bidirectional RTM and scope",
+      "state": "OPEN",
+      "evidence_or_limit": "283 x 31 trace; 0 fully verified; G5-04 applicability incomplete",
+      "disposition": "REQUIRES_EVIDENCE_AND_REVIEW_BEFORE_CLOSURE"
+    },
+    {
+      "id": "GOV-06",
+      "priority": "High",
+      "domain": "Canonical provenance, integrity and semantics",
+      "state": "IN_PROGRESS",
+      "evidence_or_limit": "CP03-04 SRC-04 parser and path validation in draft PR; no CI disposition at time of this record",
+      "disposition": "REQUIRES_EVIDENCE_AND_REVIEW_BEFORE_CLOSURE"
+    },
+    {
+      "id": "GOV-07",
+      "priority": "High",
+      "domain": "Security and privacy assurance",
+      "state": "OPEN",
+      "evidence_or_limit": "Source-path negative tests planned; entire publication privacy and privilege model not yet independently proven",
+      "disposition": "REQUIRES_EVIDENCE_AND_REVIEW_BEFORE_CLOSURE"
+    },
+    {
+      "id": "GOV-08",
+      "priority": "Medium",
+      "domain": "Persistent recovery",
+      "state": "OPEN",
+      "evidence_or_limit": "Compact ZIP and hashes available, four original historical archives retained externally; source standard ODT not in repository",
+      "disposition": "REQUIRES_EVIDENCE_AND_REVIEW_BEFORE_CLOSURE"
+    },
+    {
+      "id": "GOV-09",
+      "priority": "Medium",
+      "domain": "Metadata currency",
+      "state": "IN_PROGRESS",
+      "evidence_or_limit": "Approval/row-review/run-evidence dates distinguished in authority overlay; Rev 1.6 20 original columns frozen",
+      "disposition": "REQUIRES_EVIDENCE_AND_REVIEW_BEFORE_CLOSURE"
+    },
+    {
+      "id": "GOV-10",
+      "priority": "High",
+      "domain": "Gate and Bodhi host validation",
+      "state": "OPEN",
+      "evidence_or_limit": "CP-03 in progress; CP-04..CP-07 outstanding; Bodhi 7 target acceptance not yet executed",
+      "disposition": "REQUIRES_EVIDENCE_AND_REVIEW_BEFORE_CLOSURE"
+    }
+  ],
+  "gate_boundary": "No G5-04 owner CP-07 acceptance and no project-wide 283-requirement verification claimed"
+}
