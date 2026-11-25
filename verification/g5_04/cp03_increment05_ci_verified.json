@@ -1,0 +1,75 @@
+{
+  "record_id": "LBT-G504-CP03-INC05-CI-20261104",
+  "record_type": "verification_evidence",
+  "revision": "1.0",
+  "status": "CI_PASSED_LIMITED_SCOPE",
+  "authority_level": "test_evidence_not_owner_acceptance",
+  "last_updated": "2026-11-04",
+  "baseline": {
+    "requirements": "Rev 1.6",
+    "requirements_sha256": "04849cd13ecc75c803839ab7c59a1015c5b92d1f05bf31422b54406c188e2702",
+    "source_authority": "G4-07 Rev0.1 SRC-07; accepted G5-03 passive worker",
+    "canonical_schema": "1.0.0",
+    "status_schema": "1.0",
+    "methodology": "AI-Assisted Software Engineering Governance Standard v1.0"
+  },
+  "implementation": {
+    "pr": 28,
+    "base_pr": 27,
+    "branch": "g5/cp03-cpu-sysfs-provenance-05",
+    "tested_commit": "034370e96b088b6883ecb19cdbc8738ec15f7cd9",
+    "scope": "SRC-07 CPU topology and cpufreq sealed source-path-aware parser and canonical original-evidence binding",
+    "source_coverage": "11/28 candidate parsers implemented; 17 families remain unimplemented"
+  },
+  "ci": {
+    "run_number": 473,
+    "run_id": 41903724198,
+    "url": "https://github.com/joeblow42/linux-benchmark-toolkit/actions/runs/41903724198",
+    "head_sha": "034370e96b088b6883ecb19cdbc8738ec15f7cd9",
+    "conclusion": "success",
+    "checks_job_id": 126832633621,
+    "job_conclusion": "success",
+    "verified_passed_steps": [
+      "Shell and Python syntax",
+      "G5-04 CP-02 independent requirement trace and accepted-contract oracles",
+      "G5-04 CP-03 SRC-04 DMI provenance and adversarial path oracles",
+      "G5-04 CP-03 SRC-07 CPU sysfs provenance and source-first negative oracles",
+      "Unified Full validation (unit and acceptance once)"
+    ],
+    "claim": "Green CI provides exercised behavior for defined fixtures, not independently validated full specification"
+  },
+  "test_oracle": {
+    "record": "verification/g5_04/cp03_cpu_sysfs_oracle_05.json",
+    "independence": "Separate source-first contract interpretation before implementation, but same implementing AI; no independent human/second-agent signoff",
+    "cases_tested": "10 named unittest test methods with subtests exercising positive/negative/boundary cases",
+    "limited_to": "SRC-07 approved path and scalar transformations, test fixture environment, and earlier regressions"
+  },
+  "trace": {
+    "working_matrix": "verification/g5_04/requirements_traceability_rev1_6.csv",
+    "rows": 283,
+    "requirements_with_new_implementation_references": [
+      "LBT-FR-168",
+      "LBT-NFR-068",
+      "LBT-NFR-070"
+    ],
+    "all_requirement_states": "NOT_VERIFIED",
+    "verification_evidence_cells": "empty; acceptance cases not individually closed",
+    "original_source_columns": "20 baseline fields unchanged"
+  },
+  "limitations": [
+    "No production-launcher cutover and no host Bodhi 7 validation",
+    "17 registered source families still have no parser",
+    "Source paths trusted from sealed G5-03 receipt and compared to item ordinals; original kernel path attestation is outside this check",
+    "No CP-04 strict D-02 schema and holistic cross-file referential conformance claim",
+    "No complete 39-case CP-02 acceptance execution record",
+    "Private canonical limitations still contain earlier source-coverage wording; to be corrected before CP-03 closeout",
+    "G5-04 CP-07 owner acceptance not granted",
+    "Nested draft PRs #22..#28 unmerged"
+  ],
+  "change_history": [
+    {
+      "date": "2026-11-04",
+      "event": "Recorded observed completed GitHub Actions run #473 evidence, no gate acceptance"
+    }
+  ]
+}
