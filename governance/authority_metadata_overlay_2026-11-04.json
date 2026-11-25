@@ -1,0 +1,100 @@
+{
+  "record_id": "LBT-GOV-AUTH-META-20261104-01",
+  "revision": "1.0",
+  "record_type": "authority_metadata_reconciliation",
+  "authority_level": "process record (does not revise approved requirement)",
+  "status": "UNDER_REVIEW",
+  "effective_from": "2026-11-04",
+  "last_updated": "2026-11-04",
+  "responsible_role": "requirements_authority",
+  "source_reference": "Requirements Rev 1.6 controlled CSV and owner-approval/handoff evidence",
+  "change_history": [
+    {
+      "date": "2026-11-04",
+      "change": "Created non-destructive authority overlay; original 283x20 baseline unchanged"
+    }
+  ],
+  "baseline": {
+    "version": "Rev 1.6",
+    "sha256": "04849cd13ecc75c803839ab7c59a1015c5b92d1f05bf31422b54406c188e2702",
+    "requirement_count": 283,
+    "original_columns": 20,
+    "mutable": false
+  },
+  "reconciliations": [
+    {
+      "requirement_ids": [
+        "LBT-NFR-067",
+        "LBT-FR-191",
+        "LBT-FR-192",
+        "LBT-NFR-068",
+        "LBT-FR-193",
+        "LBT-FR-194",
+        "LBT-NFR-069",
+        "LBT-NFR-070",
+        "LBT-NFR-071"
+      ],
+      "observed_issue": "Rev 1.6 Disposition and/or Review_Status retains 'G2-D proposed ... pending owner gate acceptance' inherited from prior candidate baseline",
+      "controlled_interpretation": "These IDs are included in the subsequently approved Rev 1.6 baseline; the historical G2-D pending language is a stale snapshot, not evidence that Rev 1.6 is unapproved",
+      "evidence_class": "OWNER_APPROVED_BASELINE_AND_SECONDARY_G2_D_HANDOFF",
+      "next_action": "Retrieve primary G2-D acceptance record from separately retained history before overwriting any historical approval metadata",
+      "do_not_change": [
+        "Requirement",
+        "Disposition",
+        "Review_Status",
+        "Dependency_Review_Status"
+      ]
+    },
+    {
+      "requirement_ids": [
+        "LBT-NFR-018"
+      ],
+      "observed_issue": "Historical proposed metadata is retained in Review_Status",
+      "controlled_interpretation": "Owner-approved substantive wording and Rev 1.6 baseline should not be confused with historical candidate-stage wording",
+      "evidence_class": "APPROVED_BASELINE_WITH_HISTORICAL_NOTE",
+      "next_action": "Preserve candidate provenance; primary historical audit remains open"
+    },
+    {
+      "requirement_ids": [
+        "LBT-FR-186"
+      ],
+      "observed_issue": "Disposition still says 'Proposed; requires user review'",
+      "controlled_interpretation": "Approval of this individual requirement's final disposition NOT ESTABLISHED by inspected compact records; do not silently convert to approved",
+      "evidence_class": "UNRESOLVED_APPROVAL_PROVENANCE",
+      "next_action": "Refer to owner only before affected requirement disposition or implementation; no dependency on CP-03 DMI parser established"
+    },
+    {
+      "requirement_ids": [
+        "LBT-FR-195",
+        "LBT-FR-196",
+        "LBT-FR-197",
+        "LBT-FR-198",
+        "LBT-FR-199",
+        "LBT-FR-200",
+        "LBT-FR-201",
+        "LBT-FR-202",
+        "LBT-FR-203",
+        "LBT-FR-204",
+        "LBT-FR-205",
+        "LBT-FR-206",
+        "LBT-FR-207",
+        "LBT-FR-208",
+        "LBT-FR-209",
+        "LBT-NFR-072",
+        "LBT-NFR-073",
+        "LBT-NFR-074"
+      ],
+      "observed_issue": "Dependency_Review_Status states G4-08/G4-09 final contract pending",
+      "controlled_interpretation": "G4-08/G4-09 candidate design documents do not automatically become approved exact contracts; this remains a genuine detailed-authority boundary except where later CP-01 D-01..D-05 approved exact G5-04 schema matters",
+      "evidence_class": "CANDIDATE_DETAIL_WITH_TARGETED_APPROVAL",
+      "next_action": "For each affected work item, select exact CP-01 owner-approved fields or escalate missing exact decision; do not bulk-clear source dependency review"
+    }
+  ],
+  "global_audit": {
+    "requirements_dependency_review_not_fully_audited": 283,
+    "rtm_review_date_utc_meaning": "Last individual requirement-row review; do not retroactively rewrite to reflect an increment run date",
+    "source_baseline_preservation": "All 20 source columns remain byte-preserved in existing controlled CSV and 31-column RTM",
+    "scope_notes": "Initial G5-04 RTM 33 DIRECT, 11 BOUNDARY, 6 DOWNSTREAM, 233 UNASSESSED; 0 VERIFIED; no new verification claim",
+    "overlay_is_not": "formal requirement replacement, material contract approval, or CP-07 gate acceptance"
+  }
+}

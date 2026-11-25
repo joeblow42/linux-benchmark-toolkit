@@ -1,0 +1,119 @@
+{
+  "record_id": "LBT-G504-CP03-SRC07-ORACLE-05",
+  "record_type": "test_oracle_review",
+  "revision": "0.1",
+  "state": "SPECIFIED_BEFORE_IMPLEMENTATION",
+  "date": "2026-11-04",
+  "scope": {
+    "increment": "G5-04 CP-03 Increment 05",
+    "source": "SRC-07",
+    "collector": "COL-CPU",
+    "authorization_class": "D0",
+    "primary_root": "/sys/devices/system/cpu",
+    "constraints": "Read-only, unprivileged, 32 MiB total source, <=4096 entries, 5 s source bound; no CPU affinity/governor writes",
+    "authority": [
+      "G4-07 Source Authorization and Bounds Rev0.1 SRC-07 row",
+      "G4-02/06 Source-Evidence Map Rev0.1 SRC-07 row",
+      "G5-03 approved passive_worker.py source_path enumeration contract",
+      "G5-04 CP-01 D-02/D-03/D-04 canonical schema and attribution decisions",
+      "Requirements Rev1.6, FR-121 raw-source pointer restrictions"
+    ]
+  },
+  "independent_expectation_basis": "This specification precedes SRC-07 parser implementation. Exact path authority and relative-order rules are derived from accepted G5-03 worker, not from results of the parser under test.",
+  "path_contract": {
+    "root_cpuset": [
+      "online",
+      "possible",
+      "present"
+    ],
+    "per_cpu_attributes": [
+      "topology/core_id",
+      "topology/physical_package_id",
+      "topology/thread_siblings_list",
+      "topology/core_siblings_list",
+      "online",
+      "cpufreq/scaling_cur_freq",
+      "cpufreq/cpuinfo_max_freq",
+      "cpufreq/scaling_min_freq",
+      "cpufreq/scaling_max_freq"
+    ],
+    "cpu_dir_pattern": "cpu[0-9]+",
+    "order": "First root attributes in sorted(root_cpuset) sequence; then cpu directory names in Python sorted() lexical order; inside each cpu directory, per_cpu_attributes in exact tuple order shown, skipping attributes not preserved due to optional unavailability or error. A receipt captures only successful source_paths in same index order as item0001..itemNNNN.",
+    "evidence": "For any semantic datum, source_path field comes solely from matching receipt and artifact slot; raw original bytes are independently SHA-256 verified; no guessed path, no host path re-open, no cross-run evidence.",
+    "restriction": "Path checks must prohibit .., duplicate paths, unsupported/unregistered attribute, extra suffix, unexpected root and unbounded path text. Ordering not numeric CPU order. Ambiguity fails closed."
+  },
+  "approved_level_semantics": "Permitted bounded interpretation of exact sysfs scalar forms: kernel CPU-list range syntax for global online/possible/present and topology sibling lists (no range expansion); signed decimal package/core ID (no assumed topology when missing); per-CPU online 0/1; cpufreq attribute decimal kHz (no MHz inference). Every acquired value retained as original observation. Malformed scalar remains preserved as fallback with an actually invoked parser failure; unavailable optional attribute is not fabricated.",
+  "cases": [
+    {
+      "id": "S7-P01",
+      "kind": "positive",
+      "input": "global online + cpu0 topology/core_id + cpu0 cpufreq/scaling_cur_freq sealed in valid worker-relative order",
+      "expected": "3 raw observations and 3 typed values with distinct canonical datum paths and exact per-item evidence refs; manifest validates"
+    },
+    {
+      "id": "S7-P02",
+      "kind": "positive",
+      "input": "cpu2 and cpu10 both present, capture order cpu10 before cpu2",
+      "expected": "Valid lexical order accepted; each value attributed to its own original path; never numerically resort"
+    },
+    {
+      "id": "S7-P03",
+      "kind": "positive",
+      "input": "missing optional cpu0/online and cpufreq paths, recorded in unavailable_fields only",
+      "expected": "Do not create observations for missing files; preserve limitation trace; valid captured items stay linked"
+    },
+    {
+      "id": "S7-N01",
+      "kind": "negative",
+      "input": "receipt path count does not equal successful sealed artifact count",
+      "expected": "Reject before canonical manifest"
+    },
+    {
+      "id": "S7-N02",
+      "kind": "negative",
+      "input": "receipt source_paths swapped, duplicated or CPU attribute order inconsistent with G5-03 worker",
+      "expected": "Reject even if all values are valid bytes"
+    },
+    {
+      "id": "S7-N03",
+      "kind": "negative",
+      "input": "path traversal, wrong tree, cpu name not matched, secret/unsupported attribute",
+      "expected": "Reject; no filesystem probe; originals remain unchanged"
+    },
+    {
+      "id": "S7-N04",
+      "kind": "negative",
+      "input": "item ordinal tampering or cross-run receipt/artifact mismatch",
+      "expected": "Reject and do not publish canonical manifest"
+    },
+    {
+      "id": "S7-N05",
+      "kind": "negative",
+      "input": "invalid integer, out-of-order/overlap CPU ranges, boolean not 0/1, invalid UTF-8 or multiline",
+      "expected": "Attributed parser error, retained fallback original; never invent values"
+    },
+    {
+      "id": "S7-B01",
+      "kind": "boundary",
+      "input": "zero CPU entries or root-only captured sources",
+      "expected": "Do not synthesize CPUs from host; interpret only actually preserved root records"
+    },
+    {
+      "id": "S7-B02",
+      "kind": "boundary",
+      "input": "source-path identification but missing optional acquisition path",
+      "expected": "No speculative read or implied existence; unavailable field stays a limitation"
+    }
+  ],
+  "review": {
+    "performed_by": "Separate contract-only reasoning step of the implementing AI; does not constitute an independent human or second-agent reviewer",
+    "disposition": "PROVISIONAL_ORACLE_INDEPENDENCE",
+    "stop_rule": "Material ambiguity in field mapping, approved status or external behavior requires owner decision; do not silently broaden user-facing contract"
+  },
+  "requirements": [
+    "LBT-FR-168",
+    "LBT-NFR-068",
+    "LBT-NFR-070"
+  ],
+  "claim_limit": "Test specification is not executed verification, CP-03 completion, Bodhi host evidence or gate acceptance"
+}
