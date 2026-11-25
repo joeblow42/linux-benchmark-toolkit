@@ -218,7 +218,7 @@ class SRC13HealthOracles(unittest.TestCase):
         status=json.loads((folder/"private/status_records.json").read_text())
         self.assertEqual(status["status_records"][1]["reason_code"],
                          "SOURCE_INCOMPLETE")
-        self.assertEqual(result["attempt_count"],2)
+        self.assertEqual(result["counts"]["attempts"],2)
 
     def test_raw_only_fallback_on_malformed_captured_stdout(self):
         folder,run,_,_=self.canonical(raw=b"unrecognized reported data\n")

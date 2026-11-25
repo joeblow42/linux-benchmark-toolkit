@@ -16,6 +16,7 @@ import json
 import math
 import os
 from pathlib import Path
+from types import SimpleNamespace
 import re
 import secrets
 import stat
@@ -24,6 +25,7 @@ from .canonical_contract import (
     CANONICAL_SCHEMA_VERSION, CanonicalContractError,
     new_status, validate_status_record,
 )
+from .d02_schema import validate_d02_file
 from .catalog import initial_catalog
 from .additional import _DPKG_ARGV  # G5-03 fixed template; no collection occurs here.
 from .local_space import LOCAL_TYPES
@@ -34,7 +36,8 @@ from .normalization import (normalize_sealed_source, parser_available,
                             drm_sysfs_path_identity, net_sysfs_path_identity,
                             thermal_sysfs_path_identity,
                             hwmon_sysfs_path_identity, power_sysfs_path_identity)
-from .safety import initial_source_policies, valid_run_id
+from .safety import initial_source_policies, valid_run_id, RUN_BYTES
+from .session_lifecycle import reconcile_execution, validate_persisted_lifecycle
 
 PRIVATE_FILES = ("system.json", "source_attempts.json", "status_records.json")
 MANIFEST_NAME = "session_manifest.json"
@@ -61,6 +64,28 @@ def _check_run(path, run_id):
     # Denied-only and zero-observation runs need not have an evidence folder.
     if os.path.lexists(path / "private" / "evidence"):
         _check_private_dir(path / "private" / "evidence")
+
+
+def _initialize_zero_attempt_session(folder, run_id):
+    """Create only empty private journals for an actual zero-attempt run.
+
+    The existing evidence writer materializes its private directories when
+    the first source is sealed/recorded. Cooperative cancellation before the
+    first source must still produce the owner-approved zero-observation
+    minimum-usable canonical session. No evidence directory or fake source
+    receipt is created. Every directory is owner-only and checked in order.
+    """
+    if (not valid_run_id(run_id) or folder.name != run_id
+            or not folder.is_absolute()
+            or os.path.realpath(folder) != str(folder)):
+        raise CanonicalContractError("invalid zero-attempt run identity")
+    _check_private_dir(folder)
+    for path in (folder / "private", folder / "private" / "source_attempt_records"):
+        try:
+            path.mkdir(mode=0o700)
+        except FileExistsError:
+            pass
+        _check_private_dir(path)
 
 
 def _read_restricted(path, ceiling):
@@ -401,7 +426,7 @@ def _verified_offline_dpkg_streams(metadata, artifacts, recorded):
     else:
         keys={"argv_executed","exit_code","started_utc",
               "completed_utc","elapsed_seconds"}
-        if (metadata.get("schema_version") not in ("g5-02-attempt-0.3","g5-02-attempt-0.4","g5-02-attempt-0.5")
+        if (metadata.get("schema_version") not in ("g5-02-attempt-0.3","g5-02-attempt-0.4","g5-02-attempt-0.5","g5-02-attempt-0.6")
                 or type(p) is not dict or set(p)!=keys
                 or p != getattr(recorded.outcome,"execution_provenance",None)
                 or metadata.get("exit_code")!=p["exit_code"]):
@@ -524,7 +549,7 @@ def _verified_o1_provenance(folder, run_id, receipt, recorded, all_attempts,
     upstream = {"SRC-13":"SRC-12", "SRC-18":"SRC-17",
                 "SRC-21":"SRC-19"}.get(sid)
     if (upstream is None or receipt.get("authorization_class") != "O1"
-            or receipt.get("schema_version") not in ("g5-02-attempt-0.2","g5-02-attempt-0.4","g5-02-attempt-0.5")
+            or receipt.get("schema_version") not in ("g5-02-attempt-0.2","g5-02-attempt-0.4","g5-02-attempt-0.5","g5-02-attempt-0.6")
             or receipt.get("decision") != "ALLOW"
             or type(p) is not dict or set(p) != fields
             or recorded.authorization_provenance != p
@@ -624,8 +649,14 @@ def _status_for(receipt, artifacts, *, parser_state="NOT_RUN",
     if state == "CAPTURED":
         if reason != "BYTES_PRESERVED":
             raise CanonicalContractError("captured source has unapproved reason")
-        if not artifacts or parser_state == "NOT_RUN":
-            raise CanonicalContractError("captured source has no supported parser result")
+        if not artifacts:
+            raise CanonicalContractError("captured source has no original evidence")
+        if parser_state == "NOT_RUN":
+            # G5-02 receipt remains durably status_record_pending; source
+            # evidence is preserved, but no production status is emitted.
+            raise CanonicalContractError(
+                "NORMALIZATION_PENDING: captured source preserved; "
+                "parser not executed; production acquisition status withheld")
         if parser_state == "FAILED":
             return "PARTIAL", "PARSE_FAILED"
         return "COMPLETE", "OK"
@@ -717,8 +748,13 @@ def _observation(artifact, raw, attempt_id, *, status_record_id,
     }
 
 
-def _semantic_observation(artifact, attempt_id, datum, index, parser_id):
-    """One typed observation derived from a precisely identified sealed original."""
+def _semantic_observation(artifact, attempt_id, datum, index, parser_id,
+                          *, supporting_originals=()):
+    """Typed value with each actually sealed original contributing to derivation.
+
+    supporting_originals is an ordered sequence of (evidence_id, attempt_id)
+    already verified by the producer; it is not inferred from an input label.
+    """
     return {
         "observation_id": "obs:" + artifact.evidence_id + ":sem:" + str(index),
         "collector_id": artifact.collector_id,
@@ -730,8 +766,10 @@ def _semantic_observation(artifact, attempt_id, datum, index, parser_id):
         "normalized_value": datum.normalized_value,
         "value_type": datum.value_type,
         "unit": datum.unit,
-        "evidence_refs": [artifact.evidence_id],
-        "source_attempt_ids": [attempt_id],
+        "evidence_refs": [artifact.evidence_id] +
+                         [eid for eid, _ in supporting_originals],
+        "source_attempt_ids": [attempt_id] +
+                              [aid for _, aid in supporting_originals],
         "transformation_ids": [parser_id],
         "acquired_utc": None,
         "capture_limit_ids": [],
@@ -748,9 +786,11 @@ def build_canonical(run_directory, engine_run):
     """
     folder = Path(run_directory)
     run_id = engine_run.run_id
-    _check_run(folder, run_id)
     if engine_run.canonical_status_pending is not True:
         raise CanonicalContractError("unexpected engine canonical state")
+    if engine_run.source_attempt_count == 0:
+        _initialize_zero_attempt_session(folder, run_id)
+    _check_run(folder, run_id)
     if (folder / "private" / MANIFEST_NAME).exists():
         raise FileExistsError("canonical session already finalized")
     private = folder / "private"
@@ -766,6 +806,7 @@ def build_canonical(run_directory, engine_run):
     all_original_bytes = 0
     semantic_field_count = 0
     verified_local_mounts = None
+    verified_mountinfo = None
     all_attempts = [item for collector in engine_run.collectors
                     for item in collector.source_attempts]
     for item in all_attempts:
@@ -849,7 +890,9 @@ def build_canonical(run_directory, engine_run):
         o1_verified = False
         if (source_id in ("SRC-13", "SRC-18", "SRC-21")
                 and metadata["outcome"] in ("CAPTURED","PARTIAL")
-                and metadata["reason"] in ("BYTES_PRESERVED","ACQUISITION_ERROR")):
+                and (metadata["reason"] in ("BYTES_PRESERVED","ACQUISITION_ERROR")
+                     or (metadata["schema_version"]=="g5-02-attempt-0.6"
+                         and metadata["reason"]=="CAPTURE_LIMIT"))):
             o1_verified = _verified_o1_provenance(
                 folder, run_id, metadata, item, all_attempts, artifacts)
         # G5-03 O1 transport cannot claim captured success with a nonzero
@@ -930,9 +973,16 @@ def build_canonical(run_directory, engine_run):
             all_original_bytes += artifact.byte_count
             evidence[eid] = {
                 "evidence_id": eid, "source_attempt_id": attempt_id,
-                "private_relative_path": artifact.private_relative_path,
+                "representation": ("STDOUT" if artifact.artifact.endswith("stdout")
+                                   else "STDERR" if artifact.artifact.endswith("stderr")
+                                   else "FILE_BYTES"),
+                "restricted_relative_path": artifact.private_relative_path,
                 "sha256": artifact.sha256, "byte_count": artifact.byte_count,
-                "complete": artifact.complete,
+                # The sealed G5-03 original does not attest a per-artifact
+                # wall timestamp or encoding. Never synthesize either fact.
+                "sealed_utc": None, "encoding": None,
+                "completeness": ("COMPLETE" if artifact.complete else "INCOMPLETE"),
+                "limit_record_ids": [],
                 "limit_applied": artifact.limit_applied,
                 "omitted_at_least": artifact.omitted_at_least,
             }
@@ -978,6 +1028,9 @@ def build_canonical(run_directory, engine_run):
             if parsed is not None:
                 if source_id == "SRC-14" and metadata["outcome"] == "CAPTURED":
                     # Registered original grammar, not a new live mount read.
+                    if verified_mountinfo is not None:
+                        raise CanonicalContractError("ambiguous mountinfo contributor")
+                    verified_mountinfo = (eid, attempt_id)
                     ordered = (rec["mount_point"] for rec in
                                parsed.values[0].normalized_value
                                if rec["filesystem_type"] in LOCAL_TYPES)
@@ -987,8 +1040,17 @@ def build_canonical(run_directory, engine_run):
                     parser_findings=("ORIGINAL_PRESERVED", "SOURCE_PARSER_SUCCEEDED"),
                     limitations=()))
                 for index, datum in enumerate(parsed.values):
+                    support = ()
+                    if source_id == "SRC-15":
+                        # A statvfs record is valid for the mount selected by
+                        # a separately sealed same-run SRC-14 original.
+                        if verified_mountinfo is None:
+                            raise CanonicalContractError(
+                                "FS_STAT missing sealed selection contributor")
+                        support = (verified_mountinfo,)
                     observations.append(_semantic_observation(
-                        artifact, attempt_id, datum, index, parsed.parser_id))
+                        artifact, attempt_id, datum, index, parsed.parser_id,
+                        supporting_originals=support))
                     semantic_field_count += 1
             else:
                 observations.append(_observation(
@@ -1028,7 +1090,8 @@ def build_canonical(run_directory, engine_run):
                    else getattr(item.outcome,"limit_witnesses",None))
             if (bound is not None or type(bounds06) is not list or not bounds06
                     or len(bounds06)>64 or not evidence_limited
-                    or policy.authorization_class!="D0"
+                    or (policy.authorization_class not in ("D0","O1") and
+                        source_id not in ("SRC-28","SRC-15"))
                     or type(facts) not in (tuple,list)
                     or bounds06!=list(facts)):
                 raise CanonicalContractError("unverified v0.6 source limit events")
@@ -1045,6 +1108,176 @@ def build_canonical(run_directory, engine_run):
                             (metadata.get("capture_limited") is not True or
                              actual["reason"]!="CAPTURE_LIMIT"))):
                     raise CanonicalContractError("v0.6 limit evidence contradicted")
+                if policy.authorization_class=="O1":
+                    # No receipt field alone proves a transport or writer
+                    # dimension. Match same-run consent/argv/inventory first,
+                    # then original artifacts and the in-memory worker fact.
+                    outcome=item.outcome if isinstance(item.outcome,dict) else {}
+                    ordinal=int(attempt_id.rsplit("-",1)[-1])
+                    writer_scope=source_id+":call%04d:run:writer"%ordinal
+                    transport_scope=source_id+":call%04d:transport"%ordinal
+                    clipped=[a for a in artifacts if a.limit_applied]
+                    if actual["affected_scope"]==writer_scope:
+                        sealed_run_bytes=sum(
+                            a.byte_count for previous in all_attempts
+                            for a in _artifacts(previous))
+                        if (not o1_verified or len(bounds06)!=1
+                                or metadata["outcome"]!="PARTIAL"
+                                or metadata["reason"]!="CAPTURE_LIMIT"
+                                or metadata.get("timed_out") is not False
+                                or outcome.get("transport_timed_out") is not False
+                                or outcome.get("transport_exceeded_limit") is not False
+                                or outcome.get("transport_omitted_at_least")!=0
+                                or actual["unit"]!="bytes"
+                                or type(actual["threshold"]) is not int
+                                or actual["threshold"]>RUN_BYTES
+                                or actual["observed_extent"]!=actual["threshold"]
+                                or sealed_run_bytes!=actual["threshold"]
+                                or len(clipped)!=1
+                                or type(actual["missing_extent"]) is not int
+                                or actual["missing_extent"]<=0
+                                or clipped[0].omitted_at_least!=actual["missing_extent"]
+                                or metadata.get("missing_extent_known_at_least")
+                                    !=actual["missing_extent"]
+                                or any(a.limit_applied and a is not clipped[0]
+                                       for a in artifacts)):
+                            raise CanonicalContractError(
+                                "O1 run writer aggregate or consent not evidenced")
+                    elif actual["affected_scope"]==transport_scope:
+                        applied=(policy.per_target_bytes or policy.max_bytes)
+                        helper=(outcome.get("transport_helper_used") is True
+                                and source_id=="SRC-13")
+                        stream_bytes={a.artifact.rsplit("-",1)[-1]:a.byte_count
+                                      for a in artifacts}
+                        direct_unique=(len(artifacts)==2
+                            and set(stream_bytes)=={"stdout","stderr"}
+                            and all(0 < x < applied for x in stream_bytes.values()))
+                        if (not o1_verified or len(bounds06)!=1
+                                or metadata["outcome"]!="PARTIAL"
+                                or metadata["reason"]!="CAPTURE_LIMIT"
+                                or metadata.get("timed_out") is not False
+                                or outcome.get("transport_timed_out") is not False
+                                or outcome.get("transport_exceeded_limit") is not True
+                                or outcome.get("transport_helper_used") not in (True,False)
+                                or actual["unit"]!="bytes"
+                                or type(actual["threshold"]) is not int
+                                or actual["threshold"]!=applied
+                                or actual["observed_extent"]!=applied
+                                or type(actual["missing_extent"]) is not int
+                                or actual["missing_extent"]<=0
+                                or outcome.get("transport_omitted_at_least")
+                                    !=actual["missing_extent"]
+                                or metadata.get("missing_extent_known_at_least")
+                                    !=actual["missing_extent"]
+                                or metadata.get("acquired_bytes")!=applied
+                                or sum(a.byte_count for a in artifacts)!=applied
+                                or not artifacts or clipped
+                                or any(not a.complete for a in artifacts)
+                                or not (helper or direct_unique)):
+                            raise CanonicalContractError(
+                                "O1 applied transport limit or consent not evidenced")
+                    elif (source_id=="SRC-18" and
+                          actual["affected_scope"]==
+                          source_id+":call%04d:source:writer"%ordinal):
+                        # The source-writer's private reservation may contain
+                        # unsealed bytes. Only independently verified sealed
+                        # originals from this exact run and source establish
+                        # a real 8 MiB cumulative threshold.
+                        prefix="private/source_attempt_records/"+source_id+"-"
+                        source_originals=[
+                            a for previous in all_attempts
+                            if (type(previous.receipt_private_path) is str
+                                and previous.receipt_private_path.startswith(prefix))
+                            for a in _artifacts(previous)]
+                        source_bytes=sum(a.byte_count for a in source_originals)
+                        unique_originals=(len({a.evidence_id for a in source_originals})
+                                          ==len(source_originals))
+                        if (not o1_verified or len(bounds06)!=1
+                                or metadata["outcome"]!="PARTIAL"
+                                or metadata["reason"]!="CAPTURE_LIMIT"
+                                or metadata.get("timed_out") is not False
+                                or outcome.get("transport_timed_out") is not False
+                                or outcome.get("transport_exceeded_limit") is not False
+                                or outcome.get("transport_omitted_at_least")!=0
+                                or actual["unit"]!="bytes"
+                                or type(actual["threshold"]) is not int
+                                or actual["threshold"]!=policy.max_bytes
+                                or actual["observed_extent"]!=policy.max_bytes
+                                or not unique_originals
+                                or source_bytes!=policy.max_bytes
+                                or len(clipped)!=1
+                                or type(actual["missing_extent"]) is not int
+                                or actual["missing_extent"]<=0
+                                or clipped[0].omitted_at_least!=actual["missing_extent"]
+                                or metadata.get("missing_extent_known_at_least")
+                                    !=actual["missing_extent"]):
+                            raise CanonicalContractError(
+                                "O1 source writer aggregate or consent not evidenced")
+                    else:
+                        raise CanonicalContractError(
+                            "O1 unapproved limit scope")
+                if source_id=="SRC-15" and actual["unit"]=="entries":
+                    # This is a source-level count, not a child-timeout
+                    # inference. Independently require the SAME sealed
+                    # SRC-14 mountinfo to show an additional eligible mount,
+                    # plus all 128 source call slots in the attempt.
+                    if (actual["affected_scope"]!="SRC-15:call0001:source:entries"
+                            or actual["threshold"]!=policy.max_entries
+                            or actual["observed_extent"]!=policy.max_entries
+                            or verified_local_mounts is None
+                            or len(verified_local_mounts)<=policy.max_entries
+                            or len({a.artifact.split("-")[0] for a in artifacts})
+                               !=policy.max_entries):
+                        raise CanonicalContractError("source entry count not evidenced")
+                if source_id=="SRC-15":
+                    if actual["affected_scope"]=="SRC-15:call0001:source:time":
+                        # A child transport timeout is not proof that the
+                        # independently measured cumulative source wall expired.
+                        timing=metadata.get("source_timing") or {}
+                        if (actual["unit"]!="seconds"
+                                or actual["threshold"]!=policy.max_seconds
+                                or actual["observed_extent"]<policy.max_seconds
+                                or type(timing.get("elapsed_ms")) is not int
+                                or timing["elapsed_ms"]<policy.max_seconds*1000
+                                or type(metadata.get("elapsed_seconds")) not in
+                                   (int,float)
+                                or metadata["elapsed_seconds"]<policy.max_seconds):
+                            raise CanonicalContractError(
+                                "SRC-15 cumulative deadline not independently evidenced")
+                    elif actual["affected_scope"]=="SRC-15:call0001:source:writer":
+                        # The source byte ceiling is enforced by the existing
+                        # writer; corroborate its *actual* omitted original
+                        # against the complete sealed source attempt extent.
+                        if (actual["unit"]!="bytes"
+                                or actual["threshold"]!=policy.max_bytes
+                                or actual["observed_extent"]!=policy.max_bytes
+                                or metadata.get("acquired_bytes")!=policy.max_bytes
+                                or type(actual["missing_extent"]) is not int
+                                or actual["missing_extent"]<=0
+                                or not any(a.limit_applied and
+                                    a.omitted_at_least==actual["missing_extent"]
+                                    for a in artifacts)):
+                            raise CanonicalContractError(
+                                "SRC-15 writer/source quota not evidenced")
+                if (source_id=="SRC-28" and
+                        actual["affected_scope"]=="SRC-28:call0001:run:writer"):
+                    # The shared run meter may include earlier sealed sources.
+                    # Only the *whole same-run sealed original aggregate*
+                    # independently proves an applied writer-run ceiling.
+                    # Unsealed reservations are not sufficient evidence.
+                    sealed_run_bytes=sum(a.byte_count for recorded in all_attempts
+                                         for a in _artifacts(recorded))
+                    if (actual["unit"]!="bytes"
+                            or type(actual["threshold"]) is not int
+                            or actual["observed_extent"]!=actual["threshold"]
+                            or sealed_run_bytes!=actual["threshold"]
+                            or type(actual["missing_extent"]) is not int
+                            or actual["missing_extent"]<=0
+                            or not any(a.limit_applied and
+                                a.omitted_at_least==actual["missing_extent"]
+                                for a in artifacts)):
+                        raise CanonicalContractError(
+                            "SRC-28 run writer aggregate not evidenced")
                 identity=(actual["unit"],actual["affected_scope"])
                 if identity in seen:
                     raise CanonicalContractError("duplicate v0.6 limit evidence")
@@ -1116,16 +1349,30 @@ def build_canonical(run_directory, engine_run):
             evidence_refs=linked, source_attempt_ids=[attempt_id],
             limit_record_ids=limit_ids))
         attempts.append({
-            "attempt_id": attempt_id, "receipt_private_path": receipt_path,
+            "attempt_id": attempt_id,
+            "source_id": source_id, "collector_id": policy.collector_id,
+            "operation_id": policy.operation_id,
+            "authorization_class": policy.authorization_class,
+            "authorization_decision": metadata["decision"],
+            # Consent is recorded only when the source has an operational
+            # witness; mere ALLOW is not a proof of O1 authorization.
+            "operator_consent": (metadata.get("authorization_provenance")
+                                 if o1_verified else None),
+            "invocation": {
+                "recorded_invocation": metadata["invocation"],
+                "target": metadata["target"],
+            },
+            "safety_bounds": ["G4-07:" + source_id],
+            "started_utc": source_timing["started_utc"] if source_timing else None,
+            "completed_utc": source_timing["completed_utc"] if source_timing else None,
+            "elapsed_ms": source_timing["elapsed_ms"] if source_timing else None,
+            "tool_version": None, "exit_code": metadata.get("exit_code"),
+            "errno": None, "capture_bytes": metadata["acquired_bytes"],
+            "evidence_ids": linked, "status_record_id": status_id,
+            "limit_record_ids": limit_ids,
+            "receipt_private_path": receipt_path,
             "receipt_sha256": hashlib.sha256(receipt_raw).hexdigest(),
             "receipt_byte_count": len(receipt_raw),
-            "source_id": source_id, "collector_id": policy.collector_id,
-            "source_disposition": metadata["outcome"],
-            "source_reason": metadata["reason"],
-            "evidence_ids": linked, "status_record_id": status_id,
-            "authorization_class": policy.authorization_class,
-            "capture_bytes": metadata["acquired_bytes"],
-            "capture_limited": metadata.get("capture_limited", False),
             "errors": metadata.get("errors", []),
             "unavailable_fields": metadata.get("unavailable_fields", []),
         })
@@ -1133,29 +1380,63 @@ def build_canonical(run_directory, engine_run):
         raise CanonicalContractError("engine attempt count mismatch")
     if any(a["source_id"] not in source_ids for a in attempts):
         raise CanonicalContractError("invalid source allocation")
-    orchestrated_state = "PARTIAL"
-    orchestrated_reason = "MINIMUM_WITH_GAPS"
+    # The selected plan/terminal clock comes ONLY from the actual single
+    # engine, never from source presence or a completed parser alone.
+    witnessed = reconcile_execution(
+        getattr(engine_run, "execution", None), run_id,
+        tuple(c.collector_id for c in engine_run.collectors),
+        tuple(a["attempt_id"] for a in attempts),
+        tuple((s["status"], s["reason_code"]) for s in statuses
+              if s["domain"] == "acquisition"))
+    orchestrated_state = (witnessed["orchestration"] if witnessed else "PARTIAL")
+    orchestrated_reason = (witnessed["reason"] if witnessed else "MINIMUM_WITH_GAPS")
     statuses.append(new_status(
         record_id="st:session", domain="orchestration",
         component_id="SES-CANONICAL", subject_id=run_id,
         status=orchestrated_state, reason_code=orchestrated_reason,
-        detail=("Raw originals validated; semantic normalization incomplete; " +
-                str(len(observations)) + " original/semantic observation records; " +
-                str(len(attempts)) + " source attempts")[:1024],
-        evidence_refs=[], source_attempt_ids=sorted(all_attempt_ids)))
+        detail=(witnessed["detail"] if witnessed else
+                ("Raw originals validated; semantic normalization incomplete; " +
+                 str(len(observations)) + " original/semantic observation records; " +
+                 str(len(attempts)) + " source attempts")[:1024]),
+        started_utc=(witnessed["started_utc"] if witnessed else None),
+        completed_utc=(witnessed["completed_utc"] if witnessed else None),
+        elapsed_ms=(witnessed["elapsed_ms"] if witnessed else None),
+        evidence_refs=[],
+        source_attempt_ids=([a["attempt_id"] for a in attempts]
+                            if witnessed else sorted(all_attempt_ids))))
     system = {
         "schema_version": CANONICAL_SCHEMA_VERSION,
         "run_id": run_id,
-        "platform_scope": "Linux-AMD64",
-        "normalization_state": ("PARTIAL_SEMANTIC_NORMALIZATION"
-                                if semantic_field_count else "RAW_FALLBACK_ONLY"),
+        "header": {
+            # Use only witnessed actual engine clocks; historical source
+            # fixtures without a session witness remain nullable.
+            "started_utc": witnessed["started_utc"] if witnessed else None,
+            "completed_utc": witnessed["completed_utc"] if witnessed else None,
+            "platform_scope": "Linux-AMD64",
+            "requested_mode": "ACQUISITION",
+            "lifecycle_state": witnessed["lifecycle"] if witnessed else "INCOMPLETE",
+            # Witnessed selection includes collectors not yet reached by a
+            # cancelled run; legacy fixtures keep original owned contributors.
+            "collector_ids": (list(witnessed["selected_collectors"])
+                              if witnessed else list(dict.fromkeys(
+                [c.collector_id for c in engine_run.collectors] +
+                [a["collector_id"] for a in attempts]))),
+            "created_by_version": None,
+        },
         "observations": observations,
         "capture_limits": limits,
-        "limitations": ["Canonical schema/integrity completion pending CP-04",
+        "limitations": [(
+            "Selected acquisition scope completed; not a benchmark or hardware-wide result"
+            if witnessed and witnessed["completion"] == "COMPLETE" else
+            "Selected acquisition was interrupted; unattempted sources not acquired"
+            if witnessed and witnessed["completion"] == "INTERRUPTED" else
+            "Selected acquisition has incomplete/denied/unavailable results"
+            if witnessed else
+            "Lifecycle/completeness reconciliation pending RP-03.3"),
                         ("Registered semantic parsers: " +
                          str(sum(1 for source in policies if parser_available(source))) +
                          " of " + str(len(policies)) + " source families; " +
-                         "this is not complete acquisition or validation"),
+                         "unselected sources and benchmark validation are not inferred"),
                         "Zero observations permitted; no benchmark measurements inferred"],
     }
     outputs = {
@@ -1169,29 +1450,53 @@ def build_canonical(run_directory, engine_run):
             "run_id": run_id, "status_records": statuses,
         },
     }
-    # Validate before any file is written.
+    # Closed-world shape and approved status vocabulary are verified BEFORE
+    # publishing any file; physical original and receipt bytes are untouched.
     for status in statuses:
         validate_status_record(status, evidence_ids=evidence,
                                attempt_ids=all_attempt_ids,
                                limit_ids={x["limit_id"] for x in limits})
+    for name, payload in outputs.items():
+        validate_d02_file(name, payload)
     serialized = {name: _render(payload) for name, payload in outputs.items()}
     manifest = {
         "schema_version": CANONICAL_SCHEMA_VERSION,
+        "manifest_version": "1.0",
         "run_id": run_id,
-        "completion_state": "INCOMPLETE",
+        # Only witnessed, fully reconciled selected acquisition may be COMPLETE.
+        "completion_state": witnessed["completion"] if witnessed else "INCOMPLETE",
         "integrity_verified": True,
-        "semantic_normalization_complete": False,
-        "observation_count": len(observations),
-        "attempt_count": len(attempts),
-        "source_count": len(source_ids),
-        "original_byte_count": all_original_bytes,
+        "minimum_usable": True,
+        "finalized_utc": (datetime.now(timezone.utc).isoformat(
+            timespec="milliseconds").replace("+00:00", "Z")
+            if witnessed else None),
+        "counts": {
+            "attempts": len(attempts), "sources": len(source_ids),
+            "observations": len(observations),
+            "evidence_artifacts": len(evidence),
+            "original_bytes": all_original_bytes,
+            "statuses": len(statuses), "capture_limits": len(limits),
+        },
         "files": {name: {"sha256": hashlib.sha256(raw).hexdigest(),
                          "byte_count": len(raw)}
                   for name, raw in serialized.items()},
         "evidence": evidence,
+        "source_receipts": {
+            a["attempt_id"]: {
+                "sha256": a["receipt_sha256"],
+                "byte_count": a["receipt_byte_count"],
+                "attempt_id": a["attempt_id"],
+                "restricted_relative_path": a["receipt_private_path"],
+            }
+            for a in attempts
+        },
+        "observation_ids": [x["observation_id"] for x in observations],
+        "source_attempt_ids": [x["attempt_id"] for x in attempts],
         "status_record_ids": [x["record_id"] for x in statuses],
+        "limit_record_ids": [x["limit_id"] for x in limits],
         "limitations": system["limitations"],
     }
+    validate_d02_file(MANIFEST_NAME, manifest)
     for name in PRIVATE_FILES:
         _atomic_new_private(private, name, serialized[name])
     _atomic_new_private(private, MANIFEST_NAME, _render(manifest))
@@ -1200,79 +1505,379 @@ def build_canonical(run_directory, engine_run):
 
 
 def validate_canonical(run_directory):
-    """Read-only verification of private files, references and sealed bytes."""
+    """Read-only strict D-02 shape, cross-file/receipt/original integrity gate.
+
+    D-02 is closed-world; a matching digest is not sufficient when canonical
+    fields or references have been tampered with and the manifest rehashed.
+    """
     folder = Path(run_directory)
     run_id = folder.name
     _check_run(folder, run_id)
     private = folder / "private"
     manifest = _json_load(_read_restricted(private / MANIFEST_NAME, 8 * 1024 * 1024))
-    if (manifest.get("schema_version") != CANONICAL_SCHEMA_VERSION
-            or manifest.get("run_id") != run_id
-            or manifest.get("integrity_verified") is not True
-            or set(manifest.get("files", {})) != set(PRIVATE_FILES)):
-        raise CanonicalContractError("invalid session manifest")
+    validate_d02_file(MANIFEST_NAME, manifest)
+    if (manifest["run_id"] != run_id
+            or manifest["integrity_verified"] is not True
+            or set(manifest["files"]) != set(PRIVATE_FILES)):
+        raise CanonicalContractError("invalid session manifest identity or files")
     records = {}
     for name in PRIVATE_FILES:
         file_info = manifest["files"][name]
         raw = _read_restricted(private / name, 64 * 1024 * 1024)
-        if (len(raw) != file_info.get("byte_count")
-                or hashlib.sha256(raw).hexdigest() != file_info.get("sha256")):
+        if (len(raw) != file_info["byte_count"]
+                or hashlib.sha256(raw).hexdigest() != file_info["sha256"]):
             raise CanonicalContractError("canonical file integrity failure")
         records[name] = _json_load(raw)
-        if (records[name].get("run_id") != run_id
-                or records[name].get("schema_version") != CANONICAL_SCHEMA_VERSION):
+        validate_d02_file(name, records[name])
+        if records[name]["run_id"] != run_id:
             raise CanonicalContractError("canonical file identity mismatch")
+    system = records["system.json"]
     attempts = records["source_attempts.json"]["attempts"]
     statuses = records["status_records.json"]["status_records"]
-    observations = records["system.json"]["observations"]
+    observations = system["observations"]
+    limits = system["capture_limits"]
     evidence = manifest["evidence"]
-    if (len(attempts) != manifest["attempt_count"]
-            or len(observations) != manifest["observation_count"]
-            or len({a["attempt_id"] for a in attempts}) != len(attempts)
-            or len({s["record_id"] for s in statuses}) != len(statuses)):
+    attempt_by_id = {a["attempt_id"]: a for a in attempts}
+    status_by_id = {s["record_id"]: s for s in statuses}
+    limit_by_id = {x["limit_id"]: x for x in limits}
+    observation_ids = [o["observation_id"] for o in observations]
+    if (len(attempt_by_id) != len(attempts)
+            or len(status_by_id) != len(statuses)
+            or len(limit_by_id) != len(limits)
+            or len(set(observation_ids)) != len(observations)
+            or set(manifest["observation_ids"]) != set(observation_ids)
+            or len(manifest["observation_ids"]) != len(observation_ids)
+            or set(manifest["source_attempt_ids"]) != set(attempt_by_id)
+            or len(manifest["source_attempt_ids"]) != len(attempts)
+            or set(manifest["status_record_ids"]) != set(status_by_id)
+            or len(manifest["status_record_ids"]) != len(statuses)
+            or set(manifest["limit_record_ids"]) != set(limit_by_id)
+            or len(manifest["limit_record_ids"]) != len(limits)
+            or set(manifest["source_receipts"]) != set(attempt_by_id)):
+        raise CanonicalContractError("invalid canonical entity identity lists")
+    counts = manifest["counts"]
+    if counts != {
+            "attempts": len(attempts),
+            "sources": len({a["source_id"] for a in attempts}),
+            "observations": len(observations),
+            "evidence_artifacts": len(evidence),
+            "original_bytes": sum(e["byte_count"] for e in evidence.values()),
+            "statuses": len(statuses),
+            "capture_limits": len(limits),
+    }:
         raise CanonicalContractError("invalid canonical entity counts")
-    attempt_ids = {a["attempt_id"] for a in attempts}
+    if (system["header"]["collector_ids"] !=
+            list(dict.fromkeys(system["header"]["collector_ids"]))
+            or not {a["collector_id"] for a in attempts}.issubset(
+                set(system["header"]["collector_ids"]))):
+        raise CanonicalContractError("session collector ownership mismatch")
+    if manifest["limitations"] != system["limitations"]:
+        raise CanonicalContractError("session limitation records disagree")
     for eid, record in evidence.items():
-        if (record["evidence_id"] != eid or
-                record["source_attempt_id"] not in attempt_ids
-                or record["private_relative_path"] != "private/evidence/" + eid):
+        if (record["evidence_id"] != eid
+                or record["source_attempt_id"] not in attempt_by_id
+                or record["restricted_relative_path"] != "private/evidence/" + eid):
             raise CanonicalContractError("manifest evidence binding invalid")
-        raw = _read_restricted(folder / record["private_relative_path"],
+        raw = _read_restricted(folder / record["restricted_relative_path"],
                                record["byte_count"])
-        if (hashlib.sha256(raw).hexdigest() != record["sha256"] or
-                len(raw) != record["byte_count"]):
+        if (hashlib.sha256(raw).hexdigest() != record["sha256"]
+                or len(raw) != record["byte_count"]):
             raise CanonicalContractError("sealed original altered")
-    limits = {x["limit_id"] for x in records["system.json"]["capture_limits"]}
+        owner = attempt_by_id[record["source_attempt_id"]]
+        discriminator = eid.rsplit(":", 1)[-1]
+        original_prefix = (run_id + "_" + owner["collector_id"] + "_" +
+                           owner["source_id"] + "_" +
+                           owner["attempt_id"].rsplit("-", 1)[-1] + ":")
+        representation = ("STDOUT" if discriminator.endswith("stdout") else
+                          "STDERR" if discriminator.endswith("stderr") else
+                          "FILE_BYTES")
+        if (not eid.startswith(original_prefix)
+                or not re.fullmatch(r"[a-z][a-z0-9-]*", discriminator)
+                or record["representation"] != representation):
+            raise CanonicalContractError("original representation/owner mismatch")
+        if eid not in owner["evidence_ids"]:
+            raise CanonicalContractError("unowned original evidence")
     for status in statuses:
         validate_status_record(status, evidence_ids=evidence,
-                               attempt_ids=attempt_ids, limit_ids=limits)
-    for a in attempts:
-        receipt_path = a.get("receipt_private_path")
-        if receipt_path != ("private/source_attempt_records/" + a["attempt_id"] + ".json"):
+                               attempt_ids=attempt_by_id,
+                               limit_ids=limit_by_id)
+    used_status_ids = ({a["status_record_id"] for a in attempts} |
+                       {o["status_record_id"] for o in observations})
+    for status in statuses:
+        if (status["record_id"] not in used_status_ids
+                and not (status["domain"] == "orchestration"
+                         and status["subject_id"] == run_id)):
+            # Future approved normalization statuses are possible, but must
+            # be evidenced by an observation instead of an unattached row.
+            raise CanonicalContractError("orphan status record")
+    for attempt in attempts:
+        aid = attempt["attempt_id"]
+        receipt_path = attempt["receipt_private_path"]
+        if receipt_path != "private/source_attempt_records/" + aid + ".json":
             raise CanonicalContractError("attempt receipt path invalid")
-        receipt_raw = _read_restricted(folder / receipt_path,
-                                       a["receipt_byte_count"])
-        if (len(receipt_raw) != a["receipt_byte_count"]
-                or hashlib.sha256(receipt_raw).hexdigest() != a["receipt_sha256"]):
-            raise CanonicalContractError("original source attempt receipt altered")
-        receipt_record = _json_load(receipt_raw)
-        if (receipt_record.get("run_id") != run_id
-                or receipt_record.get("attempt_id") != a["attempt_id"]
-                or receipt_record.get("source_id") != a["source_id"]
-                or receipt_record.get("evidence_ids") != a["evidence_ids"]
-                or receipt_record.get("acquired_bytes") != a["capture_bytes"]):
+        receipt_raw = _read_restricted(folder / receipt_path, MAX_RECEIPT_BYTES)
+        digest = manifest["source_receipts"][aid]
+        if (digest != {
+                "sha256": attempt["receipt_sha256"],
+                "byte_count": attempt["receipt_byte_count"],
+                "attempt_id": aid,
+                "restricted_relative_path": receipt_path,
+            } or len(receipt_raw) != digest["byte_count"]
+            or hashlib.sha256(receipt_raw).hexdigest() != digest["sha256"]):
+            raise CanonicalContractError("original source receipt integrity failure")
+        receipt = _json_load(receipt_raw)
+        timing = receipt.get("source_timing")
+        if (receipt.get("run_id") != run_id
+                or receipt.get("attempt_id") != aid
+                or receipt.get("source_id") != attempt["source_id"]
+                or receipt.get("collector_id") != attempt["collector_id"]
+                or receipt.get("operation_id") != attempt["operation_id"]
+                or receipt.get("authorization_class") != attempt["authorization_class"]
+                or receipt.get("decision") != attempt["authorization_decision"]
+                or receipt.get("invocation") != attempt["invocation"]["recorded_invocation"]
+                or receipt.get("target") != attempt["invocation"]["target"]
+                or receipt.get("evidence_ids") != attempt["evidence_ids"]
+                or receipt.get("acquired_bytes") != attempt["capture_bytes"]
+                or attempt["capture_bytes"] != sum(
+                    evidence[eid]["byte_count"] for eid in attempt["evidence_ids"]
+                    if eid in evidence)
+                or receipt.get("exit_code") != attempt["exit_code"]
+                or attempt["tool_version"] is not None
+                or attempt["errno"] is not None
+                or attempt["safety_bounds"] != ["G4-07:" + attempt["source_id"]]
+                or [attempt["started_utc"], attempt["completed_utc"],
+                    attempt["elapsed_ms"]] != (
+                    [timing["started_utc"], timing["completed_utc"],
+                     timing["elapsed_ms"]] if timing is not None else
+                    [None, None, None])
+                or attempt["errors"] != receipt.get("errors", [])
+                or attempt["unavailable_fields"] != receipt.get("unavailable_fields", [])):
             raise CanonicalContractError("source receipt/canonical disagreement")
-        if a["status_record_id"] not in {x["record_id"] for x in statuses}:
-            raise CanonicalContractError("dangling status reference")
-        if any(e not in evidence or evidence[e]["source_attempt_id"] != a["attempt_id"]
-               for e in a["evidence_ids"]):
-            raise CanonicalContractError("attempt evidence provenance failure")
+        if attempt["operator_consent"] is not None:
+            if (attempt["authorization_class"] != "O1"
+                    or receipt.get("authorization_provenance") != attempt["operator_consent"]
+                    or receipt.get("decision") != "ALLOW"):
+                raise CanonicalContractError("unsupported operator consent provenance")
+        elif receipt.get("authorization_provenance") is not None:
+            raise CanonicalContractError("missing approved operator consent provenance")
+        st = status_by_id.get(attempt["status_record_id"])
+        if (st is None or st["domain"] != "acquisition"
+                or st["subject_id"] != attempt["source_id"]
+                or st["component_id"] != attempt["collector_id"]
+                or st["source_attempt_ids"] != [aid]
+                or st["evidence_refs"] != attempt["evidence_ids"]
+                or st["limit_record_ids"] != attempt["limit_record_ids"]):
+            raise CanonicalContractError("attempt acquisition status relationship invalid")
+        if len(set(attempt["evidence_ids"])) != len(attempt["evidence_ids"]):
+            raise CanonicalContractError("duplicate attempt evidence IDs")
+        for eid in attempt["evidence_ids"]:
+            if eid not in evidence or evidence[eid]["source_attempt_id"] != aid:
+                raise CanonicalContractError("attempt evidence provenance failure")
+        for lid in attempt["limit_record_ids"]:
+            if lid not in limit_by_id or limit_by_id[lid]["source_attempt_id"] != aid:
+                raise CanonicalContractError("attempt limit attribution invalid")
+    for cap in limits:
+        if (cap["source_attempt_id"] not in attempt_by_id
+                or cap["limit_id"] not in attempt_by_id[
+                    cap["source_attempt_id"]]["limit_record_ids"]):
+            raise CanonicalContractError("orphan source capture limit")
+    # RP-03.2: independently reconstruct FS_STAT contributor identity from
+    # sealed SRC-14 mountinfo and original SRC-15 worker stream labels.
+    # Never trust self-declared canonical references or a rehashed manifest.
+    fsstat_cache = {}
+
+    def fsstat_witness(aid):
+        if aid not in fsstat_cache:
+            source = attempt_by_id[aid]
+            mount_sources = [
+                a for a in attempts if a["source_id"] == "SRC-14"
+                and a["evidence_ids"]
+            ]
+            if (len(mount_sources) != 1
+                    or len(mount_sources[0]["evidence_ids"]) != 1):
+                raise CanonicalContractError(
+                    "FS_STAT mountinfo contributor not unique")
+            mount_attempt = mount_sources[0]
+            mount_eid = mount_attempt["evidence_ids"][0]
+            mount_receipt = _json_load(_read_restricted(
+                folder / mount_attempt["receipt_private_path"],
+                MAX_RECEIPT_BYTES))
+            if (mount_eid not in evidence
+                    or mount_receipt.get("source_paths") !=
+                       ["/proc/self/mountinfo"]
+                    or mount_receipt.get("invocation") != "MOUNTINFO"
+                    or mount_receipt.get("outcome") != "CAPTURED"
+                    or mount_eid.rsplit(":", 1)[-1] != "item0001"):
+                raise CanonicalContractError("FS_STAT unverified mountinfo original")
+            raw_mount = _read_restricted(
+                folder / evidence[mount_eid]["restricted_relative_path"],
+                evidence[mount_eid]["byte_count"])
+            try:
+                parsed_mount = normalize_sealed_source(
+                    "SRC-14", raw_mount, source_path="/proc/self/mountinfo")
+            except SourceParseError as exc:
+                raise CanonicalContractError(
+                    "FS_STAT mountinfo no longer parsable") from exc
+            if parsed_mount is None or not parsed_mount.values:
+                raise CanonicalContractError("FS_STAT mountinfo parser missing")
+            mounts_allowed = tuple(dict.fromkeys(
+                row["mount_point"]
+                for row in parsed_mount.values[0].normalized_value
+                if row["filesystem_type"] in LOCAL_TYPES))
+            fs_receipt = _json_load(_read_restricted(
+                folder / source["receipt_private_path"], MAX_RECEIPT_BYTES))
+            slots = [
+                SimpleNamespace(artifact=eid.rsplit(":", 1)[-1])
+                for eid in source["evidence_ids"]
+            ]
+            fs_mounts, fs_streams = _verified_fsstat_streams(
+                fs_receipt, slots, mounts_allowed,
+                {p.source_id: p for p in initial_source_policies()}["SRC-15"])
+            fsstat_cache[aid] = (
+                mount_eid, mount_attempt["attempt_id"],
+                dict(zip(source["evidence_ids"], zip(fs_mounts, fs_streams)))
+            )
+        return fsstat_cache[aid]
+
+    # RP-03.2 Increment 47: independent, read-only D0 semantic witnesses.
+    # Reparse each actual sealed original, not the canonical value or its
+    # digest, and require an exact 1:1 match for the entire parser output.
+    # Only these four simple fixed-format D0 families are covered here.
+    d0_families_47 = frozenset(("SRC-02", "SRC-08", "SRC-09", "SRC-10"))
+    d0_expected_47 = {}
+    d0_semantic_seen_47 = {}
+    d0_raw_seen_47 = {}
+    for candidate in attempts:
+        sid = candidate["source_id"]
+        if sid not in d0_families_47:
+            continue
+        aid = candidate["attempt_id"]
+        receipt = _json_load(_read_restricted(
+            folder / candidate["receipt_private_path"], MAX_RECEIPT_BYTES))
+        for eid in candidate["evidence_ids"]:
+            original = evidence[eid]
+            sealed = _read_restricted(
+                folder / original["restricted_relative_path"],
+                original["byte_count"])
+            parsed = None
+            if receipt.get("outcome") in ("CAPTURED", "PARTIAL"):
+                try:
+                    parsed = normalize_sealed_source(sid, sealed)
+                except SourceParseError:
+                    # A failed pure parser cannot justify typed observations.
+                    pass
+            artifact = SimpleNamespace(
+                evidence_id=eid, collector_id=candidate["collector_id"])
+            expected = tuple(
+                _semantic_observation(
+                    artifact, aid, datum, index, parsed.parser_id)
+                for index, datum in enumerate(parsed.values)
+            ) if parsed is not None else ()
+            d0_expected_47[eid] = expected
+            d0_semantic_seen_47[eid] = set()
+            d0_raw_seen_47[eid] = 0
+
     for observation in observations:
-        if (not observation["evidence_refs"]
-                or not observation["source_attempt_ids"]
-                or any(e not in evidence for e in observation["evidence_refs"])
-                or any(a not in attempt_ids for a in observation["source_attempt_ids"])
-                or any(evidence[e]["source_attempt_id"] not in
-                       observation["source_attempt_ids"] for e in observation["evidence_refs"])):
-            raise CanonicalContractError("observation provenance failure")
+        aids = observation["source_attempt_ids"]
+        eid_refs = observation["evidence_refs"]
+        primary_eid = observation["instance_key"]
+        if (not aids or not eid_refs
+                or any(e not in evidence for e in eid_refs)
+                or any(a not in attempt_by_id for a in aids)
+                or primary_eid not in evidence
+                or eid_refs[0] != primary_eid
+                or evidence[primary_eid]["source_attempt_id"] != aids[0]
+                or any(evidence[e]["source_attempt_id"] not in aids
+                       for e in eid_refs)):
+            raise CanonicalContractError("observation original attribution failure")
+        primary_attempt = attempt_by_id[aids[0]]
+        st = status_by_id.get(observation["status_record_id"])
+        if (st is None or st["record_id"] != primary_attempt["status_record_id"]
+                or st["domain"] != "acquisition"
+                or primary_eid not in st["evidence_refs"]
+                or observation["collector_id"] != primary_attempt["collector_id"]
+                or any(l not in limit_by_id or
+                       limit_by_id[l]["source_attempt_id"] not in aids
+                       for l in observation["capture_limit_ids"])):
+            raise CanonicalContractError("observation primary status/provenance mismatch")
+
+        semantic = bool(observation["transformation_ids"])
+        expected_id = ("obs:" + primary_eid +
+                       (":sem:" + str(observation["ordinal"]) if semantic else ""))
+        if observation["observation_id"] != expected_id:
+            raise CanonicalContractError("observation original identity mismatch")
+        raw = _read_restricted(
+            folder / evidence[primary_eid]["restricted_relative_path"],
+            evidence[primary_eid]["byte_count"])
+        if primary_attempt["source_id"] == "SRC-15" and semantic:
+            mount_eid, mount_aid, associated = fsstat_witness(aids[0])
+            if (primary_eid not in associated
+                    or associated[primary_eid][1] != "stdout"
+                    or eid_refs != [primary_eid, mount_eid]
+                    or aids != [primary_attempt["attempt_id"], mount_aid]):
+                raise CanonicalContractError("FS_STAT semantic contributor mismatch")
+            try:
+                parsed = normalize_sealed_source(
+                    "SRC-15", raw, source_path=associated[primary_eid][0],
+                    source_stream="stdout")
+            except SourceParseError as exc:
+                raise CanonicalContractError(
+                    "FS_STAT semantic unsupported by sealed bytes") from exc
+            idx = observation["ordinal"]
+            if parsed is None or idx >= len(parsed.values):
+                raise CanonicalContractError("FS_STAT semantic ordinal unsupported")
+            raw_artifact = SimpleNamespace(
+                evidence_id=primary_eid, collector_id=primary_attempt["collector_id"])
+            expected = _semantic_observation(
+                raw_artifact, aids[0], parsed.values[idx], idx, parsed.parser_id,
+                supporting_originals=((mount_eid, mount_aid),))
+            if observation != expected:
+                raise CanonicalContractError("FS_STAT semantic original/value mismatch")
+        elif semantic and primary_attempt["source_id"] in d0_families_47:
+            expected_rows = d0_expected_47.get(primary_eid)
+            idx = observation["ordinal"]
+            if (expected_rows is None or idx >= len(expected_rows)
+                    or observation != expected_rows[idx]):
+                raise CanonicalContractError(
+                    "D0 semantic row not supported by sealed original")
+            d0_semantic_seen_47[primary_eid].add(idx)
+        elif semantic:
+            # Other registered single-source parsers remain individually
+            # attributable; full per-family semantic reparse is later RP-03.2.
+            if aids != [primary_attempt["attempt_id"]] or eid_refs != [primary_eid]:
+                raise CanonicalContractError("unsupported semantic contributor set")
+        else:
+            if (aids != [primary_attempt["attempt_id"]]
+                    or eid_refs != [primary_eid]
+                    or observation["ordinal"] != 0
+                    or observation["normalized_value"] is not None
+                    or observation["datum_path"] !=
+                       "unclassified.source." + primary_attempt["source_id"] +
+                       "." + primary_eid.rsplit(":", 1)[-1]):
+                raise CanonicalContractError("raw observation attribution mismatch")
+            try:
+                if len(raw) > MAX_LITERAL_TEXT:
+                    raise UnicodeDecodeError("utf-8", raw, 0, 1, "literal bound")
+                literal = raw.decode("utf-8", "strict")
+            except UnicodeDecodeError:
+                literal = None
+            expected_value = (literal if literal is not None
+                              else {"sealed_bytes_ref": primary_eid})
+            if (observation["observed_value"] != expected_value
+                    or observation["value_type"] !=
+                       ("STRING" if literal is not None else "BYTES_REF")):
+                raise CanonicalContractError("raw observation differs from sealed bytes")
+            if primary_eid in d0_raw_seen_47:
+                d0_raw_seen_47[primary_eid] += 1
+    for eid, expected_rows in d0_expected_47.items():
+        if (d0_raw_seen_47[eid] != 1 or
+                d0_semantic_seen_47[eid] != set(range(len(expected_rows)))):
+            raise CanonicalContractError(
+                "D0 sealed original parser output incomplete or duplicated")
+    session_rows = [r for r in statuses if r["domain"] == "orchestration"
+                    and r["subject_id"] == run_id]
+    if len(session_rows) != 1:
+        raise CanonicalContractError("missing or ambiguous session orchestration status")
+    validate_persisted_lifecycle(
+        system["header"], manifest, session_rows[0], attempts, statuses)
     return manifest
