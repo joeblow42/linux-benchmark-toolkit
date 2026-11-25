@@ -12,9 +12,9 @@ import struct
 import sys
 import time
 
-from .core_workloads import MIB, check_pressure, local_filesystem
+from .core_workloads import IOPressureGuard, MIB, local_filesystem
 from .workload_process import capture
-from .workload_runtime import Mode, Resources, Unavailable, Workload
+from .workload_runtime import Context, Mode, Resources, Unavailable, Workload
 
 SECTOR = 2048
 CHUNK = 512 * SECTOR
@@ -163,9 +163,10 @@ def run_dvd(context, config):
     if context.evidence is None:
         raise ValueError("DVD imaging requires a private artifact directory")
     local_filesystem(context.evidence.parent)
-    check_pressure("io", 15)
+    io_guard = IOPressureGuard(context.check_stop)
+    guarded = Context(context.scratch, io_guard.poll, context.inventory, context.evidence)
     context.evidence.mkdir(mode=0o700)
-    result = capture(context, (sys.executable, str(Path(__file__).resolve().with_name("optical_worker.py")),
+    result = capture(guarded, (sys.executable, str(Path(__file__).resolve().with_name("optical_worker.py")),
                                config.device, str(config.bytes), str(config.read_retries),
                                str(context.evidence.resolve()), "--confirmed-unencrypted-dvd"), seconds=config.wall_seconds,
                      output_bytes=64 * 1024)
@@ -179,7 +180,8 @@ def run_dvd(context, config):
     outcome = json.loads(result.stdout)
     if not outcome["verified"]:
         raise RuntimeError("DVD image incomplete or verification failed")
-    return outcome
+    io_guard.poll(force=True)
+    return {**outcome, "peak_io_pressure_percent": io_guard.peak}
 
 
 def dvd_workload(config):
