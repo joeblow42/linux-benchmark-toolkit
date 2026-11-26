@@ -85,6 +85,10 @@ class OpticalO1Oracles(unittest.TestCase):
         self.assertIn(" profile: DVD-ROM , currentP=1",d.normalized_value["feature_lines"])
         self.assertNotIn("health",str(d.normalized_value).lower())
 
+    def test_standard_inquiry_banner_preserves_configuration(self):
+        banner = b"  HL-DT-ST  DVDRAM GP63EX70   RF01\n  Peripheral device type: cd/dvd\n"
+        self.assertEqual(self.parse(banner + OUTPUT).values, self.parse().values)
+
     def test_missing_profile_is_unknown_not_media_absence(self):
         r=self.parse(b"Features:\n Profile list feature\n")
         self.assertIsNone(r.values[0].normalized_value["reported_profile"])

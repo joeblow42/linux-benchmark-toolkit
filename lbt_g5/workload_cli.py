@@ -1,6 +1,7 @@
 """Run the G5 development workload registry with owner-only output."""
 import argparse
 import json
+import os
 from pathlib import Path
 
 from .backup_workload import CASES as BACKUP_CASES, Backup, backup_workloads
@@ -18,9 +19,14 @@ from .workload_runtime import Mode, Resources, Runtime, Workload
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--mode", required=True, choices=tuple(mode.value for mode in Mode))
-    parser.add_argument("--output-root", required=True, type=Path,
-                        help="existing owner-only directory for inventory and benchmark data")
+    parser.add_argument("--mode", choices=tuple(mode.value for mode in Mode))
+    parser.add_argument("--output-root", "--results-dir", type=Path,
+                        default=Path(os.environ.get("LBT_RESULTS_DIR", Path(__file__).resolve().parents[1] / "results")),
+                        help="owner-only directory for inventory and benchmark data")
+    parser.add_argument("--no-tui", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--publish", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--config", type=Path, default=Path(__file__).resolve().parents[1] / "config")
+    parser.add_argument("--list-tests", action="store_true", help="list built-in workload IDs")
     parser.add_argument("--select", action="append", default=[],
                         help="interactive workload ID or group:NAME, repeatable")
     parser.add_argument("--smb-target", help="override the local //host/share default")
@@ -51,6 +57,14 @@ def main(argv=None):
     parser.add_argument("--jellyfin-session-export", type=Path)
     parser.add_argument("--jellyfin-transcode-log", type=Path)
     args = parser.parse_args(argv)
+    if args.list_tests:
+        if args.mode or args.select:
+            parser.error("--list-tests cannot be combined with workload execution")
+        for item in short_workloads(ShortParameters()) + sustained_workloads(SustainedParameters()):
+            print(item.id)
+        return 0
+    if not args.mode:
+        parser.error("select --mode or launch the Dialog menu")
     if bool(args.direct_play_fixture) != bool(args.direct_play_profile):
         parser.error("provide both --direct-play-fixture and --direct-play-profile")
     if args.jellyfin_transcode_log and not args.jellyfin_session_export:
@@ -142,10 +156,18 @@ def main(argv=None):
         runtime = Runtime(workloads,
                           limits=Resources(parameters.cpu_workers, memory_bytes, disk_bytes),
                           disk_reserve_bytes=args.disk_reserve_mib * MIB)
+        if args.publish:
+            args.output_root.mkdir(mode=0o700, parents=True, exist_ok=True)
         session = runtime.execute(args.output_root, Mode(args.mode), selections=args.select)
     except (OSError, TypeError, ValueError) as error:
         parser.exit(2, f"Workload runtime: {error}\n")
     print(f"{session.state} {session.directory}")
+    if args.publish and session.state in ("COMPLETE", "PARTIAL"):
+        from .workload_report import publish
+        try:
+            print(f"Report {publish(session.directory, args.config, initial=True)}")
+        except (OSError, KeyError, ValueError) as error:
+            parser.exit(2, f"Workload publication: {error}\n")
     return {"COMPLETE": 0, "PARTIAL": 3, "FAILED": 1, "INTERRUPTED": 130}[session.state]
 
 

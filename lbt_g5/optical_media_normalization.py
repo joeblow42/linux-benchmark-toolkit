@@ -30,9 +30,14 @@ def parse_optical_media(raw, *, source_target):
     if len(lines) > MAX_LINES or any(not line or len(line) > MAX_LINE for line in lines):
         raise OpticalMediaParseError("OPTICAL_EMPTY_OR_OVERSIZED_LINE")
     index = 0
+    # Some sg3_utils builds prepend a standard two-line SCSI inquiry banner.
+    # Keep it in the sealed source and only interpret the current configuration.
+    if (len(lines) >= 3 and re.fullmatch(r"  [ -~]{1,80}", lines[0])
+            and lines[1] == "  Peripheral device type: cd/dvd"):
+        index = 2
     profile = None
-    if lines[0].startswith("Current profile: "):
-        profile = lines[0][len("Current profile: "):]
+    if lines[index].startswith("Current profile: "):
+        profile = lines[index][len("Current profile: "):]
         if not profile or len(profile) > 512 or profile != profile.strip():
             raise OpticalMediaParseError("OPTICAL_INVALID_PROFILE")
         index += 1

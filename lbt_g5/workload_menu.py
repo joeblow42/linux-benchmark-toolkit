@@ -1,5 +1,6 @@
-"""Select a G5 development workload mode through Dialog."""
+"""Select a Linux Benchmark Toolkit workload mode through Dialog."""
 import argparse
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -14,7 +15,7 @@ from .workload_runtime import Mode
 
 def choose(dialog, *args):
     response = subprocess.run((dialog, "--stdout", "--clear", "--title",
-                               "Linux Benchmark Toolkit development workloads", *args),
+                               "Linux Benchmark Toolkit", *args),
                               stdout=subprocess.PIPE, text=True)
     if response.returncode in (1, 255):
         return None
@@ -51,7 +52,8 @@ def edit(dialog, config, filename):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output-root", required=True, type=Path)
+    parser.add_argument("--output-root", "--results-dir", type=Path,
+                        default=Path(os.environ.get("LBT_RESULTS_DIR", Path(__file__).resolve().parents[1] / "results")))
     parser.add_argument("--config", type=Path, default=Path(__file__).resolve().parents[1] / "config")
     args = parser.parse_args(argv)
     dialog = shutil.which("dialog")
@@ -70,7 +72,8 @@ def main(argv=None):
         if mode in ("privacy", "outputs"):
             edit(dialog, args.config, mode + ".yaml")
             return 0
-        dispatch = ["--mode", mode, "--output-root", str(args.output_root)]
+        dispatch = ["--publish", "--mode", mode, "--output-root", str(args.output_root),
+                    "--config", str(args.config)]
         if mode == Mode.INTERACTIVE.value:
             cases = short_workloads(ShortParameters()) + sustained_workloads(SustainedParameters())
             items = [part for case in cases for part in (case.id, case.group, "off")]
@@ -88,7 +91,7 @@ def main(argv=None):
                 return 0
         return run(dispatch)
     except (OSError, RuntimeError, ValueError) as error:
-        parser.exit(2, f"Development menu: {error}\n")
+        parser.exit(2, f"Workload menu: {error}\n")
 
 
 if __name__ == "__main__":

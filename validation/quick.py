@@ -31,7 +31,7 @@ def _launcher(context: ValidationContext) -> None:
 
 
 def _cli(context: ValidationContext) -> None:
-    for args, expected in ((["--help"], "Usage:"), (["--list-tests"], "discovery")):
+    for args, expected in ((["--help"], "Usage:"), (["--list-tests"], "cpu-short")):
         result = _command(["bash", str(context.root / "benchmark"), *args])
         if result.returncode or expected not in result.stdout:
             raise AssertionError("CLI smoke check failed: " + " ".join(args))
