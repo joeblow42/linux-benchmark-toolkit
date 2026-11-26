@@ -1,6 +1,6 @@
 # Linux Benchmark Toolkit
 
-**Phase 1 discovery with integrated software validation.** Portable Linux terminal toolkit with read-only discovery, Dialog menu, canonical JSON data, CSV exports and a self-contained offline HTML report.
+Linux terminal toolkit with read-only Discovery, CPU, memory, and storage benchmarks, optional device and peer workloads, and self-contained offline HTML reporting.
 
 Operation requires persistent writable storage, such as a persistence-enabled live USB or a writable SSD with enough free space for the selected workloads and their results.
 
@@ -13,7 +13,10 @@ bash benchmark --mode discovery
 bash benchmark
 ```
 
-A completed Discovery run creates `results/session_<UTC>_<random>/` with `report.html`, `system.json`, `benchmarks.json`, `assessments.json`, `discovery.csv` and logs.
+A usable Discovery or benchmark run prints the saved session and its
+`system_report.html`. A partial inventory can still publish a report with
+source limitations. Use `--report-only` to regenerate from an existing run
+without reacquiring data.
 
 ```bash
 bash benchmark --list-tests
@@ -42,7 +45,7 @@ It generates standalone `acceptance.html`, `acceptance.md`, `acceptance.json`, a
 
 The toolkit uses host Bash and Python 3. Dialog is required only for TUI mode. `lscpu` and `lsblk` are optional discovery tools; the system identifies missing utilities. **No automatic package installation.** The `0.2.0-validation` archive includes the unified software validation modules but does not bundle third-party executables, and it is not the final fully self-contained release.
 
-**Not implemented yet:** detailed hardware inventory, actual CPU/memory/storage benchmarks, thermal load tests, DVD imaging, transcoding, Jellyfin playback and Samba tests. Workload ratings correctly remain NOT_TESTED.
+Specialized workloads require explicit device, media or peer selection where applicable. Historical Phase 1 sessions and checks remain available under `--legacy-phase1`.
 
 ## Architecture and tracker
 

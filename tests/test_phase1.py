@@ -8,12 +8,12 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 class Phase1Test(unittest.TestCase):
     def test_cli_help(self):
-        p = subprocess.run(['bash', str(ROOT / 'benchmark'), '--help'], capture_output=True, text=True)
+        p = subprocess.run(['bash', str(ROOT / 'benchmark'), '--legacy-phase1', '--help'], capture_output=True, text=True)
         self.assertEqual(p.returncode, 0)
         self.assertIn('--mode discovery', p.stdout)
 
     def test_unsupported_mode_is_explicit(self):
-        p = subprocess.run(['bash', str(ROOT / 'benchmark'), '--mode', 'standard'],
+        p = subprocess.run(['bash', str(ROOT / 'benchmark'), '--legacy-phase1', '--mode', 'standard'],
                            capture_output=True, text=True)
         self.assertNotEqual(p.returncode, 0)
         self.assertIn('not implemented', p.stderr)
@@ -21,7 +21,7 @@ class Phase1Test(unittest.TestCase):
     def test_discovery_report_and_relocation(self):
         with tempfile.TemporaryDirectory() as temp:
             destination = pathlib.Path(temp) / 'benchmark-results'
-            p = subprocess.run(['bash', str(ROOT / 'benchmark'), '--mode', 'discovery',
+            p = subprocess.run(['bash', str(ROOT / 'benchmark'), '--legacy-phase1', '--mode', 'discovery',
                                 '--results-dir', str(destination)], capture_output=True, text=True)
             self.assertEqual(p.returncode, 0, p.stderr)
             sessions = list(destination.iterdir())
@@ -37,7 +37,7 @@ class Phase1Test(unittest.TestCase):
             self.assertIn('NOT_TESTED', report)
             self.assertNotIn('https://', report)
             self.assertNotIn('http://', report)
-            p = subprocess.run(['bash', str(ROOT / 'benchmark'), '--report-only', str(session)],
+            p = subprocess.run(['bash', str(ROOT / 'benchmark'), '--legacy-phase1', '--report-only', str(session)],
                                capture_output=True, text=True)
             self.assertEqual(p.returncode, 0, p.stderr)
 

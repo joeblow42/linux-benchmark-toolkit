@@ -176,13 +176,15 @@ def regeneration_directory(acquisition):
     return directory
 
 
-def publish(session, config, *, private=False):
+def publish(session, config, *, private=False, initial=False):
     acquisition, workloads, inventory = saved_session(session)
     policy = load_policy(config)
     if not private:
         inventory = public_inventory(inventory, policy)
     document = render(workloads, inventory, private=private)
-    directory = regeneration_directory(acquisition)
+    directory = acquisition if initial else regeneration_directory(acquisition)
+    if initial and any((directory / name).exists() for name in (*OUTPUTS.values(), "publication.json")):
+        raise FileExistsError("initial publication already exists; use report-only regeneration")
     report_name = "private_report.html" if private else OUTPUTS["PUB-01"]
     write_report(directory, report_name, document)
     outcomes = {}

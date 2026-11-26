@@ -57,7 +57,7 @@ class LauncherValidationTests(unittest.TestCase):
                                  f"{arguments}: {response.stdout} {response.stderr}")
 
     def test_original_legacy_mode_remains_unsupported(self):
-        response = invoke("--mode", "standard")
+        response = invoke("--legacy-phase1", "--mode", "standard")
         self.assertEqual(response.returncode, 2)
         self.assertIn("not implemented", response.stderr)
 

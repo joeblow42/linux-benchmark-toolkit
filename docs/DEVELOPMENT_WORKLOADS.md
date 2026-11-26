@@ -85,11 +85,10 @@ Each regeneration creates a UTC ordinal-day directory inside the saved run.
 Validate with `python3 -m lbt_g5.workload_report --check-config`. Non-JSON YAML
 syntax requires PyYAML.
 
-## Candidate launcher and relocatable archive
+## Unified launcher and relocatable archive
 
-The candidate entry points are `./benchmark --development-workloads`,
-`./benchmark --development-menu` and `./benchmark --development-report`.
-The Dialog candidate supports Discovery, Standard, Extended and interactive
+The default `./benchmark` opens Dialog in a terminal. Use `--mode` for CLI runs and
+`--report-only` to regenerate saved results. Dialog supports Discovery, Standard, Extended and interactive
 selection of local workloads. Use the CLI for cases requiring explicit devices,
 destination paths, or peer consent.
 

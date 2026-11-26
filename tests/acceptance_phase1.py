@@ -46,7 +46,7 @@ def require(condition, message):
 
 
 def discover(root, where):
-    p = run(['bash', str(root / 'benchmark'), '--mode', 'discovery',
+    p = run(['bash', str(root / 'benchmark'), '--legacy-phase1', '--mode', 'discovery',
              '--results-dir', str(where)], timeout=45)
     require(p.returncode == 0, 'discovery: ' + p.stderr.strip())
     sessions = list(where.glob('session_*'))
@@ -89,7 +89,7 @@ def cli_checks(root, work):
     for args, expected in [(['--help'], '--mode discovery'),
                            (['--list-tests'], 'discovery'),
                            (['--check-deps'], 'python3')]:
-        p = run(['bash', str(root / 'benchmark'), *args])
+        p = run(['bash', str(root / 'benchmark'), '--legacy-phase1', *args])
         require(p.returncode == 0 and expected in p.stdout, str(args) + ': ' + p.stderr)
 
 
@@ -99,7 +99,7 @@ def invalid_cli(root, work):
                            (['--mode'], 'Missing'),
                            (['--results-dir'], 'Missing'),
                            (['--report-only'], 'Missing')]:
-        p = run(['bash', str(root / 'benchmark'), *args])
+        p = run(['bash', str(root / 'benchmark'), '--legacy-phase1', *args])
         require(p.returncode == 2 and expected.lower() in p.stderr.lower(),
                 str(args) + ': unexpected error/exit code')
 
@@ -107,7 +107,7 @@ def invalid_cli(root, work):
 @check('Unavailable Standard and Extended modes')
 def unavailable_modes(root, work):
     for mode in ('standard', 'extended'):
-        p = run(['bash', str(root / 'benchmark'), '--mode', mode])
+        p = run(['bash', str(root / 'benchmark'), '--legacy-phase1', '--mode', mode])
         require(p.returncode == 2 and 'not implemented' in p.stderr.lower(), mode + ': unexpected result')
 
 
@@ -116,13 +116,13 @@ def unwritable_results(root, work):
     if not Path('/proc').is_dir():
         raise SkipCheck('Linux /proc unavailable')
     dest = '/proc/lbt-phase1-test-' + str(os.getpid())
-    p = run(['bash', str(root / 'benchmark'), '--mode', 'discovery', '--results-dir', dest])
+    p = run(['bash', str(root / 'benchmark'), '--legacy-phase1', '--mode', 'discovery', '--results-dir', dest])
     require(p.returncode != 0 and not Path(dest).exists(), 'wrote to /proc or failed to reject it')
 
 
 @check('Missing report session')
 def missing_report(root, work):
-    p = run(['bash', str(root / 'benchmark'), '--report-only', str(work / 'missing')])
+    p = run(['bash', str(root / 'benchmark'), '--legacy-phase1', '--report-only', str(work / 'missing')])
     require(p.returncode == 2 and 'Missing' in p.stderr, 'missing session accepted')
 
 
@@ -162,7 +162,7 @@ def html_check(root, work):
     require(original.startswith(b'<!DOCTYPE html>') and b'NOT_TESTED' in original, 'invalid HTML')
     require(b'https://' not in original and b'http://' not in original, 'external dependency in HTML')
     report.unlink()
-    p = run(['bash', str(root / 'benchmark'), '--report-only', str(session)])
+    p = run(['bash', str(root / 'benchmark'), '--legacy-phase1', '--report-only', str(session)])
     require(p.returncode == 0 and report.read_bytes() == original, 'regeneration differs')
 
 
@@ -173,7 +173,7 @@ def corrupt_report(root, work):
     contents = json.loads(path.read_text())
     contents['session_id'] = 'mismatched-session'
     path.write_text(json.dumps(contents))
-    p = run(['bash', str(root / 'benchmark'), '--report-only', str(session)])
+    p = run(['bash', str(root / 'benchmark'), '--legacy-phase1', '--report-only', str(session)])
     require(p.returncode != 0, 'accepted a mismatched session identifier')
 
 
@@ -268,7 +268,7 @@ def dialog_cancel(root, work):
         def acquire_terminal():
             fcntl.ioctl(0, termios.TIOCSCTTY, 0)
 
-        proc = subprocess.Popen(['bash', str(root / 'benchmark')],
+        proc = subprocess.Popen(['bash', str(root / 'benchmark'), '--legacy-phase1'],
                                 stdin=slave, stdout=slave, stderr=slave, env=env,
                                 start_new_session=True, preexec_fn=acquire_terminal)
         os.close(slave)

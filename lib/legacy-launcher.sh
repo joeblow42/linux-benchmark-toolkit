@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+source "$ROOT/lib/common.sh"
+source "$ROOT/lib/discovery.sh"
+usage() {
+ cat <<'HELP'
+Linux Benchmark Toolkit — Phase 1
+Usage: ./benchmark [--mode discovery|standard|extended] [--no-tui]
+                   [--list-tests] [--check-deps] [--results-dir DIR]
+                   [--report-only SESSION_DIR] [--help]
+       ./benchmark --validate [--validation-profile quick|standard|full]
+                   [--results-dir DIR]
+       ./benchmark --validation-report-only SESSION_DIR
+Without arguments launches Dialog when interactive.
+Benchmark modes implement Discovery only; other benchmark modes are planned.
+Software validation is separate from benchmark workload modes.
+HELP
+}
+MODE=""; NO_TUI=0; LIST=0; CHECK=0; REPORT_ONLY=""; VALIDATE=0; VALIDATION_PROFILE="standard"; VALIDATION_PROFILE_SET=0; VALIDATION_REPORT_ONLY=""; RESULTS_DIR="${LBT_RESULTS_DIR:-$ROOT/results}"
+while (($#)); do
+ case "$1" in
+ --validate) VALIDATE=1; shift;;
+ --validation-profile) (($#>=2)) || fail 'Missing validation profile'; VALIDATION_PROFILE=$2; VALIDATION_PROFILE_SET=1; shift 2;;
+ --validation-report-only) (($#>=2)) || fail 'Missing validation session directory'; VALIDATION_REPORT_ONLY=$2; shift 2;;
+ --mode) (($#>=2)) || fail 'Missing mode'; MODE=$2; shift 2;;
+ --no-tui) NO_TUI=1; shift;;
+ --list-tests) LIST=1; shift;;
+ --check-deps) CHECK=1; shift;;
+ --results-dir) (($#>=2)) || fail 'Missing results directory'; RESULTS_DIR=$2; shift 2;;
+ --report-only) (($#>=2)) || fail 'Missing session directory'; REPORT_ONLY=$2; shift 2;;
+ --help|-h) usage; exit 0;;
+ *) fail "Unknown argument: $1";;
+ esac
+done
+# Never reinterpret benchmark modes as validation profiles.
+if ((VALIDATE)) && [[ -n "$MODE" || -n "$REPORT_ONLY" || -n "$VALIDATION_REPORT_ONLY" ]] ; then
+ fail 'Validation cannot be combined with benchmark modes or report-only options'
+fi
+if [[ -n "$VALIDATION_REPORT_ONLY" ]]; then
+ (( VALIDATE == 0 && VALIDATION_PROFILE_SET == 0 && LIST == 0 && CHECK == 0 && NO_TUI == 0 )) ||
+  fail 'Validation report-only conflicts with other options'
+ require_command python3
+ (cd "$ROOT" && python3 -m validation.suites --report-only "$VALIDATION_REPORT_ONLY")
+ exit $?
+fi
+if ((VALIDATION_PROFILE_SET)) && ((VALIDATE == 0)); then
+ fail '--validation-profile requires --validate'
+fi
+run_validation_cli() {
+ local selected="$1" session
+ case "$selected" in quick|standard|full) ;; *) fail "Invalid validation profile: $selected";; esac
+ require_command python3
+ mkdir -p -- "$RESULTS_DIR" || fail "Cannot create results root: $RESULTS_DIR"
+ session=$(mktemp -d "$RESULTS_DIR/validation_XXXXXXXXXX") || fail 'Cannot create validation session'
+ (cd "$ROOT" && python3 -m validation.suites "$selected" --output "$session")
+}
+if ((VALIDATE)); then
+ (( LIST == 0 && CHECK == 0 && NO_TUI == 0 )) ||
+  fail 'Validation cannot be combined with listing/dependency/TUI controls'
+ run_validation_cli "$VALIDATION_PROFILE"
+ exit $?
+fi
+if ((LIST)); then printf '%s
+' 'discovery available' 'standard planned' 'extended planned'; exit 0; fi
+if ((CHECK)); then check_dependencies; exit 0; fi
+if [[ -n "$REPORT_ONLY" ]]; then
+ require_command python3
+ [[ -f "$REPORT_ONLY/system.json" && -f "$REPORT_ONLY/benchmarks.json" ]] || fail 'Missing session JSON'
+ python3 "$ROOT/reporting/generate.py" "$REPORT_ONLY"
+ exit $?
+fi
+if [[ -z "$MODE" ]] && ((NO_TUI == 0)) && [[ -t 0 && -t 1 ]]; then
+ if command -v dialog >/dev/null 2>&1; then
+  source "$ROOT/tui/menu.sh"
+  MODE=$(choose_mode) || exit 0
+  if [[ "$MODE" == diagnostics ]]; then
+   profile=$(choose_validation_profile) || exit 0
+   run_validation_cli "$profile"
+   exit $?
+  fi
+ else
+  echo 'Dialog unavailable; use --mode discovery or install/bundle dialog.' >&2
+  usage
+  exit 2
+ fi
+fi
+[[ -n "$MODE" ]] || { usage; exit 2; }
+case "$MODE" in
+ discovery) run_discovery "$RESULTS_DIR";;
+ standard|extended) fail "Mode $MODE is planned but not implemented in Phase 1.";;
+ *) fail "Invalid mode: $MODE";;
+esac
